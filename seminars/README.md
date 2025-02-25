@@ -6,23 +6,30 @@ Due to the shift of the course toward a more practical approach, many of these t
 
 Below is a list of topics. Each graduate/isolated enrollment student must choose a topic and write their name at the end of the line to reserve it. The presentation dates will be indicated on each line once they are defined.  
 
-- **TensorFlow + Keras** (initially separate projects, Keras is now part of TensorFlow 2 and should be discussed in this context).
-  - [System documentation](https://www.tensorflow.org/?hl=pt-br)
-- **Dynamo + Cassandra** (important databases in big data, the focus should be on their implementation, as discussed in the papers).  
-- **Relationships/differences between Data Warehouse, Data Lake, and Data Lakehouse** (be careful, as many marketing materials use these terms inconsistently; this blog article is a good starting point but too superficial for what I have in mind).  
-- **Data Lakes** (CIDR 2015, SIGMOD 2016, SIGMOD 2017, SIGMOD 2020).  
-- **The concept of Data Lakehouse** ([link](https://lakefs.io/hudi-iceberg-and-delta-lake-data-lake-table-formats-compared/)) (CIDR 2021, VLDB 2020).  
-- **Query Automation** ([link](https://www.datarevenue.com/en-blog/airflow-vs-luigi-vs-argo-vs-mlflow-vs-kubeflow)) (TCDE 2018).  
-- **Chaos Engineering** (not directly related to PDM, but an important concept for cloud applications; the original link might not be authorized by O'Reilly).  
-- **BlinkDB and other works on approximate queries** (ACM EuroSys 2013, also [blinkdb.org](http://blinkdb.org), and others).  
-- **MLOps – What it is, its importance, best practices, tools** (since there is no single reference, I recommend this only for those with prior experience in the subject).  
-- **Time Series Mining** (this article is not highly relevant but can help identify key points; also, there is one from Computing Surveys and a book chapter).  
-- **Apache Samza** (TCDE 2015).  
-- **Apache Tez** (SIGMOD 2015).  
-- **Apache Beam**.  
-- **Dask**.  
-- **Use cases of Apache Flink** (the framework will be briefly covered in the course, but if someone has experience with it, they can give a more detailed presentation on a use case, programming details, etc.).  
-- **Recent conference papers**: Especially PhD students are encouraged to find scientific papers related to PDM in their areas of interest. Conferences such as SIGMOD, VLDB, CIDR, SoCC, and IEEE Big Data can be good sources.  
-- **Other topics may be proposed by students**. In that case, contact the professor to discuss the subject.  
-
-After reviewing the basic references for each topic, choose three options that interest you and register your choices in the provided form.
+1. **TensorFlow.**
+  - [Documentation](https://www.tensorflow.org/?hl=pt-br) [Paper](https://www.usenix.org/system/files/conference/osdi16/osdi16-abadi.pdf)
+2. **Cassandra** (important databases in big data, the focus should be on their implementation, as discussed in the papers). 
+  - [Documentation](https://www.tensorflow.org/?hl=pt-br) [Paper](https://dl.acm.org/doi/10.1145/1773912.1773922)
+3. **Data Lakes.**
+  - [Documentation](https://www.databricks.com/discover/data-lakes) [Paper](http://sites.computer.org/debull/A15dec/p4.pdf)
+4. **The concept of Data Lakehouse** ([link](https://lakefs.io/hudi-iceberg-and-delta-lake-data-lake-table-formats-compared/)). 
+  - [Documentation](https://www.databricks.com/product/data-lakehouse) [Paper](https://people.eecs.berkeley.edu/~matei/papers/2020/vldb_delta_lake.pdf)
+5. **MLOps – What it is, its importance, best practices, tools.**
+  - [Documentation](https://www.databricks.com/glossary/mlops) [Paper](https://arxiv.org/pdf/2205.02302)
+6. **Samza.** 
+  - [Documentation](https://samza.apache.org/) [Paper](http://sites.computer.org/debull/A15dec/p4.pdf)
+7. **Beam.**
+  - [Documentation](https://beam.apache.org/) [Paper](https://static.googleusercontent.com/media/research.google.com/pt-BR//pubs/archive/43864.pdf)
+8. **Dask**.
+  - [Documentation](https://www.dask.org/) [Paper](https://pdfs.semanticscholar.org/73b5/8192f30bb6be8e798084d4481b97124570ed.pdf)
+9. **Flink.**
+  - [Documentation](https://flink.apache.org/) [Paper](https://github.com/manjunath5496/Apache-Flink-Papers/blob/main/a(2).pdf)
+10. **Ray.**
+  - [Documentation](https://www.ray.io/) [Paper](https://www.usenix.org/system/files/osdi18-moritz.pdf)
+11. **Velox.**
+  - [Documentation](https://velox-lib.io/) [Paper](https://vldb.org/pvldb/vol15/p3372-pedreira.pdf)
+12. **TinkerPop.**
+  - [Documentation](https://tinkerpop.apache.org/) [Paper](https://arxiv.org/pdf/1508.03843)
+13. **NebulaGraph.**
+  - [Documentation](https://www.nebula-graph.io/) [Paper](https://arxiv.org/pdf/1508.03843)
+14. **Recent conference papers**: Especially PhD students are encouraged to find scientific papers related to PDM in their areas of interest. Conferences such as SIGMOD, VLDB, CIDR, SoCC, and IEEE Big Data can be good sources. 
