@@ -1,0 +1,15 @@
+networks:
+  neo4j-network:
+    driver: overlay
+    attachable: true
+
+services:
+  neo4j:
+    image: bitnami/neo4j:latest
+    networks:
+      - neo4j-network
+    ports:
+      - '7474:7474'
+      - '7473:7473'
+      - '7687:7687'
+
