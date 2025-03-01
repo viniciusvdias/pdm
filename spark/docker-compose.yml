@@ -12,7 +12,7 @@ services:
       - '8080:8080'
       - '7077:7077'
     networks:
-        - spark-net
+        - pdmnet
 
   spark-worker:
     image: docker.io/bitnami/spark:3.5
@@ -27,9 +27,8 @@ services:
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
     networks:
-        - spark-net
+        - pdmnet
 
 networks:
-  spark-net:
-    driver: overlay
-    attachable: true
+  pdmnet:
+    external: true
