@@ -1,5 +1,8 @@
 # VM access via VPN and SSH
 
+**IMPORTANT: there will be ABSOLUTELY NO BACKUP in those VMs. You are
+responsible for making bakups of your work (code and/or data)**
+
 This command will open an SSH session with the VM via VPN. You will be prompted
 two times: first will must enter your UFLA credentials, second you must enter
 your VM credentials (check course material for this information).

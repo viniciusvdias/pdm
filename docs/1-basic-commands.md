@@ -20,7 +20,7 @@
 ## **Downloading Files**
 - `wget <URL>` – Download a file from a URL.  
 - `curl -O <URL>` – Download a file from a URL (alternative to `wget`).  
-- Download files from GDrive using `gdown`: (Pip-GDown)[https://pypi.org/project/gdown/]
+- Download files from GDrive using `gdown`: [Pip-GDown](https://pypi.org/project/gdown/)
 
 ---
 
