@@ -1,24 +1,24 @@
 # [EX1-INTRO] Download and explore a CSV file
 
-Append to each step below, the output of your terminal. Include a brief
-explanation of the results: `pt-br`` or `en`.
-
-File format: markdown file `ex1-intro-sol.md`
-
-Need help with Markdown? There is a quick guide [here](https://docs.github.com/pt/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
+> Assignment submission format: a single markdown file `ex1-intro-sol.md`.
+>
+> Need help with Markdown? There is a quick guide [here](https://docs.github.com/pt/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
 
 ## Reproduce the steps below
 
+Append to each step below, the output of your terminal. Include a brief
+explanation of the results: `pt-br` or `en`.
+
 1. Create a working directory.
 
-```
+```bash
 mkdir cnpj_exercise
 cd cnpj_exercise
 ```
 
 2. Download and unzip the public data [CNPJ - Regime Tributário - Lucro Real](https://arquivos.receitafederal.gov.br/dados/cnpj/regime_tributario/Lucro%20Real.zip).
 
-```
+```bash
 wget https://arquivos.receitafederal.gov.br/dados/cnpj/regime_tributario/Lucro%20Real.zip
 mv "Lucro Real.zip" lucro_real.zip # spaces in name are a pain :(
 unzip lucro_real.zip -d lucro_real
@@ -27,7 +27,7 @@ mv "lucro_real/Lucro Real.csv" lucro_real/lucro_real.csv # spaces in name are a 
 
 3. Check the extracted files:
 
-```
+```bash
 ls -lh lucro_real
 ```
 
@@ -69,6 +69,7 @@ head -n 1 lucro_real/lucro_real.csv | awk -F ',' '{print NF}'
 ```bash
 cut -d ',' -f1 lucro_real/lucro_real.csv | sort | uniq | wc -l
 ```
+
 - `cut -d ',' -f1` extracts the first column.  
 - `sort | uniq` removes duplicates.  
 - `wc -l` counts the unique values.  
@@ -116,10 +117,9 @@ be executed):
 ```bash
 chmod +x extract_info.sh
 ```
+
 - Run the script:
 
 ```bash
 ./extract_info.sh lucro_real/
 ```
-
-
