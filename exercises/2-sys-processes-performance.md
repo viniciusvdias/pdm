@@ -8,7 +8,7 @@
 Let us inspect its content:
 
 ```bash
-cat pdm/Dockerfile
+cat jupytercli/Dockerfile
 ```
 
 This is an Alpine/Linux based image -- the Dockerfile specifies how this
