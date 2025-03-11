@@ -1,3 +1,3 @@
-vmaccess/ovpns/*
+vmaccess/ovpns/*.ovpn
 hostdir/data/*
 .ipynb_checkpoints/
