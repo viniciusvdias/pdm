@@ -4,7 +4,7 @@ WORKDIR /app
 RUN apk add --update --no-cache bash build-base linux-headers musl-dev procps openjdk11 && ln -sf python3 /usr/bin/python
 ENV PYTHONUNBUFFERED=1
 RUN python3 -m venv .venv
-RUN source .venv/bin/activate && pip install pyspark==3.5.4 neo4j kafka-python jupyterlab
+RUN source .venv/bin/activate && pip install pyspark==3.5.4 neo4j kafka-python jupyterlab networkx
 COPY entrypoint.sh /bin/entrypoint.sh
 RUN chmod +x /bin/entrypoint.sh
 EXPOSE 8888
