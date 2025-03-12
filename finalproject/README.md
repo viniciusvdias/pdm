@@ -55,6 +55,8 @@ standard.
 - [Kaggle Datasets](https://www.kaggle.com/datasets)
 - [Hugging Face Datasets](https://huggingface.co/docs/datasets/en/index)
 - [Zenodo](https://zenodo.org/)
+- [Awesome Public Datasets](https://github.com/awesomedata/awesome-public-datasets)
+- [Awesome JSON Datasets](https://github.com/jdorfman/awesome-json-datasets)
 - You can also use APIs to generate the data (ask the professor)
 - Any other [open data](https://en.wikipedia.org/wiki/Open_data) resource (ask
 the professor)

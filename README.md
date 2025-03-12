@@ -25,7 +25,7 @@ make
 - `jupytercli/`: Client for interacting with Docker containers via [Jupyter](https://jupyter.org/)
 - `neo4j/`: Graph system used in this course
 - `spark/`: General-purpose system used in this course
-- `vmaccess/`: Used to access this course'S VMs
+- `vmaccess/`: Used to access this course's VMs
 - (Assignment) `exercises/`: hands-on exercises, day-to-day individual assignments,
 - (Assignment) `seminars/`: topics in Big-Data, group assignment
 - (Assignment) `finalproject/`: final project, group assignment
@@ -43,4 +43,3 @@ make
 - [STREAM - Stream processing 2](https://docs.google.com/presentation/d/1aZlHeMqU8l7AmBQl58yJWqr2Nv-0aD6vIJ-r2tXfeSs/edit?usp=sharing)
 - [GRAPH - Graph processing 1](https://docs.google.com/presentation/d/16q9uV-SLYzERZsdAxeJfKMhhgQLFyUkkl4xeapCBM0c/edit?usp=sharing)
 - [GRAPH - Graph processing 2](https://docs.google.com/presentation/d/1BodgQ8EtKJd4UWqIONqz0OTeSqNSkdb7SQwTD6cdtCY/edit?usp=sharing)
-
