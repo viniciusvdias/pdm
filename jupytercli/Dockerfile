@@ -1,6 +1,5 @@
 FROM python:3.12-alpine
 WORKDIR /app
-#RUN apk add --update --no-cache bash build-base python3 python3-dev musl-dev linux-headers py3-pip procps openjdk11 && ln -sf python3 /usr/bin/python
 RUN apk add --update --no-cache bash build-base linux-headers musl-dev procps openjdk11 && ln -sf python3 /usr/bin/python
 ENV PYTHONUNBUFFERED=1
 RUN python3 -m venv .venv
