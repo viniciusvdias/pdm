@@ -52,7 +52,7 @@ file lucro_real/*
 7. Count the Number of Lines in a File. To count the number of rows (lines) in a file:  
 
 ```bash
-wc -l lucro_real/
+wc -l lucro_real/*
 ```
 
 8. Count the Number of Columns (CSV file).
