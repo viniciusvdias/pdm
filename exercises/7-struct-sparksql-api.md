@@ -1,6 +1,6 @@
-# EX6-STRUCT: SparkSQL basics
+# EX7-STRUCT: SparkSQL aggregates, execution plan, and thers
 
-> Assignment submission format: a single ipynb file `6-struct-sparksql-basics.ipynb`, as describe in step 4.
+> Assignment submission format: a single ipynb file `7-struct-sparksql-api.ipynb`, as describe in step 4.
 >
 > Need help with Markdown? There is a quick guide [here](https://docs.github.com/pt/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
 
@@ -30,5 +30,5 @@ You will be prompted with a `http` link to access the service in your browser.
 Notice that the command maps directory `pdm/hostdir` into the container's path
 `/app/hostdir`.
 
-4. Follow instructions from file `/app/hostdir/6-sparksql-basics.ipynb`
+4. Follow instructions from file `/app/hostdir/7-struct-sparksql-api.ipynb`
 (container's path).
