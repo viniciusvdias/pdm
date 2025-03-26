@@ -17,7 +17,7 @@ container should be configured.
 2. Make sure this image is build with:
 
 ```bash
-make
+make buildjupytercli
 ```
 
 3. Start a container from this image -- there is a script to do this:
