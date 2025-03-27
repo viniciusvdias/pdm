@@ -20,7 +20,7 @@ your VM credentials (check course material for this information).
 sshusername=<USERNAME> sshhost=<GROUP_HOST> ./vmaccess/bin/vpn-and-ssh-to-host.sh
 ```
 
-`USERNAME`: `groupK`, where `k` is your group ID.
+`USERNAME`: `userK`, where `k` is your group ID.
 `GROUP_HOST`: informed to you by e-mail, **each group logs into a specific VM --
 please respect that**.
 
