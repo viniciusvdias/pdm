@@ -7,3 +7,6 @@ buildvmaccess:
 
 buildjupytercli:
 	docker buildx build --progress=plain --output type=docker --tag jupytercli $(DIR)/jupytercli
+
+buildsocketstreamserver:
+	docker buildx build --progress=plain --output type=docker --tag socketstreamserver $(DIR)/socketstreamserver
