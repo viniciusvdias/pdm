@@ -1,3 +1,5 @@
 vmaccess/ovpns/*.ovpn
-hostdir/data/*
 .ipynb_checkpoints/
+
+hostdir/data/*
+!hostdir/data/100words.txt.gz
