@@ -10,3 +10,6 @@ buildjupytercli:
 
 buildsocketstreamserver:
 	docker buildx build --progress=plain --output type=docker --tag socketstreamserver $(DIR)/socketstreamserver
+
+buildkafkafakestream:
+	docker buildx build --progress=plain --output type=docker --tag kafkafakestream $(DIR)/kafkafakestream
