@@ -10,6 +10,14 @@ for argname in $required; do
   fi
 done
 
+case "$subject" in
+stock | userbehaviour | realstock | metric | bet | rolling | advancedmetric | pizza) ;;
+*)
+  >&2 printf "error: valid 'subject' value: stock|userbehaviour|realstock|metric|bet|rolling|advancedmetric|pizza\n"
+  exit 1
+  ;;
+esac
+
 DIR=$(dirname "$(realpath $0)")
 
 docker run \
