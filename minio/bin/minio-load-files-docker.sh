@@ -22,4 +22,4 @@ docker run -it --rm --name minio-client \
   --network pdmnet \
   -v $(realpath $filename):/data/$(basename $filename) \
   bitnami/minio-client \
-  sh -c "mc alias set minio http://minio:9000 pdm_minio pdm_minio && mc mb public && mc cp /data/$(basename $filename) minio/public/ && mc ls minio/public"
+  sh -c "mc alias set minio http://minio:9000 pdm_minio pdm_minio && mc mb -p minio/public && mc cp /data/$(basename $filename) minio/public/ && mc ls minio/public"
