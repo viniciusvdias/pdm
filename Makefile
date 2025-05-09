@@ -8,6 +8,9 @@ buildvmaccess:
 buildjupytercli:
 	docker buildx build --progress=plain --output type=docker --tag jupytercli $(DIR)/jupytercli
 
+buildalmondcli:
+	docker buildx build --progress=plain --output type=docker --tag almondcli $(DIR)/almondcli
+
 buildsocketstreamserver:
 	docker buildx build --progress=plain --output type=docker --tag socketstreamserver $(DIR)/socketstreamserver
 
