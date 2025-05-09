@@ -1,11 +1,9 @@
 # Final project
 
-> **work in progress (WIP)**
-
 *Objective:* to propose, to develop, and to present a processing workflow that
 necessarily uses some of the concepts and systems discussed in this course.
 
-## Steps
+## Steps (overall)
 
 1. Define a data source. The term "big-data" here is a bit misleading, because
    we have limited resources, let us consider a valid data any data source
@@ -27,6 +25,26 @@ necessarily uses some of the concepts and systems discussed in this course.
 5. Present your work, include motivation, objective, method, results and
    conclusion. You must present also some kind of performance analysis
   (throughput or latency studies).
+
+## Questions for Project proposal (first assignment)
+
+Assignment: (1) presentation slides containing
+
+1. Which data source you are going to use? What is the context and motivation?
+   Link to where it is available ...
+2. What processing you intent to perform over the data source?
+3. Why is this processing important or relevant?
+4. What kind of processing is this? Batch, structured, stream, graph, etc.
+5. Why this processing is challenging from the perspective of Big Data? In other
+   words, why is this Big Data?
+6. Architecture proposal: how you intend to process this data?
+
+## Final project presentation (second assignment)
+
+Assignment: (1) slides containing the presentation, including results; (2)
+**Public GitHub Repo** containing documentation and code Dockerized -- in this
+documentation you must include a **full report, with content, results and
+discussion of the results**.
 
 ## Grading
 
