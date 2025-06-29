@@ -1,0 +1,124 @@
+services:
+  spark-master:
+    build: .
+    container_name: spark-master
+    hostname: spark-master
+    ports:
+      - "8080:8080" # Spark Master Web UI
+      - "7077:7077" # Spark Master Port
+      - "4040:4040" # Spark Application Web UI
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_TO_FILE=${LOG_TO_FILE:-true}
+      - LOG_COLORS=${LOG_COLORS:-false}
+      - DOCKER_SWARM_MODE=false
+    volumes:
+      - ./src:/app/src
+      - ./misc:/app/misc
+      - ./datasample:/app/datasample
+      - ./bin:/app/bin
+    command: >
+      bash -c "
+        /opt/spark/sbin/start-master.sh &&
+        echo 'Spark Master iniciado. Acesse http://localhost:8080 para o Web UI' &&
+        tail -f /dev/null
+      "
+    networks:
+      - spark-network
+
+  spark-worker-1:
+    build: .
+    container_name: spark-worker-1
+    hostname: spark-worker-1
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081" # Worker 1 Web UI
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_CORES=2
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_TO_FILE=${LOG_TO_FILE:-true}
+      - LOG_COLORS=${LOG_COLORS:-false}
+      - DOCKER_SWARM_MODE=false
+    volumes:
+      - ./src:/app/src
+      - ./misc:/app/misc
+      - ./datasample:/app/datasample
+    command: >
+      bash -c "
+        /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+        tail -f /dev/null
+      "
+    networks:
+      - spark-network
+
+  spark-worker-2:
+    build: .
+    container_name: spark-worker-2
+    hostname: spark-worker-2
+    depends_on:
+      - spark-master
+    ports:
+      - "8082:8082" # Worker 2 Web UI
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_WEBUI_PORT=8082
+      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_CORES=2
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_TO_FILE=${LOG_TO_FILE:-true}
+      - LOG_COLORS=${LOG_COLORS:-false}
+      - DOCKER_SWARM_MODE=false
+    volumes:
+      - ./src:/app/src
+      - ./misc:/app/misc
+      - ./datasample:/app/datasample
+    command: >
+      bash -c "
+        /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+        tail -f /dev/null
+      "
+    networks:
+      - spark-network
+
+  # Serviço para executar análises
+  analytics:
+    build: .
+    container_name: ru-analytics
+    depends_on:
+      - spark-master
+      - spark-worker-1
+      - spark-worker-2
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_TO_FILE=${LOG_TO_FILE:-true}
+      - LOG_COLORS=${LOG_COLORS:-true}
+      - DOCKER_SWARM_MODE=false
+    volumes:
+      - ./src:/app/src
+      - ./misc:/app/misc
+      - ./datasample:/app/datasample
+      - ./bin:/app/bin
+    command: >
+      bash -c "
+        echo 'Aguardando cluster Spark estar pronto...' &&
+        sleep 15 &&
+        echo 'Executando análise de dados do RU-UFLA' &&
+        /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077
+      "
+    networks:
+      - spark-network
+
+networks:
+  spark-network:
+    driver: bridge

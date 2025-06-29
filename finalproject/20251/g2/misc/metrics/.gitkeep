@@ -1,0 +1,2 @@
+# Este arquivo garante que a pasta metrics seja mantida no git
+# As métricas de performance do sparkMeasure serão salvas aqui 
