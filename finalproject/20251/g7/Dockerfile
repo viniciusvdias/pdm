@@ -12,6 +12,14 @@ RUN apk update && apk add --no-cache \
     wget \
     bash \
     procps \
+    git \
+    libffi-dev \
+    py3-numpy \
+    py3-matplotlib \
+    py3-pillow \
+    py3-pip \
+    py3-wheel \
+    py3-setuptools \
     && ln -sf python3 /usr/bin/python
 
 # Variáveis de ambiente
@@ -27,14 +35,23 @@ RUN source .venv/bin/activate && pip install \
     pyspark==4.0.0 \
     jupyterlab \
     pandas \
-    matplotlib
+    matplotlib \
+    seaborn \
+    streamlit \
+    plotly
 
-# Entrypoint
-COPY bin/entrypoint.sh /bin/entrypoint.sh
-RUN chmod +x /bin/entrypoint.sh
+# Copia código e dados do projeto para dentro da imagem
+COPY ./src /app/src
+COPY ./datasample /app/datasample
 
-# Portas do Jupyter e Spark Application Web UI
+# Scripts
+COPY ./bin/entrypoint.sh ./bin/entrypoint.sh
+COPY ./bin/exec-streamlit.sh ./bin/exec-streamlit.sh
+RUN chmod +x ./bin/*.sh
+
+# Portas do Jupyter, Streamlit e Spark Application Web UI
 EXPOSE 8888
+EXPOSE 8501
 EXPOSE 4040
 
-ENTRYPOINT ["/bin/entrypoint.sh"]
+ENTRYPOINT ["./bin/entrypoint.sh"]

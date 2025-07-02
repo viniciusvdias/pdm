@@ -1,5 +1,5 @@
-#!/bin/bash
+#!/bin/sh
 
-source /app/.venv/bin/activate
+. /app/.venv/bin/activate
 
 exec "$@"

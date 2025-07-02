@@ -59,7 +59,7 @@ function start_jupyter() {
       --name "$JUPYTER_NAME" \
       -p 8888:8888 \
       -p 4040:4040 \
-      -v "$(pwd)/datasample:/app/datasample" \
+      -p 8501:8501 \
       --network "$NETWORK_NAME" \
       "$JUPYTER_NAME" \
       jupyter lab --no-browser --ip=0.0.0.0 --allow-root > /dev/null
