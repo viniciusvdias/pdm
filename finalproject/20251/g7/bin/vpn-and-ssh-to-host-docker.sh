@@ -44,4 +44,4 @@ EOF
 rm /tmp/g7.tar.gz
 
 echo ">> Entrando na VM..."
-exec ssh -o ControlPath="$SOCKET" ${SSH_USERNAME}@${SSH_HOST}
+exec ssh -o ControlPath="$SOCKET" ${SSH_EXTRA_OPTS} ${SSH_USERNAME}@${SSH_HOST}

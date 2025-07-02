@@ -6,7 +6,6 @@ __pycache__/
 # Arquivos
 bin/deploy-to-vm-teste.sh
 bin/deploy-to-vm.sh
-bin/entrypoint.sh
 bin/vpn-and-ssh-to-host-docker.sh
 README.md
 README-report-template.md
