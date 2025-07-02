@@ -228,6 +228,7 @@ function print_urls() {
 detect_mode
 
 if [ $# -eq 0 ]; then
+  build
   deploy
   exit 0
 fi
