@@ -38,7 +38,8 @@ RUN source .venv/bin/activate && pip install \
     matplotlib \
     seaborn \
     streamlit \
-    plotly
+    plotly \
+    gdown
 
 # Copia código e dados do projeto para dentro da imagem
 COPY ./src /app/src
