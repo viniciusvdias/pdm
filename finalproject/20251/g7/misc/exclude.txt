@@ -8,8 +8,6 @@ bin/deploy-to-vm-teste.sh
 bin/deploy-to-vm.sh
 bin/entrypoint.sh
 bin/vpn-and-ssh-to-host-docker.sh
-*.yml
-Dockerfile
 README.md
 README-report-template.md
 .gitignore
