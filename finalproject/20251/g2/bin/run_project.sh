@@ -46,8 +46,7 @@ show_help() {
     echo "  status          - Mostrar status dos containers"
     echo "  clean           - Limpar containers e volumes"
     echo "  test            - Executar testes de integração"
-    echo "  analyze         - Executar análise de dados"
-    echo "  analyze-local   - Executar análise local (sem Docker)"
+    echo "  analyze [mode]  - Executar análise de dados (mode: sample|complete)"
     echo "  info            - Mostrar informações do sistema"
     echo ""
     echo "🐳 Comandos Docker Swarm:"
@@ -71,7 +70,12 @@ show_help() {
     echo "  LOG_TO_FILE=true|false (padrão: true)"
     echo "  LOG_COLORS=true|false (padrão: true)"
     echo ""
-    echo "Exemplo: LOG_LEVEL=DEBUG $0 up"
+    echo "💡 Exemplos de uso:"
+    echo "  LOG_LEVEL=DEBUG $0 up"
+    echo "  $0 analyze sample      # Análise com dados de amostra"
+    echo "  $0 analyze complete    # Análise completa (padrão)"
+    echo "  $0 analyze-local sample    # Análise local com amostra"
+    echo "  $0 analyze-local complete  # Análise local completa"
 }
 
 # Função para construir imagens
@@ -98,9 +102,10 @@ start_cluster() {
     echo "  👷 Worker 2 UI:      http://localhost:8082"
     echo ""
     echo "📋 Comandos úteis:"
-    echo "  Logs:     $0 logs"
-    echo "  Análise:  $0 analyze"
-    echo "  Parar:    $0 down"
+    echo "  Logs:       $0 logs"
+    echo "  Análise:    $0 analyze [sample|complete]"
+    echo "  Local:      $0 analyze-local [sample|complete]"
+    echo "  Parar:      $0 down"
 }
 
 # Função para parar o cluster
@@ -154,7 +159,20 @@ clean_all() {
 
 # Função para executar análise
 run_analysis() {
-    echo "📊 Executando análise de dados do RU-UFLA..."
+    local mode=${1:-complete}
+    
+    case "$mode" in
+        sample)
+            echo "📊 Executando análise de dados do RU-UFLA (AMOSTRA)..."
+            ;;
+        complete)
+            echo "📊 Executando análise de dados do RU-UFLA (COMPLETA)..."
+            ;;
+        *)
+            echo "❌ Modo inválido: $mode. Use 'sample' ou 'complete'"
+            return 1
+            ;;
+    esac
     
     # Verificar se o cluster está rodando
     if ! $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
@@ -163,25 +181,9 @@ run_analysis() {
         sleep 20
     fi
     
-    # Executar análise
-    $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077
+    # Executar análise com o modo especificado
+    $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077 --mode $mode
     echo "✅ Análise concluída!"
-}
-
-# Função para executar análise local
-run_local_analysis() {
-    echo "🏠 Executando análise local (sem Docker)..."
-    
-    # Verificar se o ambiente virtual existe
-    if [ ! -d ".venv" ]; then
-        echo "📦 Criando ambiente virtual..."
-        uv venv
-        uv sync
-    fi
-    
-    # Executar análise local
-    .venv/bin/python -m src.main analyze
-    echo "✅ Análise local concluída!"
 }
 
 # Função para executar testes
@@ -306,10 +308,7 @@ case "${1:-up}" in
         run_tests
         ;;
     analyze)
-        run_analysis
-        ;;
-    analyze-local)
-        run_local_analysis
+        run_analysis $2
         ;;
     info)
         show_info

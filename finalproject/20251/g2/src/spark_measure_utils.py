@@ -108,15 +108,21 @@ class SparkMeasureWrapper:
 
             # Coletar métricas agregadas
             if self.mode == "stage":
-                raw_metrics = self._metrics_collector.aggregate_stage_metrics()
+                raw_metrics = self._metrics_collector.aggregate_stagemetrics()
                 logger.debug(
-                    "Métricas de stage coletadas: {} métricas", len(raw_metrics)
+                    "Métricas de stage coletadas: {} métricas", len(raw_metrics) if raw_metrics else 0
                 )
             else:  # task mode
-                raw_metrics = self._metrics_collector.aggregate_task_metrics()
+                raw_metrics = self._metrics_collector.aggregate_taskmetrics()
                 logger.debug(
-                    "Métricas de task coletadas: {} métricas", len(raw_metrics)
+                    "Métricas de task coletadas: {} métricas", len(raw_metrics) if raw_metrics else 0
                 )
+
+            # Converter JavaMap para dict Python para serialização JSON
+            if raw_metrics:
+                raw_metrics = self._convert_java_map_to_dict(raw_metrics)
+            else:
+                raw_metrics = {}
 
             # Estruturar métricas no nosso formato
             metrics = {
@@ -133,11 +139,21 @@ class SparkMeasureWrapper:
 
             # Log métricas principais
             if raw_metrics:
+                num_stages = raw_metrics.get("numStages", "N/A")
+                num_tasks = raw_metrics.get("numTasks", "N/A")
+                elapsed_time = raw_metrics.get("elapsedTime", "N/A")
+                
+                # Tratar valores None
+                if elapsed_time is None:
+                    elapsed_time = "N/A"
+                elif isinstance(elapsed_time, (int, float)):
+                    elapsed_time = f"{elapsed_time}ms"
+                
                 logger.info(
-                    "Métricas principais - Stages: {}, Tasks: {}, Elapsed: {}ms",
-                    raw_metrics.get("numStages", "N/A"),
-                    raw_metrics.get("numTasks", "N/A"),
-                    raw_metrics.get("elapsedTime", "N/A"),
+                    "Métricas principais - Stages: {}, Tasks: {}, Elapsed: {}",
+                    num_stages if num_stages is not None else "N/A",
+                    num_tasks if num_tasks is not None else "N/A",
+                    elapsed_time,
                 )
 
             return metrics
@@ -153,6 +169,59 @@ class SparkMeasureWrapper:
                 },
                 "error": str(e),
             }
+
+    def _convert_java_map_to_dict(self, java_obj):
+        """
+        Converte objetos Java (JavaMap, etc.) para tipos Python serializáveis
+
+        Args:
+            java_obj: Objeto Java retornado pela sparkMeasure
+
+        Returns:
+            Dicionário Python serializável
+        """
+        try:
+            # Se for um JavaMap ou similar, converter para dict
+            if hasattr(java_obj, "items"):
+                result = {}
+                for key, value in java_obj.items():
+                    # Converter chaves e valores recursivamente
+                    py_key = str(key) if key is not None else "null"
+                    py_value = self._convert_java_value(value)
+                    result[py_key] = py_value
+                return result
+            else:
+                # Se for outro tipo de objeto Java, converter valor diretamente
+                return self._convert_java_value(java_obj)
+
+        except Exception as e:
+            logger.warning("Erro ao converter objeto Java: {}", e)
+            return {"conversion_error": str(e), "original_type": str(type(java_obj))}
+
+    def _convert_java_value(self, value):
+        """
+        Converte um valor Java individual para tipo Python
+
+        Args:
+            value: Valor a ser convertido
+
+        Returns:
+            Valor Python serializável
+        """
+        if value is None:
+            return None
+        elif isinstance(value, (int, float, str, bool)):
+            return value
+        elif hasattr(value, "items"):  # JavaMap aninhado
+            return self._convert_java_map_to_dict(value)
+        elif hasattr(value, "__iter__") and not isinstance(value, str):  # Lista/array
+            try:
+                return [self._convert_java_value(item) for item in value]
+            except:
+                return str(value)
+        else:
+            # Para outros tipos, converter para string
+            return str(value)
 
     def print_report(self):
         """Imprime relatório de métricas usando a API oficial"""
@@ -219,7 +288,7 @@ class SparkMeasureWrapper:
         self,
         metrics: Dict[str, Any],
         filename_prefix: str = "spark_metrics",
-        output_dir: str = "/app/misc/metrics",
+        output_dir: str = None,
     ) -> None:
         """
         Salva as métricas em arquivos JSON e CSV
@@ -227,9 +296,13 @@ class SparkMeasureWrapper:
         Args:
             metrics: Métricas coletadas
             filename_prefix: Prefixo para o nome dos arquivos
-            output_dir: Diretório de saída
+            output_dir: Diretório de saída (usa /app/misc/metrics se não especificado)
         """
         import os
+
+        # Usar diretório padrão se não especificado
+        if output_dir is None:
+            output_dir = "/app/misc/metrics"
 
         logger.debug(
             "Salvando métricas com prefixo: {} em: {}", filename_prefix, output_dir
@@ -316,6 +389,10 @@ def measure_spark_operation(
             for arg in args:
                 if hasattr(arg, "sparkContext"):
                     spark = arg
+                    break
+                # Verificar se é um objeto com atributo spark (como self.spark)
+                elif hasattr(arg, "spark") and hasattr(arg.spark, "sparkContext"):
+                    spark = arg.spark
                     break
 
             # Procurar nos argumentos nomeados

@@ -16,6 +16,9 @@ services:
       - LOG_TO_FILE=${LOG_TO_FILE:-true}
       - LOG_COLORS=${LOG_COLORS:-false}
       - DOCKER_SWARM_MODE=false
+      # Configurações específicas do Spark para Docker
+      - SPARK_DRIVER_HOST=spark-master
+      - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
     volumes:
       - ./src:/app/src
       - ./misc:/app/misc
@@ -42,12 +45,17 @@ services:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_WEBUI_PORT=8081
-      - SPARK_WORKER_MEMORY=2g
-      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=6g
+      - SPARK_WORKER_CORES=6
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_TO_FILE=${LOG_TO_FILE:-true}
       - LOG_COLORS=${LOG_COLORS:-false}
       - DOCKER_SWARM_MODE=false
+      # Configurações de rede para melhor conectividade
+      - SPARK_EXECUTOR_MEMORY=6g
+      - SPARK_EXECUTOR_CORES=6
+      - SPARK_DRIVER_MEMORY=6g
+      - SPARK_DRIVER_MAX_RESULT_SIZE=6g
     volumes:
       - ./src:/app/src
       - ./misc:/app/misc
@@ -72,12 +80,15 @@ services:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_WEBUI_PORT=8082
-      - SPARK_WORKER_MEMORY=2g
-      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=6g
+      - SPARK_WORKER_CORES=6
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_TO_FILE=${LOG_TO_FILE:-true}
       - LOG_COLORS=${LOG_COLORS:-false}
       - DOCKER_SWARM_MODE=false
+      # Configurações de rede para melhor conectividade
+      - SPARK_EXECUTOR_MEMORY=6g
+      - SPARK_EXECUTOR_CORES=6
     volumes:
       - ./src:/app/src
       - ./misc:/app/misc
@@ -104,6 +115,13 @@ services:
       - LOG_TO_FILE=${LOG_TO_FILE:-true}
       - LOG_COLORS=${LOG_COLORS:-true}
       - DOCKER_SWARM_MODE=false
+      # Configurações específicas para datasets grandes
+      - SPARK_EXECUTOR_MEMORY=6g
+      - SPARK_DRIVER_MEMORY=6g
+      - SPARK_DRIVER_MAX_RESULT_SIZE=6g
+      - SPARK_EXECUTOR_CORES=6
+      - SPARK_EXECUTOR_INSTANCES=4
+      - SPARK_PYTHON_WORKER_MEMORY=2g
     volumes:
       - ./src:/app/src
       - ./misc:/app/misc
@@ -114,7 +132,7 @@ services:
         echo 'Aguardando cluster Spark estar pronto...' &&
         sleep 15 &&
         echo 'Executando análise de dados do RU-UFLA' &&
-        /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077
+        /app/.venv/bin/python -m src.main analyze --mode complete --master-url spark://spark-master:7077
       "
     networks:
       - spark-network

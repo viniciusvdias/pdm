@@ -15,7 +15,6 @@ from config import SparkConfig, DataPaths
 from logging_config import setup_logging, get_module_logger
 from data_analysis import RUAnalyzer
 
-
 @click.group()
 @click.option(
     "--log-level",
@@ -54,13 +53,24 @@ def cli(ctx, log_level, log_to_file, log_colors):
     help="URL do Spark master (ex: spark://spark-master:7077). Se não especificado, usa configuração padrão",
 )
 @click.option("--app-name", default="RU-UFLA-Analytics", help="Nome da aplicação Spark")
-@click.option("--sample-file", help="Caminho para arquivo de amostra (opcional)")
+@click.option(
+    "--mode",
+    type=click.Choice(["sample", "complete"]),
+    default="complete",
+    help="Modo de análise: 'sample' para dados de amostra ou 'complete' para dataset completo",
+)
 @click.pass_context
-def analyze(ctx, master_url: Optional[str], app_name: str, sample_file: Optional[str]):
-    """Executa análise completa dos dados do RU-UFLA"""
+def analyze(ctx, master_url: Optional[str], app_name: str, mode: str):
+    """Executa análise dos dados do RU-UFLA"""
 
     logger = get_module_logger("main")
-    logger.info("Iniciando análise dos dados do RU-UFLA")
+    
+    if mode == "sample":
+        logger.info("Iniciando análise com dados de AMOSTRA do RU-UFLA")
+        data_file = DataPaths.RU_DATA_SAMPLE
+    else:
+        logger.info("Iniciando análise COMPLETA dos dados do RU-UFLA")
+        data_file = DataPaths.RU_DATA_COMPLETE
 
     try:
         # Configurar Spark baseado no ambiente
@@ -71,14 +81,21 @@ def analyze(ctx, master_url: Optional[str], app_name: str, sample_file: Optional
         # Criar sessão Spark
         spark = SparkConfig.get_spark_session(app_name)
 
-        # Definir arquivo de dados
-        data_file = sample_file if sample_file else DataPaths.RU_DATA_SAMPLE
+        # Verificar se precisa fazer download para análise completa
+        if mode == "complete" and not os.path.exists(data_file):
+            logger.info("Dataset completo não encontrado. Fazendo download automático...")
+            analyzer = RUAnalyzer(spark)
+            analyzer.download_complete_dataset()
+            
+            # Verificar se o download foi bem-sucedido
+            if not os.path.exists(data_file):
+                raise FileNotFoundError(f"Falha no download. Dataset não encontrado em: {data_file}")
 
         # Executar análise
         analyzer = RUAnalyzer(spark)
         analyzer.run_complete_analysis(data_file)
 
-        logger.success("Análise concluída com sucesso!")
+        logger.success(f"Análise ({mode}) concluída com sucesso!")
 
     except Exception as e:
         logger.error(f"Erro durante a análise: {e}")
@@ -86,7 +103,6 @@ def analyze(ctx, master_url: Optional[str], app_name: str, sample_file: Optional
     finally:
         if "spark" in locals():
             spark.stop()
-
 
 @cli.command()
 @click.option("--master-url", help="URL do Spark master para teste de conectividade")
