@@ -98,34 +98,69 @@ O projeto oferece diversos comandos para diferentes cenários:
 
 O projeto utiliza uma arquitetura baseada em containers Docker com Apache Spark distribuído:
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Spark Master  │    │  Spark Worker 1 │    │  Spark Worker 2 │
-│   (Coordenador) │    │   (Processador) │    │   (Processador) │
-│                 │    │                 │    │                 │
-│   Port: 8080    │    │   Port: 8081    │    │   Port: 8082    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │   RU Analytics  │
-                    │   (Aplicação)   │
-                    │                 │
-                    │  - Data Loading │
-                    │  - Analysis     │
-                    │  - Metrics      │
-                    │  - Results      │
-                    └─────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │   Data Storage  │
-                    │                 │
-                    │  /misc/data/    │
-                    │  /misc/results/ │
-                    │  /misc/metrics/ │
-                    │  /misc/logs/    │
-                    └─────────────────┘
+```mermaid
+graph TD
+    subgraph "Cluster Apache Spark"
+        SM[Spark Master<br/>Coordenador<br/>Port: 8080]
+        SW1[Spark Worker 1<br/>Processador<br/>Port: 8081]
+        SW2[Spark Worker 2<br/>Processador<br/>Port: 8082]
+    end
+
+    subgraph "Aplicação Principal"
+        APP[RU Analytics<br/>Aplicação]
+        subgraph "Componentes"
+            DL[Data Loading]
+            AN[Analysis]
+            MT[Metrics]
+            RS[Results]
+        end
+    end
+
+    subgraph "Armazenamento de Dados"
+        DS[Data Storage]
+        subgraph "Diretórios"
+            DATA[/misc/data/]
+            RESULTS[/misc/results/]
+            METRICS[/misc/metrics/]
+            LOGS[/misc/logs/]
+        end
+    end
+
+    subgraph "Entrada de Dados"
+        SAMPLE[datasample/<br/>ru_sample.json]
+        COMPLETE[Dataset Completo<br/>Google Drive]
+    end
+
+    SM --> SW1
+    SM --> SW2
+    APP --> SM
+    APP --> DL
+    APP --> AN
+    APP --> MT
+    APP --> RS
+
+    DL --> DS
+    AN --> DS
+    MT --> DS
+    RS --> DS
+
+    DS --> DATA
+    DS --> RESULTS
+    DS --> METRICS
+    DS --> LOGS
+
+    SAMPLE --> APP
+    COMPLETE --> APP
+
+    classDef sparkCluster fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef application fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef storage fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef input fill:#fff3e0,stroke:#e65100,stroke-width:2px
+
+    class SM,SW1,SW2 sparkCluster
+    class APP,DL,AN,MT,RS application
+    class DS,DATA,RESULTS,METRICS,LOGS storage
+    class SAMPLE,COMPLETE input
 ```
 
 ### Componentes principais:
