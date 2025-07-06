@@ -140,8 +140,8 @@ class SparkConfig:
 
     @staticmethod
     def _configure_swarm_mode(conf: SparkConf):
-        """Configurações otimizadas para Docker Swarm"""
-        logger.debug("Configurando modo Docker Swarm")
+        """Configurações otimizadas para Docker Swarm com 4 nós"""
+        logger.debug("Configurando modo Docker Swarm para cluster de 4 nós")
 
         # Configurações de rede para Docker - ESSENCIAL para funcionamento
         # O driver precisa ser acessível pelos executors na rede Docker
@@ -152,39 +152,86 @@ class SparkConfig:
         conf.set("spark.driver.host", hostname)
         conf.set("spark.driver.bindAddress", "0.0.0.0")
         
-        # Configurações específicas para rede Docker
+        # Configurações específicas para rede Docker com timeouts estendidos
         conf.set("spark.driver.port", "0")  # Porta dinâmica
         conf.set("spark.blockManager.port", "0")  # Porta dinâmica
         conf.set("spark.executor.heartbeatInterval", "20s")
-        conf.set("spark.network.timeout", "600s")
-        conf.set("spark.executor.heartbeat.maxFailures", "20")
+        conf.set("spark.network.timeout", "800s")  # Aumentado para cluster maior
+        conf.set("spark.executor.heartbeat.maxFailures", "30")  # Aumentado para cluster maior
+        conf.set("spark.rpc.askTimeout", "600s")
+        conf.set("spark.rpc.lookupTimeout", "600s")
 
-        # Configurações de recursos para containers
-        conf.set("spark.executor.memory", os.getenv("SPARK_EXECUTOR_MEMORY", "4g"))  # Aumentado de 1g para 4g
-        conf.set("spark.executor.cores", os.getenv("SPARK_EXECUTOR_CORES", "2"))     # Aumentado de 1 para 2
-        conf.set("spark.executor.instances", os.getenv("SPARK_EXECUTOR_INSTANCES", "2"))
+        # Configurações de recursos para cluster de 4 nós (8 workers)
+        conf.set("spark.executor.memory", os.getenv("SPARK_EXECUTOR_MEMORY", "12g"))  # Aumentado significativamente
+        conf.set("spark.executor.cores", os.getenv("SPARK_EXECUTOR_CORES", "4"))      # Aumentado para 4 cores
+        conf.set("spark.executor.instances", os.getenv("SPARK_EXECUTOR_INSTANCES", "8"))  # 8 workers distribuídos
         
-        # Configurações adicionais para datasets grandes em Docker
-        conf.set("spark.driver.memory", os.getenv("SPARK_DRIVER_MEMORY", "2g"))
-        conf.set("spark.driver.maxResultSize", os.getenv("SPARK_DRIVER_MAX_RESULT_SIZE", "2g"))
+        # Configurações do driver para cluster maior
+        conf.set("spark.driver.memory", os.getenv("SPARK_DRIVER_MEMORY", "8g"))  # Aumentado significativamente
+        conf.set("spark.driver.maxResultSize", os.getenv("SPARK_DRIVER_MAX_RESULT_SIZE", "8g"))
+        conf.set("spark.driver.cores", "2")
         
-        # Configurações para melhor estabilidade em Docker
+        # Configurações de paralelismo e particionamento para cluster distribuído
         conf.set("spark.sql.adaptive.enabled", "true")
         conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
+        conf.set("spark.sql.adaptive.advisoryPartitionSizeInBytes", "128MB")
+        conf.set("spark.sql.adaptive.maxShuffleHashJoinLocalMapThreshold", "256MB")
+        conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+        conf.set("spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes", "256MB")
+        
+        # Configurações de shuffle otimizadas para cluster distribuído
+        conf.set("spark.shuffle.compress", "true")
+        conf.set("spark.shuffle.spill.compress", "true")
+        conf.set("spark.shuffle.service.enabled", "false")  # Não disponível em modo standalone
+        conf.set("spark.shuffle.file.buffer", "1m")
+        conf.set("spark.io.compression.codec", "snappy")
+        
+        # Configurações de serialização para performance
         conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+        conf.set("spark.kryo.unsafe", "true")
+        conf.set("spark.kryoserializer.buffer.max", "256m")  # Aumentado para cluster maior
+        conf.set("spark.kryo.referenceTracking", "false")
+        
+        # Configurações de broadcast para cluster distribuído
+        conf.set("spark.sql.broadcastTimeout", "900")  # 15 minutos
+        conf.set("spark.sql.autoBroadcastJoinThreshold", "256MB")
+        
+        # Configurações de garbage collection otimizadas
+        gc_options = "-XX:+UseG1GC -XX:+UnlockDiagnosticVMOptions -XX:+G1PrintRegionRememberedSetInfo -XX:MaxGCPauseMillis=200 -XX:G1HeapRegionSize=32m"
+        conf.set("spark.executor.extraJavaOptions", gc_options)
+        conf.set("spark.driver.extraJavaOptions", gc_options)
 
         # UI e monitoramento
         conf.set("spark.ui.enabled", "true")
         conf.set("spark.ui.port", "4040")
         conf.set("spark.eventLog.enabled", "false")  # Desabilitado por enquanto
         
-        # Configurações de tolerância a falhas para containers
-        conf.set("spark.task.maxAttempts", "3")
-        conf.set("spark.stage.maxConsecutiveAttempts", "8")
+        # Configurações de tolerância a falhas para cluster distribuído
+        conf.set("spark.task.maxAttempts", "5")  # Aumentado para cluster maior
+        conf.set("spark.stage.maxConsecutiveAttempts", "12")  # Aumentado para cluster maior
+        conf.set("spark.blacklist.enabled", "true")
+        conf.set("spark.blacklist.timeout", "300s")
         
         # Configurações específicas do PySpark para datasets grandes
         conf.set("spark.python.worker.reuse", "true")
-        conf.set("spark.python.worker.memory", os.getenv("SPARK_PYTHON_WORKER_MEMORY", "1g"))  # Aumentado de 512m para 1g
+        conf.set("spark.python.worker.memory", os.getenv("SPARK_PYTHON_WORKER_MEMORY", "4g"))  # Aumentado significativamente
+        conf.set("spark.pyspark.python", "/app/.venv/bin/python")
+        conf.set("spark.pyspark.driver.python", "/app/.venv/bin/python")
+        
+        # Configurações de dinamismo para auto-scaling
+        conf.set("spark.dynamicAllocation.enabled", "false")  # Desabilitado em modo standalone
+        conf.set("spark.dynamicAllocation.minExecutors", "4")
+        conf.set("spark.dynamicAllocation.maxExecutors", "8")
+        
+        # Configurações de cache e storage
+        conf.set("spark.sql.inMemoryColumnarStorage.compressed", "true")
+        conf.set("spark.sql.inMemoryColumnarStorage.batchSize", "20000")
+        conf.set("spark.storage.level", "MEMORY_AND_DISK_SER")
+        conf.set("spark.storage.memoryFraction", "0.7")  # Reduzido para dar espaço ao shuffle
+        conf.set("spark.storage.unrollFraction", "0.2")
+        
+        logger.info("Configurações otimizadas para cluster Docker Swarm de 4 nós aplicadas")
+        logger.info("Recursos configurados: 8 executors, 4 cores/executor, 12GB RAM/executor")
 
 
 class DataPaths:

@@ -47,11 +47,12 @@ show_help() {
     echo ""
     echo "🐳 Comandos Docker Swarm:"
     echo "  swarm-init      - Inicializar Docker Swarm"
-    echo "  swarm-deploy    - Deploy no Docker Swarm"
+    echo "  swarm-deploy    - Deploy no Docker Swarm (4 nós)"
     echo "  swarm-scale     - Escalar serviços no Swarm"
     echo "  swarm-remove    - Remover stack do Swarm"
     echo "  swarm-logs      - Logs dos serviços no Swarm"
     echo "  swarm-status    - Status dos serviços no Swarm"
+    echo "  swarm-analyze   - Executar análise no cluster Swarm"
     echo ""
     echo "  help            - Mostrar esta ajuda"
     echo ""
@@ -196,11 +197,20 @@ deploy_swarm() {
 
 # Função para escalar serviços no Swarm
 scale_swarm() {
-    local workers=${1:-3}
+    local workers=${1:-8}
     echo "📈 Escalando workers para $workers réplicas..."
+    
+    if ! docker stack services ru-analytics | grep -q "ru-analytics_spark-worker"; then
+        echo "❌ Stack ru-analytics não encontrada. Execute 'swarm-deploy' primeiro."
+        return 1
+    fi
     
     docker service scale ru-analytics_spark-worker=$workers
     echo "✅ Scaling concluído!"
+    
+    # Mostrar status atualizado
+    echo "📊 Status atualizado:"
+    docker service ls --filter name=ru-analytics
 }
 
 # Função para remover stack do Swarm
@@ -222,7 +232,64 @@ swarm_status() {
     docker stack services ru-analytics
     echo ""
     echo "📝 Tarefas (containers) por serviço:"
-    docker stack ps ru-analytics
+    docker stack ps ru-analytics --no-trunc
+    echo ""
+    echo "🔍 Nós do cluster:"
+    docker node ls
+}
+
+# Função para executar análise no Swarm
+run_swarm_analysis() {
+    local mode=${1:-complete}
+    local periods=$2
+    
+    case "$mode" in
+        sample)
+            echo "📊 Executando análise de dados do RU-UFLA (AMOSTRA) no cluster Swarm..."
+            ;;
+        complete)
+            echo "📊 Executando análise de dados do RU-UFLA (COMPLETA) no cluster Swarm..."
+            ;;
+        *)
+            echo "❌ Modo inválido: $mode. Use 'sample' ou 'complete'"
+            return 1
+            ;;
+    esac
+    
+    # Verificar se o cluster Swarm está rodando
+    if ! docker stack services ru-analytics | grep -q "ru-analytics_spark-master"; then
+        echo "⚠️  Cluster Swarm não está rodando. Fazendo deploy..."
+        deploy_swarm
+        sleep 60
+    fi
+    
+    # Executar análise com o modo especificado
+    if [ -z "$periods" ]; then
+        docker service create --name ru-analytics-job-$(date +%s) \
+            --network ru-analytics_spark-network \
+            --mount type=bind,source=$(pwd)/misc,destination=/app/misc \
+            --mount type=bind,source=$(pwd)/datasample,destination=/app/datasample \
+            --env SPARK_MASTER_URL=spark://spark-master:7077 \
+            --env DOCKER_SWARM_MODE=true \
+            --constraint 'node.role == manager' \
+            --restart-condition none \
+            ru-ufla-analytics:latest \
+            /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077 --mode $mode
+    else
+        docker service create --name ru-analytics-job-$(date +%s) \
+            --network ru-analytics_spark-network \
+            --mount type=bind,source=$(pwd)/misc,destination=/app/misc \
+            --mount type=bind,source=$(pwd)/datasample,destination=/app/datasample \
+            --env SPARK_MASTER_URL=spark://spark-master:7077 \
+            --env DOCKER_SWARM_MODE=true \
+            --constraint 'node.role == manager' \
+            --restart-condition none \
+            ru-ufla-analytics:latest \
+            /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077 --mode $mode --periods $periods
+    fi
+    
+    echo "✅ Job de análise iniciado no cluster Swarm!"
+    echo "💡 Use 'docker service logs -f <job-name>' para acompanhar o progresso"
 }
 
 # Processar comando
@@ -263,6 +330,9 @@ case "${1:-up}" in
         ;;
     swarm-status)
         swarm_status
+        ;;
+    swarm-analyze)
+        run_swarm_analysis $2 $3
         ;;
     help)
         show_help
