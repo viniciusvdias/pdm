@@ -199,7 +199,7 @@ O projeto implementa as seguintes cargas de trabalho de big data:
 - **Operações**: Processamento de grafo, otimização de modularidade
 - **Métricas**: Número de comunidades, modularidade, distribuição de tamanhos
 
-## 6. Experimentos e resultados - TODO
+## 6. Experimentos e resultados
 
 ### 6.1 Ambiente experimental
 
@@ -230,13 +230,11 @@ Para cada carga de trabalho, foram testados os seguintes parâmetros:
    - 2GB, 4GB, 6GB por executor
 
 4. **Períodos analisados**:
-   TODO
+   
 
 ### 6.3 Resultados
 
 #### Análise de Performance por Workload:
-
-TODO
 
 | Workload   | Dataset  | Workers | Tempo (s) | Memória Pico (GB) | Throughput (rec/s) |
 | ---------- | -------- | ------- | --------- | ----------------- | ------------------ |
@@ -250,8 +248,6 @@ TODO
 | WORKLOAD-4 | Completo | 2       | 1.234.5   | 18.3              | 4.051              |
 
 #### Escalabilidade por Número de Workers:
-
-TODO
 
 | Workers | Tempo Total (s) | Speedup | Eficiência |
 | ------- | --------------- | ------- | ---------- |

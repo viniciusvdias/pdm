@@ -214,5 +214,102 @@ def info(format):
             click.echo(f"  {key}: {value}")
 
 
+@cli.command()
+@click.option(
+    "--master-url",
+    help="URL do Spark master (ex: spark://spark-master:7077). Se não especificado, usa configuração padrão",
+)
+@click.option("--app-name", default="RU-UFLA-Experiments", help="Nome da aplicação Spark")
+@click.option(
+    "--mode",
+    type=click.Choice(["sample", "complete"]),
+    default="complete",
+    help="Modo de experimento: 'sample' para dados de amostra ou 'complete' para dataset completo",
+)
+@click.option(
+    "--periods",
+    help="Lista de períodos letivos separados por vírgula (formato: YYYY/S). Ex: 2024/1,2024/2",
+)
+@click.option(
+    "--type",
+    "experiment_type",
+    type=click.Choice(["performance", "scalability", "periods", "all"]),
+    default="all",
+    help="Tipo de experimento a executar",
+)
+@click.pass_context
+def experiments(ctx, master_url: Optional[str], app_name: str, mode: str, periods: Optional[str], experiment_type: str):
+    """Executa experimentos detalhados para implementar os TODOs da seção 6"""
+
+    logger = get_module_logger("experiments")
+    
+    # Processar lista de períodos
+    periods_list = None
+    if periods:
+        import re
+        
+        # Separar períodos por vírgula e limpar espaços
+        periods_list = [p.strip() for p in periods.split(',') if p.strip()]
+        
+        # Padrão para validar formato YYYY/S
+        period_pattern = r'^\d{4}/[12]$'
+        
+        # Validar cada período
+        for period in periods_list:
+            if not re.match(period_pattern, period):
+                raise click.BadParameter(f"Período inválido: {period}. Use formato YYYY/S (ex: 2024/1)")
+        
+        logger.info(f"Períodos definidos: {', '.join(periods_list)}")
+    else:
+        logger.info("Nenhum período específico. Processando todos os dados.")
+    
+    if mode == "sample":
+        logger.info("Iniciando experimentos com dados de AMOSTRA do RU-UFLA")
+        data_file = DataPaths.RU_DATA_SAMPLE
+    else:
+        logger.info("Iniciando experimentos com dados COMPLETOS do RU-UFLA")
+        data_file = DataPaths.RU_DATA_COMPLETE
+
+    try:
+        # Configurar Spark baseado no ambiente
+        if master_url:
+            os.environ["SPARK_MASTER_URL"] = master_url
+            logger.info(f"Usando Spark master: {master_url}")
+
+        # Criar sessão Spark
+        spark = SparkConfig.get_spark_session(app_name)
+
+        # Verificar se precisa fazer download para análise completa
+        if mode == "complete" and not os.path.exists(data_file):
+            logger.info("Dataset completo não encontrado. Fazendo download automático...")
+            analyzer = RUAnalyzer(spark)
+            analyzer.download_complete_dataset()
+            
+            # Verificar se o download foi bem-sucedido
+            if not os.path.exists(data_file):
+                raise FileNotFoundError(f"Falha no download. Dataset não encontrado em: {data_file}")
+
+        # Executar experimentos
+        analyzer = RUAnalyzer(spark)
+        
+        # Carregar dados primeiro
+        analyzer.load_data(data_file)
+        if periods_list:
+            analyzer.apply_period_filter(periods_list)
+        
+        # Executar experimentos usando o módulo experiments
+        from experiments import run_detailed_experiments
+        run_detailed_experiments(spark, analyzer.df, experiment_type, mode, periods_list)
+
+        logger.success(f"Experimentos ({experiment_type}) concluídos com sucesso!")
+
+    except Exception as e:
+        logger.error(f"Erro durante os experimentos: {e}")
+        raise click.ClickException(f"Falha nos experimentos: {e}")
+    finally:
+        if "spark" in locals():
+            spark.stop()
+
+
 if __name__ == "__main__":
     cli()

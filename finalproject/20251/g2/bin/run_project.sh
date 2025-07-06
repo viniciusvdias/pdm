@@ -44,6 +44,7 @@ show_help() {
     echo "  restart         - Reiniciar o cluster Spark local"
     echo "  logs            - Mostrar logs dos containers"
     echo "  analyze [mode] [periods]  - Executar análise de dados (mode: sample|complete)"
+    echo "  experiments [mode] [type] [periods] - Executar experimentos (mode: sample|complete, type: performance|scalability|periods|all)"
     echo ""
     echo "🐳 Comandos Docker Swarm:"
     echo "  swarm-init      - Inicializar Docker Swarm"
@@ -73,6 +74,8 @@ show_help() {
     echo "  $0 analyze complete                    # Análise completa (padrão)"
     echo "  $0 analyze sample 2024/1,2024/2          # Análise do ano 2024 com dados de amostra"
     echo "  $0 analyze complete 2024/1,2024/2        # Análise do ano 2024 com dados completos"
+    echo "  $0 experiments sample performance        # Experimentos de performance com dados de amostra"
+    echo "  $0 experiments complete all 2024/1,2024/2 # Todos os experimentos com dados completos"
 }
 
 # Função para construir imagens
@@ -157,6 +160,51 @@ run_analysis() {
         $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077 --mode $mode --periods $periods
     fi
     echo "✅ Análise concluída!"
+}
+
+# Função para executar experimentos
+run_experiments() {
+    local mode=${1:-complete}
+    local experiment_type=${2:-all}
+    local periods=$3
+ 
+    case "$mode" in
+        sample)
+            echo "🧪 Executando experimentos do RU-UFLA (AMOSTRA)..."
+            ;;
+        complete)
+            echo "🧪 Executando experimentos do RU-UFLA (COMPLETA)..."
+            ;;
+        *)
+            echo "❌ Modo inválido: $mode. Use 'sample' ou 'complete'"
+            return 1
+            ;;
+    esac
+    
+    case "$experiment_type" in
+        performance|scalability|periods|all)
+            echo "📊 Tipo de experimento: $experiment_type"
+            ;;
+        *)
+            echo "❌ Tipo de experimento inválido: $experiment_type. Use 'performance', 'scalability', 'periods' ou 'all'"
+            return 1
+            ;;
+    esac
+    
+    # Verificar se o cluster está rodando
+    if ! $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
+        echo "⚠️  Cluster não está rodando. Iniciando..."
+        start_cluster
+        sleep 20
+    fi
+    
+    # Executar experimentos com os parâmetros especificados
+    if [ -z "$periods" ]; then
+        $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main experiments --master-url spark://spark-master:7077 --mode $mode --type $experiment_type
+    else
+        $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main experiments --master-url spark://spark-master:7077 --mode $mode --type $experiment_type --periods $periods
+    fi
+    echo "✅ Experimentos concluídos!"
 }
 # === FUNÇÕES DOCKER SWARM ===
 
@@ -311,6 +359,9 @@ case "${1:-up}" in
         ;;
     analyze)
         run_analysis $2 $3
+        ;;
+    experiments)
+        run_experiments $2 $3 $4
         ;;
     # Comandos Docker Swarm
     swarm-init)
