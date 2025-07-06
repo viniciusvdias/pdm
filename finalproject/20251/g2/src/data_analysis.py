@@ -3,10 +3,9 @@ Módulo de análise de dados do RU-UFLA usando PySpark
 """
 
 import os
-from pathlib import Path
 from typing import Optional
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import count, col, desc, asc
+from pyspark.sql.functions import col, desc
 from logging_config import get_module_logger
 from spark_measure_utils import measure_spark_operation
 from config import DataPaths
@@ -55,6 +54,48 @@ class RUAnalyzer:
             self.logger.error(f"Erro ao carregar dados: {e}")
             raise
     
+    def apply_period_filter(self, periods: Optional[list] = None):
+        """
+        Aplica filtro de períodos letivos no DataFrame
+        
+        Args:
+            periods: Lista de períodos letivos (formato: YYYY/S, ex: ['2024/1', '2024/2'])
+                    Se None, processa todos os períodos
+        """
+        if self.df is None:
+            raise ValueError("Dados não carregados. Chame load_data() primeiro.")
+        
+        if periods is None or len(periods) == 0:
+            self.logger.info("Nenhum filtro de período especificado. Processando todos os dados.")
+            return
+        
+        self.logger.info(f"Aplicando filtro de períodos letivos: {periods}")
+        
+        try:
+            from pyspark.sql.functions import col
+            
+            # Registrar contagem antes do filtro
+            count_before = self.df.count()
+            
+            # Aplicar filtro com lista de períodos
+            df_filtered = self.df.filter(col("periodo_letivo").isin(periods))
+            
+            # Atualizar DataFrame
+            self.df = df_filtered
+            
+            # Registrar contagem após o filtro
+            count_after = self.df.count()
+            
+            self.logger.success(f"Filtro aplicado com sucesso!")
+            self.logger.info(f"Períodos selecionados: {', '.join(periods)}")
+            self.logger.info(f"Registros antes do filtro: {count_before:,}")
+            self.logger.info(f"Registros após o filtro: {count_after:,}")
+            self.logger.info(f"Registros filtrados: {count_before - count_after:,}")
+            
+        except Exception as e:
+            self.logger.error(f"Erro ao aplicar filtro de períodos letivos: {e}")
+            raise
+    
     def count_records(self) -> int:
         """
         Conta o número total de registros no dataset
@@ -75,8 +116,191 @@ class RUAnalyzer:
         except Exception as e:
             self.logger.error(f"Erro ao contar registros: {e}")
             raise
+        
+    def _run_community_detection(self, edges_df: DataFrame, vertices_df: DataFrame):
+        self.logger.info("Executando detecção de comunidades usando NetworkX...")
+        
+        try:
+            import networkx as nx
+            from networkx.algorithms import community
+            import json
+            
+            # Converter para NetworkX
+            edges_list = edges_df.select("user1_id", "user2_id", "weight").collect()
+            
+            G = nx.Graph()
+            for row in edges_list:
+                G.add_edge(row["user1_id"], row["user2_id"], weight=row["weight"])
+            
+            self.logger.info(f"Grafo criado: {G.number_of_nodes()} nós, {G.number_of_edges()} arestas")
+            
+            # Executar algoritmo Louvain
+            self.logger.info("Executando algoritmo Louvain...")
+            communities = community.louvain_communities(G, weight='weight', resolution=2.0)
+            
+            # Salvar resultados
+            output_path = f"{DataPaths.RESULTS_DIR}"
+            os.makedirs(output_path, exist_ok=True)
+            
+            # Calcular modularidade
+            modularity = community.modularity(G, communities, weight='weight')
+            
+            # Salvar métricas
+            with open(f"{output_path}/metrics_louvain.json", 'w') as f:
+                json.dump({
+                    "modularity": modularity,
+                    "num_communities": len(communities),
+                    "num_nodes": G.number_of_nodes(),
+                    "num_edges": G.number_of_edges()
+                }, f, indent=2)
+            
+            self.logger.success(f"✅ Detecção de comunidades concluída! Modularidade: {modularity:.4f}")
+            return communities
+            
+        except Exception as e:
+            self.logger.error(f"Erro na implementação alternativa: {e}")
+            raise
 
-    
+        
+
+    def get_users_graph_window_sliding(self) -> dict:
+        """
+        Calcula o gráfico de usuários com janela deslizante de 30 segundos utilizando Window Function
+        """
+        if self.df is None:
+            raise ValueError("Dados não carregados. Chame load_data() primeiro.")
+
+        self.logger.info("Calculando grafo de usuários com janela deslizante via Window Function...")
+
+        try:
+            from pyspark.sql.functions import (
+                col, unix_timestamp, collect_list, struct,
+                explode, asc, desc, avg as spark_avg, row_number, floor
+            )
+            from pyspark.sql.window import Window
+
+            # Converter e filtrar dados essenciais
+            df_clean = self.df.select(
+                col("documento"),
+                col("tipo_usuario"),
+                col("tipo_refeicao"),
+                col("tipo_consumo"),
+                col("nome_curso"),
+                unix_timestamp(col("data_consumo"), "yyyy-MM-dd'T'HH:mm:ss").alias("timestamp")
+            ).filter(
+                col("documento").isNotNull() &
+                col("timestamp").isNotNull() &
+                (col("tipo_consumo") != "Marmita")
+            ).cache()
+
+            self.logger.info(f"Total de registros após limpeza: {df_clean.count()}")
+
+            # Criar uma struct para guardar os dados dos usuários
+            df_struct = df_clean.withColumn(
+                "user_info",
+                struct(
+                    col("documento"),
+                    col("tipo_usuario"),
+                    col("nome_curso"),
+                    col("timestamp")
+                )
+            )
+
+            # Definir janela de ±10 segundos ordenada por timestamp
+            df_struct = df_struct.withColumn("timestamp_day", floor(col("timestamp") / 86400))
+
+            window_spec = Window.partitionBy("timestamp_day").orderBy("timestamp").rangeBetween(-10, 10)
+
+            # Coletar todos os usuários dentro da janela
+            df_with_neighbors = df_struct.withColumn("neighbors", collect_list("user_info").over(window_spec))
+
+            df_exploded = df_with_neighbors.select("user_info", explode("neighbors").alias("other_user"))
+
+            # Filtrar pares distintos (user1 < user2) e diferentes
+            df_pairs = df_exploded.filter(
+                (col("user_info.documento") < col("other_user.documento")) &
+                (col("user_info.documento") != col("other_user.documento"))
+            ).select(
+                col("user_info.documento").alias("user1_id"),
+                col("other_user.documento").alias("user2_id"),
+                col("user_info.tipo_usuario").alias("user1_tipo"),
+                col("other_user.tipo_usuario").alias("user2_tipo"),
+                col("user_info.nome_curso").alias("user1_curso"),
+                col("other_user.nome_curso").alias("user2_curso")
+            )
+
+            self.logger.info(f"Total de pares brutos com Window: {df_pairs.count()}")
+
+            # Contar frequência de conexões
+            connections = df_pairs.groupBy(
+                "user1_id", "user2_id", "user1_tipo", "user2_tipo", "user1_curso", "user2_curso"
+            ).count().withColumnRenamed("count", "weight")
+
+            total_connections = connections.count()
+            self.logger.info(f"Total de conexões: {total_connections}")
+
+            # Usuários únicos
+            users_df = df_clean.select("documento", "tipo_usuario", "nome_curso").distinct()
+            total_users = users_df.count()
+
+            # Top conexões
+            top_connections = connections.orderBy(desc("weight")).limit(20).collect()
+
+            # Top usuários mais conectados
+            user_degrees = connections.select("user1_id").union(connections.select("user2_id")).groupBy("user1_id").count().withColumnRenamed("user1_id", "user_id").withColumnRenamed("count", "degree")
+            top_users = user_degrees.join(users_df, user_degrees["user_id"] == users_df["documento"]).orderBy(desc("degree")).limit(10).collect()
+
+            communities = self._run_community_detection(connections, users_df)
+
+            peso_medio_result = connections.agg(spark_avg("weight")).collect()[0][0]
+            peso_medio = float(peso_medio_result) if peso_medio_result else 0
+
+            results = {
+                "estatisticas_grafo": {
+                    "total_usuarios": total_users,
+                    "total_conexoes": total_connections,
+                    "total_comunidades": len(communities),
+                    "peso_medio_conexoes": peso_medio
+                },
+                "top_conexoes": [
+                    {
+                        "usuario1": conn["user1_id"],
+                        "usuario2": conn["user2_id"],
+                        "frequencia": conn["weight"],
+                        "tipo_usuario1": conn["user1_tipo"],
+                        "tipo_usuario2": conn["user2_tipo"],
+                        "curso1": conn["user1_curso"],
+                        "curso2": conn["user2_curso"]
+                    }
+                    for conn in top_connections
+                ],
+                "usuarios_mais_conectados": [
+                    {
+                        "usuario": user["documento"],
+                        "tipo_usuario": user["tipo_usuario"],
+                        "curso": user["nome_curso"],
+                        "conexoes": user["degree"]
+                    }
+                    for user in top_users
+                ],
+                "comunidades": [
+                    {
+                        "id": i + 1,
+                        "tamanho": len(community),
+                        "usuarios": list(community)[:10]
+                    }
+                    for i, community in enumerate(communities[:20])
+                ],
+            }
+
+            df_clean.unpersist()
+            self.logger.success("Análise com Window Function concluída com sucesso!")
+            return results
+
+        except Exception as e:
+            self.logger.error(f"Erro ao calcular grafo de usuários com Window: {e}")
+            raise
+
     def get_basic_statistics(self) -> dict:
         """
         Calcula estatísticas básicas do dataset
@@ -117,7 +341,7 @@ class RUAnalyzer:
             self.logger.error(f"Erro ao calcular estatísticas: {e}")
             raise
     
-    def save_results(self, stats: dict, output_dir: str = None):
+    def save_results(self, stats: dict, graph_stats: dict, output_dir: str = None):
         """
         Salva os resultados da análise
         
@@ -132,6 +356,7 @@ class RUAnalyzer:
             
             # Garantir que o diretório existe
             os.makedirs(output_dir, exist_ok=True)
+            from datetime import datetime
             
             # Salvar contagem de registros em arquivo texto
             count_file = os.path.join(output_dir, "contagem_registros.txt")
@@ -152,6 +377,15 @@ class RUAnalyzer:
                     f.write(f"{row['tipo_refeicao']}: {row['count']:,} registros\n")
             
             self.logger.success(f"Resultados salvos em: {count_file}")
+
+            # Salvar resultados do grafo
+            
+            graph_file = os.path.join(output_dir, f"grafo_usuarios_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            with open(graph_file, 'w', encoding='utf-8') as f:
+                import json
+                json.dump(graph_stats, f, indent=4, ensure_ascii=False)
+            
+            self.logger.success(f"Resultados do grafo salvos em: {graph_file}")
             
         except Exception as e:
             self.logger.error(f"Erro ao salvar resultados: {e}")
@@ -245,12 +479,13 @@ class RUAnalyzer:
             raise
     
     @measure_spark_operation(operation_name="analyze_data")
-    def analyze_data(self, file_path: str) -> dict:
+    def analyze_data(self, file_path: str, periods: Optional[list] = None) -> dict:
         """
         Executa análise completa dos dados
         
         Args:
             file_path: Caminho para o arquivo de dados
+            periods: Lista de períodos letivos (formato: YYYY/S, ex: ['2024/1', '2024/2'])
             
         Returns:
             Dicionário com resultados da análise
@@ -271,11 +506,23 @@ class RUAnalyzer:
             # Carregar dados
             self.load_data(file_path)
             
+            # Aplicar filtro de período se especificado
+            if periods:
+                self.apply_period_filter(periods)
+                
+            # romver esse documento aparenta ser ruído
+            # pois vários registros possuem o mesmo documento
+            # e o curso é Consumo Geral
+            self.df = self.df.filter(col("documento") != "705.104.2c8-4a")
+            
             # Contar registros
-            record_count = self.count_records()
+            self.count_records()
             
             # Calcular estatísticas
             stats = self.get_basic_statistics()
+            
+            # Calcular grafo de usuários com janela deslizante
+            graph_stats = self.get_users_graph_window_sliding()
             
             # Exibir resultados
             self.logger.info("=== RESUMO DA ANÁLISE ===")
@@ -290,7 +537,7 @@ class RUAnalyzer:
             for i, row in enumerate(stats['usuarios_por_tipo'][:3], 1):
                 self.logger.info(f"  {i}. {row['tipo_usuario']}: {row['count']:,} registros")
             
-            return stats
+            return stats, graph_stats
             
         except Exception as e:
             self.logger.error(f"Erro durante a análise: {e}")
@@ -401,23 +648,31 @@ class RUAnalyzer:
                 shutil.rmtree(temp_dir)
             raise
 
-    def run_complete_analysis(self, file_path: str):
+    def run_complete_analysis(self, file_path: str, periods: Optional[list] = None):
         """
         Executa análise completa e salva resultados
         
         Args:
             file_path: Caminho para o arquivo de dados
+            periods: Lista de períodos letivos (formato: YYYY/S, ex: ['2024/1', '2024/2'])
         """
         self.logger.info("Executando análise completa do dataset")
         self.logger.info(f"📁 Diretório de resultados: {DataPaths.RESULTS_DIR}")
         self.logger.info(f"📊 Diretório de métricas: {DataPaths.METRICS_DIR}")
         
+        # Exibir informações sobre filtro de período
+        if periods:
+            self.logger.info(f"🗓️  Filtro de períodos aplicado:")
+            self.logger.info(f"   Períodos selecionados: {', '.join(periods)}")
+        else:
+            self.logger.info("🗓️  Processando todos os períodos letivos")
+        
         try:
             # Executar análise (com métricas do decorador @measure_spark_operation)
-            stats = self.analyze_data(file_path)
+            stats, graph_stats = self.analyze_data(file_path, periods=periods)
             
             # Salvar resultados da análise
-            self.save_results(stats)
+            self.save_results(stats, graph_stats)
             
             self.logger.success("Análise completa finalizada com sucesso!")
             self.logger.info("✅ Resultados salvos em: {}", DataPaths.RESULTS_DIR)

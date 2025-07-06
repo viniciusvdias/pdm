@@ -218,6 +218,12 @@ class DataPaths:
         cls.DATA_DIR = f"{cls.MISC_DIR}/data"
         cls.RU_DATA_COMPLETE = f"{cls.DATA_DIR}/dataset.json"
 
+        # Diretório temporário para comunicação PySpark-GraphX
+        cls.TEMP_DIR = f"{cls.MISC_DIR}/temp"
+        
+        # Diretório para bibliotecas externas (JAR files)
+        cls.LIBS_DIR = f"{cls.MISC_DIR}/libs"
+
     @classmethod
     def ensure_directories(cls):
         """Garante que os diretórios necessários existam"""

@@ -43,11 +43,7 @@ show_help() {
     echo "  down            - Parar o cluster Spark local"
     echo "  restart         - Reiniciar o cluster Spark local"
     echo "  logs            - Mostrar logs dos containers"
-    echo "  status          - Mostrar status dos containers"
-    echo "  clean           - Limpar containers e volumes"
-    echo "  test            - Executar testes de integração"
-    echo "  analyze [mode]  - Executar análise de dados (mode: sample|complete)"
-    echo "  info            - Mostrar informações do sistema"
+    echo "  analyze [mode] [periods]  - Executar análise de dados (mode: sample|complete)"
     echo ""
     echo "🐳 Comandos Docker Swarm:"
     echo "  swarm-init      - Inicializar Docker Swarm"
@@ -72,10 +68,10 @@ show_help() {
     echo ""
     echo "💡 Exemplos de uso:"
     echo "  LOG_LEVEL=DEBUG $0 up"
-    echo "  $0 analyze sample      # Análise com dados de amostra"
-    echo "  $0 analyze complete    # Análise completa (padrão)"
-    echo "  $0 analyze-local sample    # Análise local com amostra"
-    echo "  $0 analyze-local complete  # Análise local completa"
+    echo "  $0 analyze sample                      # Análise com dados de amostra"
+    echo "  $0 analyze complete                    # Análise completa (padrão)"
+    echo "  $0 analyze sample 2024/1,2024/2          # Análise do ano 2024 com dados de amostra"
+    echo "  $0 analyze complete 2024/1,2024/2        # Análise do ano 2024 com dados completos"
 }
 
 # Função para construir imagens
@@ -128,39 +124,11 @@ show_logs() {
     $DOCKER_COMPOSE_CMD logs -f
 }
 
-# Função para mostrar status
-show_status() {
-    echo "📊 Status dos containers:"
-    $DOCKER_COMPOSE_CMD ps
-}
-
-# Função para limpeza
-clean_all() {
-    echo "🧹 Limpando recursos do projeto RU-UFLA Analytics..."
-    
-    # Parar e remover containers do projeto (sem remover volumes)
-    $DOCKER_COMPOSE_CMD down --remove-orphans
-    
-    # Remover imagem específica do projeto se existir
-    if docker images | grep -q "g2-spark-master\|g2-analytics\|ru-ufla-analytics"; then
-        echo "🗑️  Removendo imagens do projeto..."
-        docker images --format "table {{.Repository}}:{{.Tag}}" | grep -E "g2-|ru-ufla-analytics" | xargs -r docker rmi -f
-    fi
-    
-    # Remover rede específica do projeto se não estiver sendo usada
-    if docker network ls | grep -q "g2_spark-network"; then
-        echo "🌐 Removendo rede do projeto..."
-        docker network rm g2_spark-network 2>/dev/null || true
-    fi
-    
-    echo "✅ Limpeza do projeto concluída!"
-    echo "ℹ️  Recursos de outros projetos Docker foram preservados."
-}
-
 # Função para executar análise
 run_analysis() {
     local mode=${1:-complete}
-    
+    local periods=$2
+ 
     case "$mode" in
         sample)
             echo "📊 Executando análise de dados do RU-UFLA (AMOSTRA)..."
@@ -182,37 +150,13 @@ run_analysis() {
     fi
     
     # Executar análise com o modo especificado
-    $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077 --mode $mode
+    if [ -z "$periods" ]; then
+        $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077 --mode $mode
+    else
+        $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077 --mode $mode --periods $periods
+    fi
     echo "✅ Análise concluída!"
 }
-
-# Função para executar testes
-run_tests() {
-    echo "🧪 Executando testes de integração..."
-    
-    # Verificar se o cluster está rodando
-    if ! $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
-        echo "⚠️  Cluster não está rodando. Iniciando..."
-        start_cluster
-        sleep 20
-    fi
-    
-    # Executar teste de conectividade
-    $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main test-spark --master-url spark://spark-master:7077
-    echo "✅ Testes concluídos com sucesso!"
-}
-
-# Função para mostrar informações
-show_info() {
-    echo "ℹ️  Mostrando informações do sistema..."
-    
-    if [ -d ".venv" ]; then
-        .venv/bin/python -m src.main info
-    else
-        echo "⚠️  Ambiente virtual não encontrado. Execute 'analyze-local' primeiro."
-    fi
-}
-
 # === FUNÇÕES DOCKER SWARM ===
 
 # Função para inicializar Docker Swarm
@@ -298,20 +242,8 @@ case "${1:-up}" in
     logs)
         show_logs
         ;;
-    status)
-        show_status
-        ;;
-    clean)
-        clean_all
-        ;;
-    test)
-        run_tests
-        ;;
     analyze)
-        run_analysis $2
-        ;;
-    info)
-        show_info
+        run_analysis $2 $3
         ;;
     # Comandos Docker Swarm
     swarm-init)

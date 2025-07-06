@@ -223,20 +223,6 @@ class SparkMeasureWrapper:
             # Para outros tipos, converter para string
             return str(value)
 
-    def print_report(self):
-        """Imprime relatório de métricas usando a API oficial"""
-        if not self._metrics_collector:
-            logger.error("Metrics collector não foi inicializado")
-            return
-
-        logger.info("Gerando relatório de métricas Spark...")
-
-        try:
-            self._metrics_collector.print_report()
-            logger.success("Relatório de métricas exibido")
-        except Exception as e:
-            logger.error("Erro ao gerar relatório: {}", e)
-
     def print_memory_report(self):
         """Imprime relatório de memória usando a API oficial"""
         if not self._metrics_collector:
@@ -408,7 +394,6 @@ def measure_spark_operation(
                     result = func(*args, **kwargs)
                     metrics = measurer.stop_measurement()
                     measurer.save_metrics(metrics, operation_name)
-                    measurer.print_report()
                     operation_logger.success(
                         "Operação {} concluída com sucesso", operation_name
                     )

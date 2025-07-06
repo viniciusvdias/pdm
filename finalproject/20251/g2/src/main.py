@@ -59,11 +59,35 @@ def cli(ctx, log_level, log_to_file, log_colors):
     default="complete",
     help="Modo de análise: 'sample' para dados de amostra ou 'complete' para dataset completo",
 )
+@click.option(
+    "--periods",
+    help="Lista de períodos letivos separados por vírgula (formato: YYYY/S). Ex: 2024/1,2024/2",
+)
 @click.pass_context
-def analyze(ctx, master_url: Optional[str], app_name: str, mode: str):
+def analyze(ctx, master_url: Optional[str], app_name: str, mode: str, periods: Optional[str]):
     """Executa análise dos dados do RU-UFLA"""
 
     logger = get_module_logger("main")
+    
+    # Processar lista de períodos
+    periods_list = None
+    if periods:
+        import re
+        
+        # Separar períodos por vírgula e limpar espaços
+        periods_list = [p.strip() for p in periods.split(',') if p.strip()]
+        
+        # Padrão para validar formato YYYY/S
+        period_pattern = r'^\d{4}/[12]$'
+        
+        # Validar cada período
+        for period in periods_list:
+            if not re.match(period_pattern, period):
+                raise click.BadParameter(f"Período inválido: {period}. Use formato YYYY/S (ex: 2024/1)")
+        
+        logger.info(f"Períodos definidos: {', '.join(periods_list)}")
+    else:
+        logger.info("Nenhum período específico. Processando todos os dados.")
     
     if mode == "sample":
         logger.info("Iniciando análise com dados de AMOSTRA do RU-UFLA")
@@ -93,7 +117,7 @@ def analyze(ctx, master_url: Optional[str], app_name: str, mode: str):
 
         # Executar análise
         analyzer = RUAnalyzer(spark)
-        analyzer.run_complete_analysis(data_file)
+        analyzer.run_complete_analysis(data_file, periods=periods_list)
 
         logger.success(f"Análise ({mode}) concluída com sucesso!")
 
@@ -140,7 +164,6 @@ def test_spark(ctx, master_url: Optional[str], app_name: str):
     finally:
         if "spark" in locals():
             spark.stop()
-
 
 @cli.command()
 @click.option(
