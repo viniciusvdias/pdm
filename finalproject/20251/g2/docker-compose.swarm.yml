@@ -80,7 +80,7 @@ services:
         echo 'Aguardando Spark Master estar disponível...' &&
         sleep 30 &&
         /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
-        echo 'Spark Worker iniciado no nó: '$(hostname) &&
+        echo 'Spark Worker iniciado no nó: '$$(hostname) &&
         tail -f /dev/null
       "
     deploy:
@@ -88,8 +88,6 @@ services:
       replicas: 8
       placement:
         max_replicas_per_node: 2
-        constraints:
-          - node.role == worker || node.role == manager
       resources:
         limits:
           memory: 14g
