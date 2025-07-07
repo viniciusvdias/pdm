@@ -104,7 +104,6 @@ start_cluster() {
     echo "📋 Comandos úteis:"
     echo "  Logs:       $0 logs"
     echo "  Análise:    $0 analyze [sample|complete]"
-    echo "  Local:      $0 analyze-local [sample|complete]"
     echo "  Parar:      $0 down"
 }
 

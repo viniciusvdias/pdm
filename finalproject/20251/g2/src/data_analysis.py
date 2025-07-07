@@ -121,7 +121,7 @@ class RUAnalyzer:
             self.logger.error(f"Erro ao contar registros: {e}")
             raise
         
-    def _run_community_detection(self, edges_df: DataFrame, vertices_df: DataFrame):
+    def _run_community_detection(self, edges_df: DataFrame):
         self.logger.info("Executando detecção de comunidades usando NetworkX...")
         
         try:
@@ -129,18 +129,24 @@ class RUAnalyzer:
             from networkx.algorithms import community
             import json
             
-            # Converter para NetworkX
-            edges_list = edges_df.select("user1_id", "user2_id", "weight").collect()
+            # Filtrar conexões com pelo menos 5 ocorrências para reduzir ruído
+            # e focar em relacionamentos significativos
+            min_connections = 5
+            edges_filtered = edges_df.filter(col("weight") >= min_connections)
+            
+            self.logger.info(f"Total de conexões antes do filtro: {edges_df.count()}")
+            self.logger.info(f"Total de conexões após filtro (>= {min_connections}): {edges_filtered.count()}")
             
             G = nx.Graph()
-            for row in edges_list:
+            edges_data = edges_filtered.collect()
+            for row in edges_data:
                 G.add_edge(row["user1_id"], row["user2_id"], weight=row["weight"])
             
             self.logger.info(f"Grafo criado: {G.number_of_nodes()} nós, {G.number_of_edges()} arestas")
             
             # Executar algoritmo Louvain
             self.logger.info("Executando algoritmo Louvain...")
-            communities = community.louvain_communities(G, weight='weight', resolution=2.0)
+            communities = community.louvain_communities(G, weight='weight', resolution=1.0)
             
             # Salvar resultados
             output_path = f"{DataPaths.RESULTS_DIR}"
@@ -150,22 +156,20 @@ class RUAnalyzer:
             modularity = community.modularity(G, communities, weight='weight')
             
             # Salvar métricas
-            with open(f"{output_path}/metrics_louvain.json", 'w') as f:
+            with open(f"{output_path}/metrics_louvain_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json", 'w') as f:
                 json.dump({
                     "modularity": modularity,
                     "num_communities": len(communities),
                     "num_nodes": G.number_of_nodes(),
-                    "num_edges": G.number_of_edges()
+                    "num_edges": G.number_of_edges(),
                 }, f, indent=2)
             
             self.logger.success(f"✅ Detecção de comunidades concluída! Modularidade: {modularity:.4f}")
             return communities
             
         except Exception as e:
-            self.logger.error(f"Erro na implementação alternativa: {e}")
+            self.logger.error(f"Erro na detecção de comunidades: {e}")
             raise
-
-        
 
     def get_users_graph_window_sliding(self) -> dict:
         """
@@ -179,48 +183,47 @@ class RUAnalyzer:
         try:
             from pyspark.sql.functions import (
                 col, unix_timestamp, collect_list, struct,
-                explode, asc, desc, avg as spark_avg, row_number, floor
+                explode, asc, desc, avg as spark_avg, row_number, floor, hour, from_unixtime, count
             )
             from pyspark.sql.window import Window
+            from pyspark import StorageLevel
 
-            # Converter e filtrar dados essenciais
+            # Selecionar apenas campos essenciais
             df_clean = self.df.select(
                 col("documento"),
                 col("tipo_usuario"),
-                col("tipo_refeicao"),
-                col("tipo_consumo"),
                 col("nome_curso"),
                 unix_timestamp(col("data_consumo"), "yyyy-MM-dd'T'HH:mm:ss").alias("timestamp")
             ).filter(
                 col("documento").isNotNull() &
                 col("timestamp").isNotNull() &
                 (col("tipo_consumo") != "Marmita")
-            ).cache()
-
-            self.logger.info(f"Total de registros após limpeza: {df_clean.count()}")
-
-            # Criar uma struct para guardar os dados dos usuários
-            df_struct = df_clean.withColumn(
-                "user_info",
-                struct(
-                    col("documento"),
-                    col("tipo_usuario"),
-                    col("nome_curso"),
-                    col("timestamp")
-                )
             )
 
-            # Definir janela de ±10 segundos ordenada por timestamp
-            df_struct = df_struct.withColumn("timestamp_day", floor(col("timestamp") / 86400))
+            # Usar storage level adequado - serializado para economizar memória
+            df_clean.persist(StorageLevel.MEMORY_AND_DISK)
 
-            window_spec = Window.partitionBy("timestamp_day").orderBy("timestamp").rangeBetween(-10, 10)
+            # Particionar por hora
+            df_struct = df_clean.withColumn(
+                "user_info",
+                struct(col("documento"), col("tipo_usuario"), col("nome_curso"), col("timestamp"))
+            ).withColumn("timestamp_hour", floor(col("timestamp") / 3600))
 
-            # Coletar todos os usuários dentro da janela
+            # Limpar cache anterior
+            df_clean.unpersist()
+
+            # Window function mais eficiente
+            window_spec = Window.partitionBy("timestamp_hour").orderBy("timestamp").rangeBetween(-10, 10)
             df_with_neighbors = df_struct.withColumn("neighbors", collect_list("user_info").over(window_spec))
 
+            # Processar em lotes menores
             df_exploded = df_with_neighbors.select("user_info", explode("neighbors").alias("other_user"))
+            
+            # Limpar intermediários
+            df_struct.unpersist()
+            df_with_neighbors.unpersist()
 
-            # Filtrar pares distintos (user1 < user2) e diferentes
+            # Filtrar pares e processar por lotes
             df_pairs = df_exploded.filter(
                 (col("user_info.documento") < col("other_user.documento")) &
                 (col("user_info.documento") != col("other_user.documento"))
@@ -235,36 +238,46 @@ class RUAnalyzer:
 
             self.logger.info(f"Total de pares brutos com Window: {df_pairs.count()}")
 
-            # Contar frequência de conexões
             connections = df_pairs.groupBy(
                 "user1_id", "user2_id", "user1_tipo", "user2_tipo", "user1_curso", "user2_curso"
             ).count().withColumnRenamed("count", "weight")
 
-            total_connections = connections.count()
-            self.logger.info(f"Total de conexões: {total_connections}")
+            # Computar métricas em uma única passada
+            metrics = connections.agg(
+                spark_avg("weight").alias("peso_medio"),
+                count("*").alias("total_conexoes")
+            ).collect()[0]
 
-            # Usuários únicos
-            users_df = df_clean.select("documento", "tipo_usuario", "nome_curso").distinct()
+            # Limitar resultados para economizar memória
+            MAX_RESULTS = 20
+            top_connections = connections.orderBy(desc("weight")).limit(MAX_RESULTS).collect()
+
+            # Calcular usuários únicos de forma eficiente
+            users_df = self.df.select("documento", "tipo_usuario", "nome_curso").distinct()
             total_users = users_df.count()
 
-            # Top conexões
-            top_connections = connections.orderBy(desc("weight")).limit(20).collect()
+            # Top usuários com limite
+            user_degrees = (
+                connections.select("user1_id").union(connections.select("user2_id"))
+                .groupBy("user1_id").count()
+                .withColumnRenamed("user1_id", "user_id")
+                .withColumnRenamed("count", "degree")
+            )
+            
+            top_users = (
+                user_degrees.join(users_df, user_degrees["user_id"] == users_df["documento"])
+                .orderBy(desc("degree"))
+                .limit(10)
+                .collect()
+            )
 
-            # Top usuários mais conectados
-            user_degrees = connections.select("user1_id").union(connections.select("user2_id")).groupBy("user1_id").count().withColumnRenamed("user1_id", "user_id").withColumnRenamed("count", "degree")
-            top_users = user_degrees.join(users_df, user_degrees["user_id"] == users_df["documento"]).orderBy(desc("degree")).limit(10).collect()
-
-            communities = self._run_community_detection(connections, users_df)
-
-            peso_medio_result = connections.agg(spark_avg("weight")).collect()[0][0]
-            peso_medio = float(peso_medio_result) if peso_medio_result else 0
-
+            # Construir resultado
             results = {
                 "estatisticas_grafo": {
                     "total_usuarios": total_users,
-                    "total_conexoes": total_connections,
-                    "total_comunidades": len(communities),
-                    "peso_medio_conexoes": peso_medio
+                    "total_conexoes": int(metrics["total_conexoes"]),
+                    "total_comunidades": 0,
+                    "peso_medio_conexoes": float(metrics["peso_medio"]) if metrics["peso_medio"] else 0
                 },
                 "top_conexoes": [
                     {
@@ -287,23 +300,24 @@ class RUAnalyzer:
                     }
                     for user in top_users
                 ],
-                "comunidades": [
-                    {
-                        "id": i + 1,
-                        "tamanho": len(community),
-                        "usuarios": list(community)[:10]
-                    }
-                    for i, community in enumerate(communities[:20])
-                ],
             }
-
-            df_clean.unpersist()
-            self.logger.success("Análise com Window Function concluída com sucesso!")
-            return results
+            return results, connections
 
         except Exception as e:
             self.logger.error(f"Erro ao calcular grafo de usuários com Window: {e}")
             raise
+        finally:
+            # Limpeza garantida de recursos
+            try:
+                # Tentar limpar todos os caches possíveis
+                for df_name in ['df_clean', 'df_struct', 'df_with_neighbors', 'df_pairs']:
+                    try:
+                        if df_name in locals():
+                            locals()[df_name].unpersist()
+                    except:
+                        pass
+            except:
+                pass
 
     def get_basic_statistics(self) -> dict:
         """
@@ -363,7 +377,7 @@ class RUAnalyzer:
             from datetime import datetime
             
             # Salvar contagem de registros em arquivo texto
-            count_file = os.path.join(output_dir, "contagem_registros.txt")
+            count_file = os.path.join(output_dir, f"contagem_registros_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
             with open(count_file, 'w', encoding='utf-8') as f:
                 f.write(f"Total de registros no dataset: {stats['total_registros']:,}\n")
                 f.write(f"Total de colunas: {stats['total_colunas']}\n\n")
@@ -526,7 +540,21 @@ class RUAnalyzer:
             stats = self.get_basic_statistics()
             
             # Calcular grafo de usuários com janela deslizante
-            graph_stats = self.get_users_graph_window_sliding()
+            results, connections = self.get_users_graph_window_sliding()
+            
+            # Detecção de comunidades com limite de arestas
+            communities = self._run_community_detection(connections)
+            
+            results["estatisticas_grafo"]["total_comunidades"] = len(communities)
+            results["comunidades"] = [
+                {
+                    "id": i + 1,
+                    "tamanho": len(community),
+                    "usuarios": list(community)[:10]
+                }
+                for i, community in enumerate(communities[:20])
+            ]
+            
             
             # Exibir resultados
             self.logger.info("=== RESUMO DA ANÁLISE ===")
@@ -541,7 +569,7 @@ class RUAnalyzer:
             for i, row in enumerate(stats['usuarios_por_tipo'][:3], 1):
                 self.logger.info(f"  {i}. {row['tipo_usuario']}: {row['count']:,} registros")
             
-            return stats, graph_stats
+            return stats, results
             
         except Exception as e:
             self.logger.error(f"Erro durante a análise: {e}")
@@ -717,6 +745,3 @@ class RUAnalyzer:
         except Exception as e:
             self.logger.warning(f"⚠️  Erro nos experimentos simples: {e}")
             self.logger.info("Continuação da análise principal...")
-    
-
-    

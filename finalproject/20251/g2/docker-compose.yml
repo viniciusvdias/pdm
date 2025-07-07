@@ -1,6 +1,7 @@
 services:
   spark-master:
     build: .
+    image: g2-spark:latest
     container_name: spark-master
     hostname: spark-master
     ports:
@@ -13,10 +14,7 @@ services:
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_TO_FILE=${LOG_TO_FILE:-true}
-      - LOG_COLORS=${LOG_COLORS:-false}
       - DOCKER_SWARM_MODE=false
-      # Configurações específicas do Spark para Docker
       - SPARK_DRIVER_HOST=spark-master
       - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
     volumes:
@@ -34,7 +32,7 @@ services:
       - spark-network
 
   spark-worker-1:
-    build: .
+    image: g2-spark:latest
     container_name: spark-worker-1
     hostname: spark-worker-1
     depends_on:
@@ -48,14 +46,9 @@ services:
       - SPARK_WORKER_MEMORY=6g
       - SPARK_WORKER_CORES=6
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_TO_FILE=${LOG_TO_FILE:-true}
-      - LOG_COLORS=${LOG_COLORS:-false}
       - DOCKER_SWARM_MODE=false
-      # Configurações de rede para melhor conectividade
       - SPARK_EXECUTOR_MEMORY=6g
       - SPARK_EXECUTOR_CORES=6
-      - SPARK_DRIVER_MEMORY=6g
-      - SPARK_DRIVER_MAX_RESULT_SIZE=6g
     volumes:
       - ./src:/app/src
       - ./misc:/app/misc
@@ -69,7 +62,7 @@ services:
       - spark-network
 
   spark-worker-2:
-    build: .
+    image: g2-spark:latest
     container_name: spark-worker-2
     hostname: spark-worker-2
     depends_on:
@@ -83,12 +76,9 @@ services:
       - SPARK_WORKER_MEMORY=6g
       - SPARK_WORKER_CORES=6
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_TO_FILE=${LOG_TO_FILE:-true}
-      - LOG_COLORS=${LOG_COLORS:-false}
       - DOCKER_SWARM_MODE=false
-      # Configurações de rede para melhor conectividade
-      - SPARK_EXECUTOR_MEMORY=6g
-      - SPARK_EXECUTOR_CORES=6
+      - SPARK_EXECUTOR_MEMORY=4g
+      - SPARK_EXECUTOR_CORES=4
     volumes:
       - ./src:/app/src
       - ./misc:/app/misc
@@ -103,7 +93,7 @@ services:
 
   # Serviço para executar análises
   analytics:
-    build: .
+    image: g2-spark:latest
     container_name: ru-analytics
     depends_on:
       - spark-master
@@ -115,7 +105,6 @@ services:
       - LOG_TO_FILE=${LOG_TO_FILE:-true}
       - LOG_COLORS=${LOG_COLORS:-true}
       - DOCKER_SWARM_MODE=false
-      # Configurações específicas para datasets grandes
       - SPARK_EXECUTOR_MEMORY=6g
       - SPARK_DRIVER_MEMORY=6g
       - SPARK_DRIVER_MAX_RESULT_SIZE=6g
