@@ -18,9 +18,9 @@ source ~/.bashrc
 pdmtf
 ```
 
-- Para que os comandos funcionem
+- Para que os comandos `pdmtf` funcionem, acesse a pasta src
 `cd src`
-ex:
+
 ```bash
 pdmtf init
 ```
