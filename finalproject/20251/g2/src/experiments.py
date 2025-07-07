@@ -11,6 +11,7 @@ from pyspark.sql import SparkSession, DataFrame
 from logging_config import get_module_logger
 from config import DataPaths
 import unicodedata
+from spark_measure_utils import SparkMeasureWrapper
 
 
 def normalize_fieldnames(data):
@@ -27,131 +28,116 @@ def normalize_fieldnames(data):
 
 
 def run_basic_experiments(spark: SparkSession, df: DataFrame, dataset_size: str, periods: Optional[list] = None):
-    """
-    Executa experimentos básicos para implementar os TODOs da seção 6
-    
-    Args:
-        spark: Sessão Spark
-        df: DataFrame com os dados
-        dataset_size: Tamanho do dataset ("sample" ou "complete")
-        periods: Lista de períodos letivos
-    """
+    """Executa experimentos com métricas reais"""
     logger = get_module_logger("experiments")
-    
-    logger.info("🧪 Executando experimentos básicos")
-    
+    logger.info("🧪 Executando experimentos com métricas REAIS")
     try:
-        # 1. Análise de Performance por Workload (TODO 6.2)
-        run_performance_experiments(df, dataset_size, logger)
-        
-        # 2. Análise de Escalabilidade (TODO 6.3)
-        run_scalability_experiments(df, dataset_size, logger)
-        
-        # 3. Análise por Períodos (TODO 6.2 - períodos analisados)
+        performance_results = run_performance_experiments_fixed(spark, df, dataset_size, logger)
+        save_performance_results(performance_results, logger)
+        scalability_results = run_scalability_experiments_fixed(spark, df, dataset_size, logger)
+        save_scalability_results(scalability_results, logger)
         run_period_experiments(df, dataset_size, logger)
-        
-        logger.success("✅ Experimentos básicos concluídos!")
-        
+        logger.success("✅ Experimentos com métricas reais concluídos!")
     except Exception as e:
-        logger.warning(f"⚠️  Erro nos experimentos básicos: {e}")
+        logger.error(f"❌ Erro nos experimentos: {e}")
+        raise
 
 
-def run_performance_experiments(df: DataFrame, dataset_size: str, logger):
-    """Executa experimentos de performance por workload"""
-    logger.info("📊 Executando experimentos de performance...")
-    
-    # Configurações conforme seção 6.2 do README
+def run_performance_experiments_fixed(spark: SparkSession, df: DataFrame, dataset_size: str, logger):
+    """Executa experimentos de performance com métricas reais"""
+    # Configurações reais que podemos ajustar
     configs = [
-        {"workers": 2, "memory": "2g"},
-        {"workers": 2, "memory": "4g"},
-        {"workers": 2, "memory": "6g"},
+        {"parallelism": 2, "partitions": 10},
+        {"parallelism": 4, "partitions": 20},
+        {"parallelism": 8, "partitions": 40},
     ]
-    
     performance_results = []
-    
     for config in configs:
         try:
-            logger.info(f"Testando: {config['workers']} workers, {config['memory']} RAM")
-            
+            spark.conf.set("spark.default.parallelism", config["parallelism"])
+            spark.conf.set("spark.sql.adaptive.coalescePartitions.initialPartitionNum", config["partitions"])
+            measurer = SparkMeasureWrapper(spark, mode="stage")
             # WORKLOAD-1: Análise de Estatísticas Básicas
-            start_time = time.time()
+            measurer.start_measurement()
             total_records = df.count()
-            execution_time = time.time() - start_time
-            throughput = total_records / execution_time if execution_time > 0 else 0
-            
+            distinct_users = df.select("documento").distinct().count()
+            metrics = measurer.stop_measurement()
+            spark_metrics = metrics.get("spark_metrics", {})
+            execution_time = metrics["execution_info"]["execution_time_seconds"]
+            memory_used = spark_metrics.get("peakExecutionMemory", 0) / (1024**3)
             performance_results.append({
                 "Workload": "WORKLOAD-1",
                 "Dataset": dataset_size.capitalize(),
-                "Workers": config["workers"],
-                "Memoria": config["memory"],
-                "Tempo (s)": round(execution_time, 1),
-                "Memoria Pico (GB)": 2.0,  # Estimativa
-                "Throughput (rec/s)": round(throughput, 0)
+                "Parallelism": config["parallelism"],
+                "Partitions": config["partitions"],
+                "Tempo (s)": round(execution_time, 2),
+                "Memoria Real (GB)": round(memory_used, 2),
+                "Throughput (rec/s)": round(total_records / execution_time, 0),
+                "Registros": total_records,
+                "Usuarios Distintos": distinct_users
             })
-            
-            # WORKLOAD-2: Análise de Grafo (simulada)
-            start_time = time.time()
-            # Simular operação de grafo
-            time.sleep(0.1)  # Simular processamento
-            execution_time = time.time() - start_time
-            throughput = total_records / execution_time if execution_time > 0 else 0
-            
+            # WORKLOAD-2: Análise de Grafo (real)
+            measurer.start_measurement()
+            graph_result = df.groupBy("documento", "periodo_letivo").count().collect()
+            metrics = measurer.stop_measurement()
+            spark_metrics = metrics.get("spark_metrics", {})
+            execution_time = metrics["execution_info"]["execution_time_seconds"]
+            memory_used = spark_metrics.get("peakExecutionMemory", 0) / (1024**3)
             performance_results.append({
                 "Workload": "WORKLOAD-2",
                 "Dataset": dataset_size.capitalize(),
-                "Workers": config["workers"],
-                "Memoria": config["memory"],
-                "Tempo (s)": round(execution_time, 1),
-                "Memoria Pico (GB)": 3.0,  # Estimativa
-                "Throughput (rec/s)": round(throughput, 0)
+                "Parallelism": config["parallelism"],
+                "Partitions": config["partitions"],
+                "Tempo (s)": round(execution_time, 2),
+                "Memoria Real (GB)": round(memory_used, 2),
+                "Throughput (rec/s)": round(len(graph_result) / execution_time, 0),
+                "Registros": len(graph_result),
+                "Usuarios Distintos": distinct_users
             })
-            
         except Exception as e:
             logger.warning(f"Erro na configuração {config}: {e}")
-    
-    # Salvar resultados
-    if performance_results:
-        save_performance_results(performance_results, logger)
+    return performance_results
 
 
-def run_scalability_experiments(df: DataFrame, dataset_size: str, logger):
-    """Executa experimentos de escalabilidade"""
-    logger.info("📈 Executando experimentos de escalabilidade...")
-    
-    # Configurações conforme seção 6.2: 1, 2, 4 workers
-    worker_configs = [1, 2, 4]
+def run_scalability_experiments_fixed(spark: SparkSession, df: DataFrame, dataset_size: str, logger):
+    """Executa experimentos de escalabilidade com diferentes níveis de paralelismo"""
+    parallelism_configs = [
+        {"parallelism": 1, "partitions": 4},
+        {"parallelism": 2, "partitions": 8},
+        {"parallelism": 4, "partitions": 16},
+        {"parallelism": 8, "partitions": 32}
+    ]
     scalability_results = []
-    
     baseline_time = None
-    
-    for num_workers in worker_configs:
+    for config in parallelism_configs:
         try:
-            logger.info(f"Testando escalabilidade com {num_workers} workers")
-            
-            start_time = time.time()
-            # Simular operação com diferentes números de workers
-            total_records = df.count()
-            execution_time = time.time() - start_time
-            
+            spark.conf.set("spark.default.parallelism", config["parallelism"])
+            df_partitioned = df.repartition(config["partitions"])
+            measurer = SparkMeasureWrapper(spark, mode="stage")
+            measurer.start_measurement()
+            result = df_partitioned.groupBy("periodo_letivo", "tipo_usuario").agg(
+                {"documento": "count", "tipo_consumo": "count"}
+            ).collect()
+            metrics = measurer.stop_measurement()
+            execution_time = metrics["execution_info"]["execution_time_seconds"]
+            spark_metrics = metrics.get("spark_metrics", {})
             if baseline_time is None:
                 baseline_time = execution_time
-            
             speedup = baseline_time / execution_time if execution_time > 0 else 0
-            efficiency = speedup / num_workers * 100
-            
+            efficiency = (speedup / config["parallelism"]) * 100
             scalability_results.append({
-                "Workers": num_workers,
-                "Tempo Total (s)": round(execution_time, 1),
+                "Parallelism": config["parallelism"],
+                "Partitions": config["partitions"],
+                "Tempo Total (s)": round(execution_time, 2),
                 "Speedup": round(speedup, 2),
-                "Eficiencia (%)": round(efficiency, 1)
+                "Eficiencia (%)": round(efficiency, 1),
+                "Memoria (GB)": round(spark_metrics.get("peakExecutionMemory", 0) / (1024**3), 2),
+                "Stages": spark_metrics.get("numStages", 0),
+                "Tasks": spark_metrics.get("numTasks", 0)
             })
-            
         except Exception as e:
-            logger.warning(f"Erro com {num_workers} workers: {e}")
-    
-    # Salvar resultados
-    if scalability_results:
-        save_scalability_results(scalability_results, logger)
+            logger.warning(f"Erro com configuração {config}: {e}")
+    return scalability_results
 
 
 def run_period_experiments(df: DataFrame, dataset_size: str, logger):
@@ -278,14 +264,14 @@ def run_detailed_experiments(spark: SparkSession, df: DataFrame, experiment_type
     
     try:
         if experiment_type == "performance":
-            run_performance_experiments(df, dataset_size, logger)
+            run_performance_experiments_fixed(spark, df, dataset_size, logger)
         elif experiment_type == "scalability":
-            run_scalability_experiments(df, dataset_size, logger)
+            run_scalability_experiments_fixed(spark, df, dataset_size, logger)
         elif experiment_type == "periods":
             run_period_experiments(df, dataset_size, logger)
         elif experiment_type == "all":
-            run_performance_experiments(df, dataset_size, logger)
-            run_scalability_experiments(df, dataset_size, logger)
+            run_performance_experiments_fixed(spark, df, dataset_size, logger)
+            run_scalability_experiments_fixed(spark, df, dataset_size, logger)
             run_period_experiments(df, dataset_size, logger)
         
         logger.success(f"✅ Experimentos detalhados ({experiment_type}) concluídos!")
