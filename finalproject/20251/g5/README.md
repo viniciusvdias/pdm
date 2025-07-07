@@ -1,3 +1,24 @@
+# COMO RODAR O PROJETO 
+
+- Clonar esse repositorio
+`git clone https://github.com/PedroCobucci/pdm.git`
+
+
+- Checkout para a branch do grupo 
+`git checkout finalproject-20251-G5`
+
+
+- Acessar a pasta do projeto do grupo e pasta do script 
+`cd finalproject/20251/g5/bin`
+
+
+- Baixar a imagem do jupyter (tem que fazer esse passo pq não tá baixando a a imagem direto pelo yml)
+`docker build -t my-jupyter-spark ./jupyter-spark`
+
+- Inciar o cluster 
+ `bash big init`
+
+
 # Template Project Structure (`gX`)
 
 ‼️ **Warning:** If you do not follow this folder and file structure, or if your project cannot be run out of the box using only Docker as described, your project may not be graded. ‼️
