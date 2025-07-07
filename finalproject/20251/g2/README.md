@@ -236,34 +236,55 @@ Para cada carga de trabalho, foram testados os seguintes parâmetros:
 
 #### Análise de Performance por Workload:
 
-| Workload   | Dataset  | Workers | Tempo (s) | Memória Pico (GB) | Throughput (rec/s) |
-| ---------- | -------- | ------- | --------- | ----------------- | ------------------ |
-| WORKLOAD-1 | Amostra  | 2       | 15.2      | 1.2               | 65.8               |
-| WORKLOAD-1 | Completo | 2       | 245.7     | 8.4               | 20.356             |
-| WORKLOAD-2 | Amostra  | 2       | 28.5      | 1.8               | 35.1               |
-| WORKLOAD-2 | Completo | 2       | 467.2     | 12.1              | 10.700             |
-| WORKLOAD-3 | Amostra  | 2       | 45.3      | 2.1               | 22.1               |
-| WORKLOAD-3 | Completo | 2       | 892.4     | 15.7              | 5.604              |
-| WORKLOAD-4 | Amostra  | 2       | 67.8      | 2.5               | 14.7               |
-| WORKLOAD-4 | Completo | 2       | 1.234.5   | 18.3              | 4.051              |
+| Workload   | Dataset  | Workers | Memória | Tempo (s) | Memória Pico (GB) | Throughput (rec/s) |
+| ---------- | -------- | ------- | ------- | --------- | ----------------- | ------------------ |
+| WORKLOAD-1 | Amostra  | 2       | 2g      | 0.3       | 2.0               | 5.531              |
+| WORKLOAD-1 | Amostra  | 2       | 4g      | 0.4       | 2.0               | 3.744              |
+| WORKLOAD-1 | Amostra  | 2       | 6g      | 0.3       | 2.0               | 4.640              |
+| WORKLOAD-2 | Amostra  | 2       | 2g      | 0.1       | 3.0               | 16.132             |
+| WORKLOAD-2 | Amostra  | 2       | 4g      | 0.1       | 3.0               | 16.188             |
+| WORKLOAD-2 | Amostra  | 2       | 6g      | 0.1       | 3.0               | 16.186             |
+
+#### Análise por Períodos:
+
+| Período(s)        | Tempo de Execução (s) | Throughput | Status |
+| ----------------- | --------------------- | ---------- | ------ |
+| 2023/1            | 0.39                  | 0.0        | Sucesso |
+| 2023/2            | 0.39                  | 0.0        | Sucesso |
+| 2024/1            | 0.41                  | 0.0        | Sucesso |
+| 2024/2            | 0.25                  | 0.0        | Sucesso |
+| 2023/1 + 2023/2   | 0.36                  | 0.0        | Sucesso |
+| 2024/1 + 2024/2   | 0.22                  | 0.0        | Sucesso |
 
 #### Escalabilidade por Número de Workers:
 
-| Workers | Tempo Total (s) | Speedup | Eficiência |
-| ------- | --------------- | ------- | ---------- |
-| 1       | 1.845.2         | 1.0x    | 100%       |
-| 2       | 978.4           | 1.89x   | 94.5%      |
-| 4       | 623.7           | 2.96x   | 74.0%      |
+| Workers | Tempo Total (s) | Speedup | Eficiência (%) |
+| ------- | --------------- | ------- | -------------- |
+| 1       | 0.2             | 1.0x    | 100.0          |
+| 2       | 0.3             | 0.86x   | 42.8           |
+| 4       | 0.3             | 0.75x   | 18.7           |
 
 ### Interpretação dos resultados:
 
-1. **Escalabilidade**: O sistema apresenta boa escalabilidade até 2 workers, com eficiência de 94.5%. Com 4 workers, a eficiência reduz para 74% devido ao overhead de coordenação.
+1. **Performance por Workload**: 
+   - WORKLOAD-1 (estatísticas básicas) apresenta tempos de execução consistentes entre 0.3-0.4 segundos
+   - WORKLOAD-2 (análise de grafo) é mais eficiente, executando em apenas 0.1 segundo
+   - O throughput do WORKLOAD-2 é significativamente maior (16.132-16.188 rec/s) comparado ao WORKLOAD-1 (3.744-5.531 rec/s)
 
-2. **Memory Usage**: O consumo de memória cresce linearmente com o tamanho do dataset, indicando boa gestão de recursos pelo Spark.
+2. **Impacto da Memória**: 
+   - Aumentar a memória de 2g para 6g não resultou em melhoria significativa de performance
+   - WORKLOAD-2 mantém pico de memória de 3.0GB independente da configuração
+   - WORKLOAD-1 mantém pico de memória de 2.0GB em todas as configurações
 
-3. **Workload Complexity**: WORKLOAD-4 (detecção de comunidades) apresenta maior complexidade computacional, como esperado para algoritmos de grafo.
+3. **Análise por Períodos**:
+   - Todos os períodos analisados (2023/1, 2023/2, 2024/1, 2024/2) executaram com sucesso
+   - Tempos de execução variam entre 0.22 e 0.41 segundos
+   - Análises combinadas (2023/1+2023/2 e 2024/1+2024/2) são mais eficientes que análises individuais
 
-4. **Throughput**: O throughput diminui conforme a complexidade da análise aumenta, variando de 20.356 rec/s para estatísticas básicas até 4.051 rec/s para detecção de comunidades.
+4. **Escalabilidade**: 
+   - Resultados inesperados: com mais workers (2 e 4), o tempo total aumenta e a eficiência diminui
+   - Isso pode indicar overhead de coordenação significativo para datasets pequenos
+   - Para datasets de amostra, um único worker pode ser mais eficiente
 
 ## 7. Discussão e conclusões
 
