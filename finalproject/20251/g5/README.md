@@ -1,61 +1,111 @@
-# Template Project Structure (`gX`)
+# Final project report: *\<include your title here\>*
 
-‼️ **Warning:** If you do not follow this folder and file structure, or if your project cannot be run out of the box using only Docker as described, your project may not be graded. ‼️
+## 1. Context and motivation
 
-Your group’s project directory should follow the structure below, where `gX` must be replaced by your actual group ID (for example, `g1`, `g2`, etc). Each folder and file has a specific purpose. **Make sure you organize your project exactly as described here.**
+- What is the main goal? What problem are you trying to solve with big data?
 
+## 2. Data
+
+### 2.1 Detailed description
+
+- Describe the dataset(s) used in your project.
+  - Where does the data come from? Include the source/link.
+  - What does the data contain? (number of records, type of features, etc.)
+  - If data is generated, explain how and include instructions to generate a sample with Docker.
+
+### 2.2 How to obtain the data
+
+- A small sample dataset (at most 1MB, preferably less) must be included in the `datasample/` folder of this repository. This sample is required so the project can be tested quickly.
+- For the full dataset only (not the sample), provide clear instructions on how to download or generate it. Do not include the full dataset in the repository.
+- For example, you can provide public links to the data and commands on how to download them using tools like `wget` (this can also be wrapped in a Docker container):
+
+  ```bash
+  wget https://path-to-your-public-dataset/data.zip
+  unzip data.zip -d data/
+  ```
+
+- If the dataset is hosted on cloud storage (Google Drive, HTTPS, AWS S3, etc.), provide the public link and the necessary commands.
+- If the data must be generated, provide the Docker command to generate it.
+
+## 3. How to install and run
+
+```bash
+./bin/pdmtf setup
+source ~/.bashrc
+pdmtf
 ```
-gX/
-├── bin/
-├── src/
-├── misc/
-├── datasample/
-├── presentation/
-└── README.md
+
+para que os comandos funcionem `cd src`
+
+```bash
+pdmtf init
 ```
 
-## 1. `bin/` — Binaries and scripts
+Acesse a interface web em: http://localhost:8888/lab?token=spark123
 
-- Put all executable files, scripts, or helper tools here.
-- These are scripts or binaries used to run your project.
-- You may provide scripts to run the project, but remember: **your project must work just by using Docker or Docker Compose commands, or by running scripts that use Docker.**
 
-## 2. `src/` — Source code
+> Observation: The project must be compatible with a default Docker installation and use only Docker containers for running. No external tools or installations should be necessary — this is a strict requirement.
 
-- Place all code files for your project here.
-- This includes your main program, modules, libraries, or any code you write as part of the solution.
+### 3.1 Quick start (using sample data in `datasample/`)
 
-## 3. `misc/` — Auxiliary files
+- Give the exact command(s) to run your project out of the box using Docker or your scripts.
+- Example:
 
-- Add any extra files needed to run your project here (for example: configuration files, text files, sample input for scripts, etc).
-- **Do not include datasets in this folder.**  
-- You must write in your report (`README.md`) clear instructions on how to get the data to run your project (for example, download links, scripts, cloud storage info, or instructions for generating synthetic data).
+  ```bash
+  docker compose up --build
+  # or if using a script:
+  ./bin/run.sh
+  ```
 
-## 4. `datasample/` — Sample data
+### 3.2 How to run with the full dataset
 
-- Include a small sample of the data used in your project (at most 1MB; use compression if needed, and smaller is better).
-- This sample is for quick testing and must not be the full dataset.
-- If your data is generated, include instructions (in the README) on how to generate this sample using Docker.
-- **Do not put large or full datasets here.**
+- Explain clearly how to configure or mount the full dataset (if different from default sample).
 
-## 5. `presentation/` — Slides
+## 4. Project architecture
 
-- This folder must contain a single PDF file with the slides for your group presentation.
-- Name the file clearly (for example: `presentation.pdf`).
+- Include a diagram of your system’s architecture and a description of how the components interact. Images are encouraged for clarity.
+- What are the main components? How do they interact?
+- Example diagram (replace with your own):
 
-## 6. `README.md` — Documentation and results
+  ```
+  [Data Source] → [Data Ingestion] → [Processing] → [Results Storage]
+  ```
 
-- At the root of the group folder (`gX`), there must be a file named `README.md`.
-- This file is your main documentation:
-  - It explains how to install and run your project.
-  - It describes your data, architecture, and main steps.
-  - It shows your results and your discussion.
-- **Important:** There will be a file called `README-report-template.md` in the template.  
-  You must follow this template exactly for your `README.md` file, including all required sections and organization.
+- Mention which parts run in which containers, and how data flows between them.
 
-## Important: Docker and reproducibility
+## 5. Workloads evaluated
 
-- **Your project MUST run out of the box with Docker.**
-- The only thing that can be required to run your project is Docker itself. No other installation, configuration, or dependencies should be needed.
-- Anyone must be able to run your complete project just by using Docker or by using the scripts you provide in `bin/` that use Docker/Docker Compose commands.
-- You may assume your project will be reproduced on a Linux machine via terminal using Docker.
+- Specify each big data task evaluated in your project (queries, data pre-processing, sub-routines, etc.).
+- Be specific: describe the details of each workload, and give each a clear name. These named workloads will be referenced and evaluated via performance experiments in the next section.
+  - Example: [WORKLOAD-1] Query that computes the average occupation within each
+    time window (include query below). [WORKLOAD-2] Preprocessing, including
+  removing duplicates, standardization, etc.
+
+## 6. Experiments and results
+
+### 6.1 Experimental environment
+
+- Describe the environment used for experiments (machine/VM specs, OS, Docker version, etc.).
+- Example:
+  > Experiments were run on a virtual machine with 4 vCPUs, 8GB RAM, Ubuntu 22.04, Docker 24.x.
+
+### 6.2 What did you test?
+
+- What parameters did you try changing? What did you measure (e.g. throughput, latency, wall-clock time, resident memory, disk usage, application level metrics)?
+- The ideal is that, for each execution configuration, you repeat the experiments a number of times (replications). With this information, report the average and also the variance/deviation of the results.
+
+### 6.3 Results
+
+- Use tables and plots (insert images).
+- Discuss your results: What do they mean? What did you learn about the data or
+about the computational cost of processing this data?
+- Do not just show numbers or plots — always explain what they mean and why they matter.
+
+## 7. Discussion and conclusions
+
+- Summarize what worked and what did not.
+- Discuss any challenges or limitations of this work.
+
+## 8. References and external resources
+
+- List all external resources, datasets, libraries, and tools you used (with links).

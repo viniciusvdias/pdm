@@ -10,7 +10,31 @@ VOLUME_NAME="spark-data"
 STACK_NAME="spark-cluster"
 COMPOSE_FILE="docker-compose.yml"
 
+export_script_path(){
+  files=(.bashrc .zshrc .bash_profile)
+  for f in ${files[@]}; do
+    filename="$HOME/$f"
+
+    if [ -f $filename  ]; then
+      if ! $(grep 'recoloca/web/scripts' $filename &>/dev/null);
+      then
+        echo "Adding pdmtf script to $f ..."
+
+        echo >> $filename
+        echo '# pdmtf' >> $filename
+        echo "export PATH=\"\$PATH:$(pwd)\"" >> $filename
+
+        echo "Done!"
+        echo
+        echo "Now please run the command ${yellow}'source ~/$f'${white} manually and then try to use the ${yellow}'pdmtf'${white} command"
+      fi
+    fi
+  done
+}
+
 init_cluster() {
+    docker build -t my-jupyter-spark ../src/jupyter-spark
+
     echo -e "${YELLOW}Iniciando Docker Swarm...${NC}"
     docker swarm init 2>/dev/null || echo -e "${BLUE}Docker Swarm já iniciado${NC}"
     
@@ -27,7 +51,7 @@ init_cluster() {
     sleep 10
     
     echo -e "${YELLOW}Serviços em execução:${NC}"
-    echo -e "${BLUE}Use './big logs [master|worker|jupyter]' para visualizar os logs dos containers${NC}"
+    echo -e "${BLUE}Use './pdmtf logs [master|worker|jupyter]' para visualizar os logs dos containers${NC}"
 }
 
 # Função para parar o cluster
@@ -101,7 +125,7 @@ show_logs() {
 # Menu de ajuda
 show_help() {
     echo -e "\n${BLUE}Spark Cluster Management Script${NC}"
-    echo -e "Uso: ./spark-cluster.sh [comando] [opções]\n"
+    echo -e "Uso: pdmtf [comando] [opções]\n"
     echo -e "Comandos disponíveis:"
     echo -e "  ${GREEN}init${NC}       - Inicia o cluster Spark"
     echo -e "  ${GREEN}stop${NC}       - Para o cluster Spark"
@@ -111,13 +135,16 @@ show_help() {
     echo -e "  ${GREEN}logs${NC} [SVC] - Mostra logs (master/worker)"
     echo -e "  ${GREEN}help${NC}       - Mostra esta ajuda\n"
     echo -e "Exemplos:"
-    echo -e "  ./spark-cluster.sh init"
-    echo -e "  ./spark-cluster.sh copy ./data"
-    echo -e "  ./spark-cluster.sh scale 3"
+    echo -e "  pdmtf init"
+    echo -e "  pdmtf copy ./data"
+    echo -e "  pdmtf scale 3"
 }
 
 # Processamento dos comandos
 case "$1" in
+    setup)
+        export_script_path
+        ;;
     init)
         init_cluster
         ;;
