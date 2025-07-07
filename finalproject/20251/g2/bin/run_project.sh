@@ -44,7 +44,8 @@ show_help() {
     echo "  restart         - Reiniciar o cluster Spark local"
     echo "  logs            - Mostrar logs dos containers"
     echo "  analyze [mode] [periods]  - Executar análise de dados (mode: sample|complete)"
-    echo "  experiments [mode] [type] [periods] - Executar experimentos (mode: sample|complete, type: performance|scalability|periods|all)"
+    echo "  experiments [mode] [iterations] [periods] - Executar experimentos isolados (mode: sample|complete, iterations: número >= 1)"
+    echo "  consolidate [pattern] - Consolidar resultados de experimentos"
     echo ""
     echo "🐳 Comandos Docker Swarm:"
     echo "  swarm-init      - Inicializar Docker Swarm"
@@ -74,8 +75,9 @@ show_help() {
     echo "  $0 analyze complete                    # Análise completa (padrão)"
     echo "  $0 analyze sample 2024/1,2024/2          # Análise do ano 2024 com dados de amostra"
     echo "  $0 analyze complete 2024/1,2024/2        # Análise do ano 2024 com dados completos"
-    echo "  $0 experiments sample performance        # Experimentos de performance com dados de amostra"
-    echo "  $0 experiments complete all 2024/1,2024/2 # Todos os experimentos com dados completos"
+    echo "  $0 experiments sample 5                # Experimentos isolados com 5 iterações (dados de amostra)"
+    echo "  $0 experiments complete 3 2024/1,2024/2 # Experimentos completos com 3 iterações (ano 2024)"
+    echo "  $0 consolidate experiment_complete_*   # Consolidar resultados de experimentos completos"
 }
 
 # Função para construir imagens
@@ -161,18 +163,18 @@ run_analysis() {
     echo "✅ Análise concluída!"
 }
 
-# Função para executar experimentos
+# Função para executar experimentos isolados
 run_experiments() {
     local mode=${1:-complete}
-    local experiment_type=${2:-all}
+    local iterations=${2:-3}
     local periods=$3
  
     case "$mode" in
         sample)
-            echo "🧪 Executando experimentos do RU-UFLA (AMOSTRA)..."
+            echo "🧪 Executando experimentos isolados do RU-UFLA (AMOSTRA)..."
             ;;
         complete)
-            echo "🧪 Executando experimentos do RU-UFLA (COMPLETA)..."
+            echo "🧪 Executando experimentos isolados do RU-UFLA (COMPLETA)..."
             ;;
         *)
             echo "❌ Modo inválido: $mode. Use 'sample' ou 'complete'"
@@ -180,15 +182,13 @@ run_experiments() {
             ;;
     esac
     
-    case "$experiment_type" in
-        performance|scalability|periods|all)
-            echo "📊 Tipo de experimento: $experiment_type"
-            ;;
-        *)
-            echo "❌ Tipo de experimento inválido: $experiment_type. Use 'performance', 'scalability', 'periods' ou 'all'"
-            return 1
-            ;;
-    esac
+    # Validar número de iterações
+    if ! [[ "$iterations" =~ ^[0-9]+$ ]] || [ "$iterations" -lt 1 ]; then
+        echo "❌ Número de iterações inválido: $iterations. Use um número inteiro >= 1"
+        return 1
+    fi
+    
+    echo "🔄 Executando $iterations iterações por configuração"
     
     # Verificar se o cluster está rodando
     if ! $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
@@ -197,13 +197,31 @@ run_experiments() {
         sleep 20
     fi
     
-    # Executar experimentos com os parâmetros especificados
+    # Executar experimentos isolados com os parâmetros especificados
     if [ -z "$periods" ]; then
-        $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main experiments --master-url spark://spark-master:7077 --mode $mode --type $experiment_type
+        $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main experiments --master-url spark://spark-master:7077 --mode $mode --iterations $iterations
     else
-        $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main experiments --master-url spark://spark-master:7077 --mode $mode --type $experiment_type --periods $periods
+        $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main experiments --master-url spark://spark-master:7077 --mode $mode --iterations $iterations --periods $periods
     fi
-    echo "✅ Experimentos concluídos!"
+    echo "✅ Experimentos isolados concluídos!"
+}
+
+# Função para consolidar resultados de experimentos
+consolidate_results() {
+    local pattern=${1:-"experiment_*"}
+    
+    echo "📊 Consolidando resultados de experimentos..."
+    echo "   Padrão de busca: $pattern"
+    
+    # Verificar se o cluster está rodando
+    if ! $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
+        echo "⚠️  Cluster não está rodando. Iniciando..."
+        start_cluster
+        sleep 20
+    fi
+    
+    $DOCKER_COMPOSE_CMD run --rm analytics /app/.venv/bin/python -m src.main consolidate --pattern "$pattern"
+    echo "✅ Consolidação concluída!"
 }
 # === FUNÇÕES DOCKER SWARM ===
 
@@ -361,6 +379,9 @@ case "${1:-up}" in
         ;;
     experiments)
         run_experiments $2 $3 $4
+        ;;
+    consolidate)
+        consolidate_results $2
         ;;
     # Comandos Docker Swarm
     swarm-init)

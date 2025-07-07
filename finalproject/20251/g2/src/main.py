@@ -231,15 +231,14 @@ def info(format):
     help="Lista de períodos letivos separados por vírgula (formato: YYYY/S). Ex: 2024/1,2024/2",
 )
 @click.option(
-    "--type",
-    "experiment_type",
-    type=click.Choice(["performance", "scalability", "periods", "all"]),
-    default="all",
-    help="Tipo de experimento a executar",
+    "--iterations",
+    type=int,
+    default=3,
+    help="Número de iterações por configuração de experimento",
 )
 @click.pass_context
-def experiments(ctx, master_url: Optional[str], app_name: str, mode: str, periods: Optional[str], experiment_type: str):
-    """Executa experimentos detalhados para implementar os TODOs da seção 6"""
+def experiments(ctx, master_url: Optional[str], app_name: str, mode: str, periods: Optional[str], iterations: int):
+    """Executa suite completa de experimentos isolados com múltiplas configurações"""
 
     logger = get_module_logger("experiments")
     
@@ -264,10 +263,10 @@ def experiments(ctx, master_url: Optional[str], app_name: str, mode: str, period
         logger.info("Nenhum período específico. Processando todos os dados.")
     
     if mode == "sample":
-        logger.info("Iniciando experimentos com dados de AMOSTRA do RU-UFLA")
+        logger.info(f"Iniciando suite de experimentos com dados de AMOSTRA ({iterations} iterações)")
         data_file = DataPaths.RU_DATA_SAMPLE
     else:
-        logger.info("Iniciando experimentos com dados COMPLETOS do RU-UFLA")
+        logger.info(f"Iniciando suite de experimentos com dados COMPLETOS ({iterations} iterações)")
         data_file = DataPaths.RU_DATA_COMPLETE
 
     try:
@@ -297,11 +296,11 @@ def experiments(ctx, master_url: Optional[str], app_name: str, mode: str, period
         if periods_list:
             analyzer.apply_period_filter(periods_list)
         
-        # Executar experimentos usando o módulo experiments
-        from experiments import run_detailed_experiments
-        run_detailed_experiments(spark, analyzer.df, experiment_type, mode, periods_list)
+        # Executar suite de experimentos usando o módulo experiments
+        from experiments import run_experiment_suite
+        run_experiment_suite(spark, analyzer.df, mode, iterations, logger)
 
-        logger.success(f"Experimentos ({experiment_type}) concluídos com sucesso!")
+        logger.success(f"Suite de experimentos ({iterations} iterações) concluída com sucesso!")
 
     except Exception as e:
         logger.error(f"Erro durante os experimentos: {e}")
@@ -309,6 +308,156 @@ def experiments(ctx, master_url: Optional[str], app_name: str, mode: str, period
     finally:
         if "spark" in locals():
             spark.stop()
+
+@cli.command()
+@click.option(
+    "--pattern",
+    default="experiment_*",
+    help="Padrão para buscar arquivos de resultados (ex: experiment_complete_*)",
+)
+@click.option(
+    "--output-format",
+    type=click.Choice(["json", "csv", "both"]),
+    default="both",
+    help="Formato de saída da consolidação",
+)
+@click.pass_context
+def consolidate(ctx, pattern: str, output_format: str):
+    """Consolida múltiplos resultados de experimentos em um relatório único"""
+
+    logger = get_module_logger("consolidate")
+    
+    import glob
+    import json
+    import csv
+    from datetime import datetime
+    
+    logger.info(f"Consolidando resultados com padrão: {pattern}")
+    
+    # Buscar arquivos de resultados
+    search_path = f"{DataPaths.RESULTS_DIR}/{pattern}.json"
+    result_files = glob.glob(search_path)
+    
+    if not result_files:
+        logger.warning(f"Nenhum arquivo encontrado com padrão: {search_path}")
+        return
+    
+    logger.info(f"Encontrados {len(result_files)} arquivos de resultados")
+    
+    # Consolidar resultados
+    consolidated_data = {
+        "timestamp": datetime.now().isoformat(),
+        "total_files": len(result_files),
+        "pattern": pattern,
+        "experiments": []
+    }
+    
+    all_workloads = []
+    
+    for file_path in sorted(result_files):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                
+            consolidated_data["experiments"].append({
+                "file": file_path.split('/')[-1],
+                "summary": data.get("summary", {}),
+                "config": data.get("spark_config", {}),
+                "workloads_count": len(data.get("workloads", []))
+            })
+            
+            # Adicionar workloads individuais para análise
+            for workload in data.get("workloads", []):
+                workload_entry = {
+                    "file": file_path.split('/')[-1],
+                    "iteration": data.get("iteration", 0),
+                    "dataset": data.get("dataset_size", "unknown"),
+                    "config_parallelism": data.get("spark_config", {}).get("parallelism", 1),
+                    "config_partitions": data.get("spark_config", {}).get("partitions", 1),
+                    **workload
+                }
+                all_workloads.append(workload_entry)
+                
+            logger.info(f"Processado: {file_path.split('/')[-1]}")
+            
+        except Exception as e:
+            logger.warning(f"Erro ao processar {file_path}: {e}")
+    
+    # Salvar consolidação
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    if output_format in ["json", "both"]:
+        json_file = f"{DataPaths.RESULTS_DIR}/consolidated_results_{timestamp}.json"
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(consolidated_data, f, indent=2, ensure_ascii=False)
+        logger.success(f"Consolidação JSON salva: {json_file}")
+    
+    if output_format in ["csv", "both"]:
+        csv_file = f"{DataPaths.RESULTS_DIR}/consolidated_workloads_{timestamp}.csv"
+        
+        if all_workloads:
+            # Extrair todas as chaves possíveis
+            all_keys = set()
+            for workload in all_workloads:
+                all_keys.update(workload.keys())
+                if 'metricas' in workload:
+                    for metric_key in workload['metricas'].keys():
+                        all_keys.add(f"metrics_{metric_key}")
+            
+            with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                
+                # Cabeçalho
+                header = [
+                    'File', 'Iteration', 'Dataset', 'Config_Parallelism', 'Config_Partitions',
+                    'Workload', 'Nome', 'Execution_Time_s', 'Throughput', 'Memory_GB',
+                    'Stages', 'Tasks', 'CPU_ms', 'GC_ms', 'Shuffle_Read_Bytes', 'Shuffle_Write_Bytes'
+                ]
+                writer.writerow(header)
+                
+                # Dados
+                for workload in all_workloads:
+                    metrics = workload.get('metricas', {})
+                    writer.writerow([
+                        workload.get('file', ''),
+                        workload.get('iteration', 0),
+                        workload.get('dataset', ''),
+                        workload.get('config_parallelism', 1),
+                        workload.get('config_partitions', 1),
+                        workload.get('workload', ''),
+                        workload.get('nome', ''),
+                        metrics.get('execution_time_seconds', 0),
+                        metrics.get('throughput_per_second', 0),
+                        metrics.get('memory_peak_gb', 0),
+                        metrics.get('stages_count', 0),
+                        metrics.get('tasks_count', 0),
+                        metrics.get('cpu_time_ms', 0),
+                        metrics.get('gc_time_ms', 0),
+                        metrics.get('shuffle_read_bytes', 0),
+                        metrics.get('shuffle_write_bytes', 0)
+                    ])
+        
+        logger.success(f"Consolidação CSV salva: {csv_file}")
+    
+    # Estatísticas resumidas
+    logger.info("=== ESTATÍSTICAS CONSOLIDADAS ===")
+    logger.info(f"Total de arquivos processados: {len(result_files)}")
+    logger.info(f"Total de workloads: {len(all_workloads)}")
+    
+    if all_workloads:
+        # Estatísticas por workload
+        workload_stats = {}
+        for workload in all_workloads:
+            wl_name = workload.get('workload', 'unknown')
+            if wl_name not in workload_stats:
+                workload_stats[wl_name] = []
+            workload_stats[wl_name].append(workload.get('metricas', {}).get('execution_time_seconds', 0))
+        
+        for wl_name, times in workload_stats.items():
+            avg_time = sum(times) / len(times) if times else 0
+            logger.info(f"{wl_name}: {len(times)} execuções, tempo médio: {avg_time:.2f}s")
+    
+    logger.success("Consolidação concluída com sucesso!")
 
 
 if __name__ == "__main__":

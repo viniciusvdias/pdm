@@ -33,11 +33,7 @@ O dataset completo contém dados de múltiplos anos letivos (2009-2025), totaliz
 
 Uma amostra pequena do dataset (aproximadamente 800KB) está incluída no diretório `datasample/ru_sample.json` para testes rápidos e demonstração da funcionalidade.
 
-Para o dataset completo, o projeto possui um sistema automatizado de download que pode ser executado através do comando:
-
-```bash
-docker compose run --rm analytics /app/.venv/bin/python -m src.main analyze --mode complete
-```
+Para o dataset completo, o projeto possui um sistema automatizado de download que pode ser executado ao executar a análise completa.
 
 O sistema irá automaticamente baixar o dataset completo do Google Drive quando necessário. O download é feito de forma transparente durante a primeira execução da análise completa.
 
@@ -55,9 +51,6 @@ Para executar o projeto com os dados de amostra:
 # Clonar o repositório
 git clone <url-do-repositorio>
 cd g2
-
-# Executar análise com dados de amostra
-docker compose up --build analytics
 
 # Ou usando o script fornecido
 chmod +x bin/run_project.sh
@@ -218,93 +211,126 @@ Os experimentos foram executados em:
 
 Para cada carga de trabalho, foram testados os seguintes parâmetros:
 
-1. **Tamanho do dataset**:
+1. **Dataset utilizado**:
 
-   - Amostra (800KB, ~1.000 registros)
    - Completo (2GB, ~5.000.000 registros)
+   - Períodos: 2009-2025 (dataset completo histórico)
 
-2. **Número de workers**: 1, 2, 4 workers
+2. **Configurações de Spark testadas**:
 
-3. **Configurações de memória**:
+   - **p1_par4**: parallelism=1, partitions=4
+   - **p2_par8**: parallelism=2, partitions=8
 
-   - 2GB, 4GB, 6GB por executor
+3. **Métricas coletadas**:
 
-4. **Períodos analisados**:
-   
+   - Tempo de execução (segundos)
+   - Throughput (registros/segundo)
+   - Uso de memória (GB)
+   - Número de stages e tasks
+   - Tempo de CPU e Garbage Collection
+
+4. **Metodologia**:
+
+   - 3 iterações para cada configuração
+   - Execução isolada de cada workload
+   - Coleta de métricas usando Spark Measure
 
 ### 6.3 Resultados
 
-#### Análise de Performance por Workload:
+#### Análise de Performance por Workload (Dataset Completo):
 
-| Workload   | Dataset  | Workers | Memória | Tempo (s) | Memória Pico (GB) | Throughput (rec/s) |
-| ---------- | -------- | ------- | ------- | --------- | ----------------- | ------------------ |
-| WORKLOAD-1 | Amostra  | 2       | 2g      | 0.3       | 2.0               | 5.531              |
-| WORKLOAD-1 | Amostra  | 2       | 4g      | 0.4       | 2.0               | 3.744              |
-| WORKLOAD-1 | Amostra  | 2       | 6g      | 0.3       | 2.0               | 4.640              |
-| WORKLOAD-2 | Amostra  | 2       | 2g      | 0.1       | 3.0               | 16.132             |
-| WORKLOAD-2 | Amostra  | 2       | 4g      | 0.1       | 3.0               | 16.188             |
-| WORKLOAD-2 | Amostra  | 2       | 6g      | 0.1       | 3.0               | 16.186             |
+| Workload   | Configuração | Parallelism | Partitions | Tempo Médio (s) | Memória Pico (GB) | Throughput (rec/s) |
+| ---------- | ------------ | ----------- | ---------- | --------------- | ----------------- | ------------------ |
+| WORKLOAD-1 | p1_par4      | 1           | 4          | 59.6            | 0.38              | 110.357            |
+| WORKLOAD-1 | p2_par8      | 2           | 8          | 61.7            | 0.38              | 105.853            |
+| WORKLOAD-2 | p1_par4      | 1           | 4          | 61.8            | 15.24             | 325.048            |
+| WORKLOAD-2 | p2_par8      | 2           | 8          | 57.5            | 16.0              | 349.795            |
+| WORKLOAD-3 | p1_par4      | 1           | 4          | 101.1           | 20.78             | 1.66               |
+| WORKLOAD-3 | p2_par8      | 2           | 8          | 88.6            | 21.53             | 1.85               |
 
-#### Análise por Períodos:
+#### Análise Detalhada por Iteração:
 
-| Período(s)        | Tempo de Execução (s) | Throughput | Status |
-| ----------------- | --------------------- | ---------- | ------ |
-| 2023/1            | 0.39                  | 0.0        | Sucesso |
-| 2023/2            | 0.39                  | 0.0        | Sucesso |
-| 2024/1            | 0.41                  | 0.0        | Sucesso |
-| 2024/2            | 0.25                  | 0.0        | Sucesso |
-| 2023/1 + 2023/2   | 0.36                  | 0.0        | Sucesso |
-| 2024/1 + 2024/2   | 0.22                  | 0.0        | Sucesso |
+| Workload   | Config  | Iter 1 (s) | Iter 2 (s) | Iter 3 (s) | Variação (%) |
+| ---------- | ------- | ---------- | ---------- | ---------- | ------------ |
+| WORKLOAD-1 | p1_par4 | 53.27      | 62.05      | 63.53      | 19.3         |
+| WORKLOAD-1 | p2_par8 | 61.14      | 61.94      | 62.15      | 1.7          |
+| WORKLOAD-2 | p1_par4 | 61.88      | 61.98      | 61.65      | 0.5          |
+| WORKLOAD-2 | p2_par8 | 57.11      | 56.91      | 58.4       | 2.6          |
+| WORKLOAD-3 | p1_par4 | 112.32     | 96.42      | 94.43      | 18.9         |
+| WORKLOAD-3 | p2_par8 | 88.9       | 89.8       | 87.09      | 3.1          |
 
-#### Escalabilidade por Número de Workers:
+#### Escalabilidade por Configuração:
 
-| Workers | Tempo Total (s) | Speedup | Eficiência (%) |
-| ------- | --------------- | ------- | -------------- |
-| 1       | 0.2             | 1.0x    | 100.0          |
-| 2       | 0.3             | 0.86x   | 42.8           |
-| 4       | 0.3             | 0.75x   | 18.7           |
+| Workload   | p1_par4 (s) | p2_par8 (s) | Speedup | Melhoria (%) |
+| ---------- | ----------- | ----------- | ------- | ------------ |
+| WORKLOAD-1 | 59.6        | 61.7        | 0.97x   | -3.5         |
+| WORKLOAD-2 | 61.8        | 57.5        | 1.07x   | +7.0         |
+| WORKLOAD-3 | 101.1       | 88.6        | 1.14x   | +12.4        |
 
 ### Interpretação dos resultados:
 
-1. **Performance por Workload**: 
-   - WORKLOAD-1 (estatísticas básicas) apresenta tempos de execução consistentes entre 0.3-0.4 segundos
-   - WORKLOAD-2 (análise de grafo) é mais eficiente, executando em apenas 0.1 segundo
-   - O throughput do WORKLOAD-2 é significativamente maior (16.132-16.188 rec/s) comparado ao WORKLOAD-1 (3.744-5.531 rec/s)
+1. **Performance por Workload**:
 
-2. **Impacto da Memória**: 
-   - Aumentar a memória de 2g para 6g não resultou em melhoria significativa de performance
-   - WORKLOAD-2 mantém pico de memória de 3.0GB independente da configuração
-   - WORKLOAD-1 mantém pico de memória de 2.0GB em todas as configurações
+   - **WORKLOAD-1 (Estatísticas Básicas)**: Apresenta tempos de execução entre 53-63 segundos com consumo de memória baixo (0.38GB) e throughput de 105K-110K rec/s
+   - **WORKLOAD-2 (Grafo de Usuários)**: Executa em 57-62 segundos com consumo significativo de memória (15-16GB) e throughput alto de 325K-350K rec/s
+   - **WORKLOAD-3 (Detecção de Comunidades)**: É o mais intensivo, executando em 88-101 segundos com maior consumo de memória (20-21GB) e throughput baixo de 1.6-1.8 rec/s
 
-3. **Análise por Períodos**:
-   - Todos os períodos analisados (2023/1, 2023/2, 2024/1, 2024/2) executaram com sucesso
-   - Tempos de execução variam entre 0.22 e 0.41 segundos
-   - Análises combinadas (2023/1+2023/2 e 2024/1+2024/2) são mais eficientes que análises individuais
+2. **Impacto da Paralelização**:
 
-4. **Escalabilidade**: 
-   - Resultados inesperados: com mais workers (2 e 4), o tempo total aumenta e a eficiência diminui
-   - Isso pode indicar overhead de coordenação significativo para datasets pequenos
-   - Para datasets de amostra, um único worker pode ser mais eficiente
+   - **WORKLOAD-1**: Configuração p2_par8 é ligeiramente mais lenta (-3.5%) que p1_par4, indicando overhead de coordenação
+   - **WORKLOAD-2**: Beneficia-se da paralelização com melhoria de 7% na configuração p2_par8
+   - **WORKLOAD-3**: Mostra maior benefício da paralelização com melhoria de 12.4% na configuração p2_par8
+
+3. **Consistência e Variabilidade**:
+
+   - **WORKLOAD-2** apresenta maior consistência entre iterações (variação de 0.5-2.6%)
+   - **WORKLOAD-1** com p1_par4 mostra maior variabilidade (19.3%), indicando possível instabilidade na configuração
+   - **WORKLOAD-3** com p1_par4 também apresenta alta variabilidade (18.9%), melhorando significativamente com p2_par8 (3.1%)
+
+4. **Uso de Memória**:
+
+   - **WORKLOAD-1**: Consumo muito baixo (0.38GB) independente da configuração
+   - **WORKLOAD-2**: Consumo alto (15-16GB) com leve aumento na configuração p2_par8
+   - **WORKLOAD-3**: Maior consumo (20-21GB), com aumentos proporcionais à paralelização
+
+5. **Escalabilidade**:
+   - Algoritmos de grafo (WORKLOAD-2 e WORKLOAD-3) beneficiam-se mais da paralelização
+   - Operações simples de agregação (WORKLOAD-1) sofrem com overhead de coordenação
+   - Dataset completo (5M+ registros) justifica o uso de múltiplos workers para workloads intensivos
 
 ## 7. Discussão e conclusões
 
 ### O que funcionou bem:
 
-1. **Arquitetura distribuída**: A implementação com Spark mostrou-se eficaz para processamento dos dados do RU-UFLA
-2. **Containerização**: Docker facilita a reprodutibilidade e deployment
-3. **Modularidade**: Separação clara entre cargas de trabalho permite análises específicas
-4. **Escalabilidade**: Sistema escala bem até 2 workers com boa eficiência
+1. **Arquitetura distribuída**: A implementação com Spark mostrou-se eficaz para processamento do dataset completo (5M+ registros)
+2. **Containerização**: Docker facilita a reprodutibilidade e deployment em ambiente controlado
+3. **Modularidade**: Separação clara entre workloads permite análises específicas e comparação de performance
+4. **Escalabilidade seletiva**: Workloads intensivos de grafo (WORKLOAD-2 e WORKLOAD-3) beneficiam-se da paralelização
 
 ### Desafios e limitações:
 
-1. **Overhead de coordenação**: Escalabilidade reduzida com muitos workers pequenos
-2. **Complexidade de grafos**: Algoritmos de detecção de comunidades requerem recursos significativos
-3. **Gestão de memória**: Datasets grandes exigem configuração cuidadosa de memória
-4. **Dependências externas**: Download automático de dados requer conectividade estável
+1. **Overhead de coordenação**: Operações simples (WORKLOAD-1) sofrem degradação com paralelização (-3.5%)
+2. **Complexidade de grafos**: WORKLOAD-3 requer recursos significativos (20-21GB RAM) e apresenta baixo throughput
+3. **Gestão de memória**: Workloads de grafo demandam configuração cuidadosa de memória para evitar OOM
+4. **Variabilidade de performance**: Configurações menos otimizadas apresentam alta variabilidade entre execuções (até 19.3%)
+
+### Insights sobre escalabilidade:
+
+1. **Workloads de agregação simples**: Não se beneficiam da paralelização devido ao overhead de coordenação
+2. **Workloads de grafo**: Mostram benefícios claros da paralelização (7-12% de melhoria)
+3. **Configuração otimizada**: p2_par8 (parallelism=2, partitions=8) oferece melhor balanceamento
+4. **Consistência**: Configurações mais paralelas tendem a ter menor variabilidade entre execuções
 
 ### Conclusões:
 
-O projeto demonstra com sucesso a aplicação de técnicas de big data para análise de dados universitários. O Apache Spark provou ser uma escolha adequada para processar os dados do RU-UFLA, oferecendo boa performance e escalabilidade. Os insights gerados podem contribuir para melhor planejamento e otimização dos serviços do restaurante universitário.
+O projeto demonstra com sucesso a aplicação de técnicas de big data para análise de dados universitários em escala real. O Apache Spark provou ser uma escolha adequada para processar os dados do RU-UFLA, especialmente para workloads intensivos de grafo. Os resultados mostram que:
+
+- **Paralelização não é sempre benéfica**: Operações simples podem sofrer degradação
+- **Workloads de grafo escalam bem**: Algoritmos complexos justificam o uso de múltiplos workers
+- **Configuração adequada é crucial**: Balanceamento entre paralelização e overhead é fundamental
+- **Datasets grandes justificam big data**: Volume de 5M+ registros demonstra a necessidade de processamento distribuído
+
+Os insights gerados podem contribuir para melhor planejamento e otimização dos serviços do restaurante universitário, além de servir como base para futuras análises de dados acadêmicos.
 
 ## 8. Referências e recursos externos
 

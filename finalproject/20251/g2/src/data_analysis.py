@@ -121,7 +121,7 @@ class RUAnalyzer:
             self.logger.error(f"Erro ao contar registros: {e}")
             raise
         
-    def _run_community_detection(self, edges_df: DataFrame):
+    def run_community_detection(self, edges_df: DataFrame):
         self.logger.info("Executando detecção de comunidades usando NetworkX...")
         
         try:
@@ -543,7 +543,7 @@ class RUAnalyzer:
             results, connections = self.get_users_graph_window_sliding()
             
             # Detecção de comunidades com limite de arestas
-            communities = self._run_community_detection(connections)
+            communities = self.run_community_detection(connections)
             
             results["estatisticas_grafo"]["total_comunidades"] = len(communities)
             results["comunidades"] = [
@@ -706,8 +706,7 @@ class RUAnalyzer:
             # Salvar resultados da análise
             self.save_results(stats, graph_stats)
             
-            # Executar experimentos básicos (TODOs da seção 6)
-            self._run_simple_experiments(file_path, periods)
+            # self._run_simple_experiments(file_path, periods)
             
             self.logger.success("Análise completa finalizada com sucesso!")
             self.logger.info("✅ Resultados salvos em: {}", DataPaths.RESULTS_DIR)
@@ -716,32 +715,3 @@ class RUAnalyzer:
         except Exception as e:
             self.logger.error(f"Erro na análise completa: {e}")
             raise
-    
-    def _run_simple_experiments(self, file_path: str, periods: Optional[list] = None):
-        """
-        Executa experimentos simples para implementar os TODOs da seção 6
-        
-        Args:
-            file_path: Caminho para o arquivo de dados
-            periods: Lista de períodos letivos
-        """
-        self.logger.info("🧪 Executando experimentos simples")
-        
-        try:
-            # Determinar tamanho do dataset
-            dataset_size = "complete" if "complete" in file_path else "sample"
-            
-            # Executar experimentos básicos usando o módulo experiments
-            try:
-                from experiments import run_basic_experiments
-                run_basic_experiments(self.spark, self.df, dataset_size, periods)
-            except ImportError:
-                self.logger.warning("⚠️  Módulo experiments não encontrado. Pulando experimentos básicos.")
-            except Exception as e:
-                self.logger.warning(f"⚠️  Erro nos experimentos básicos: {e}")
-            
-            self.logger.success("✅ Experimentos simples concluídos!")
-            
-        except Exception as e:
-            self.logger.warning(f"⚠️  Erro nos experimentos simples: {e}")
-            self.logger.info("Continuação da análise principal...")
