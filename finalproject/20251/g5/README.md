@@ -1,4 +1,32 @@
 # Final project report: *\<include your title here\>*
+# COMO RODAR O PROJETO 
+
+- Clonar esse repositorio
+`git clone https://github.com/PedroCobucci/pdm.git`
+
+
+- Checkout para a branch do grupo 
+`git checkout finalproject-20251-G5`
+
+
+- Acessar a pasta do projeto do grupo e pasta do script 
+`cd finalproject/20251/g5/bin`
+
+```bash
+./bin/pdmtf setup
+source ~/.bashrc
+pdmtf
+```
+
+- Para que os comandos funcionem
+`cd src`
+ex:
+```bash
+pdmtf init
+```
+
+
+# Template Project Structure (`gX`)
 
 ## 1. Context and motivation
 
