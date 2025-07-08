@@ -6,7 +6,6 @@ O Restaurante Universitário (RU) da UFLA é um dos principais pontos de aliment
 
 Este projeto tem como objetivo principal analisar os dados históricos de consumo do RU-UFLA utilizando Apache Spark, uma plataforma de processamento de big data, para:
 
-- Identificar padrões temporais de consumo de refeições
 - Analisar o comportamento dos usuários por curso, tipo de usuário e vulnerabilidade social
 - Detectar comunidades de usuários com padrões similares de consumo
 - Gerar métricas para otimização do serviço e melhor planejamento de recursos
@@ -177,8 +176,8 @@ O projeto implementa as seguintes cargas de trabalho de big data:
 ### [WORKLOAD-1] Análise de Estatísticas Básicas
 
 - **Descrição**: Cálculo de estatísticas descritivas sobre consumo de refeições
-- **Operações**: Contagem de registros, agregações por tipo de refeição, curso e período
-- **Métricas**: Total de consumos, distribuição por categorias, tendências temporais
+- **Operações**: Contagem de registros, agregações por tipo de refeição e curso
+- **Métricas**: Total de consumos, distribuição por categorias
 
 ### [WORKLOAD-2] Análise de Grafo de Usuários
 
@@ -205,7 +204,7 @@ Os experimentos foram executados em:
   - 6GB RAM por Worker
   - 6 cores por Worker
   - Python 3.12 com PySpark 3.5.2
-- **Hardware**: VM com 16 vCPUs, 32GB RAM, SSD 500GB
+- **Hardware**: i7-1265H x 16, 32GB RAM, SSD 500GB
 
 ### 6.2 Configuração dos testes
 
