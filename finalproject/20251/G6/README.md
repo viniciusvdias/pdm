@@ -26,7 +26,7 @@ sh bin/start.sh
 
 Obs: if you have any trouble while starting or executing the container, try to stop it (sh bin/stop.sh) and then remove it (sh bin/remove.sh) and finally, start up it again.
 
-Now, we can be able to acess the jupyter browser enviroment with the directories data containing the data files and src containeing the notebook files.
+Now, we can be able to acess the jupyter browser enviroment with the directories data containing the data files and src containing the notebook files.
 
 ## About the project
 
