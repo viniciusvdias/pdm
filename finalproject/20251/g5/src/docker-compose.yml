@@ -29,7 +29,7 @@ services:
       - "8888:8888"
     volumes:
       - ./notebooks:/opt/jupyter/notebooks
-      - ./spark-data:/opt/jupyter/spark-data
+      - ./spark-data:/spark-data
     environment:
       - JUPYTER_TOKEN=spark123
     depends_on:
