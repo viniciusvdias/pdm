@@ -16,7 +16,7 @@ services:
       # Monta a amostra de dados
       - ./datasample:/opt/bitnami/spark/datasample
       # Monta o diretório com seus dados CSV completos
-      # - ./full_data:/opt/bitnami/spark/full_data
+      - ./full_data:/opt/bitnami/spark/full_data
 
   spark-worker:
     image: bitnami/spark:3.5.1 # Imagem base para os Workers
@@ -35,7 +35,7 @@ services:
       # Os Workers também precisam ver os scripts e os dados para processá-los
       - ./src:/opt/bitnami/spark/src
       - ./datasample:/opt/bitnami/spark/datasample
-      # - ./full_data:/opt/bitnami/spark/full_data
+      - ./full_data:/opt/bitnami/spark/full_data
 
   jupyterlab:
     image: jupyter/pyspark-notebook:latest # Imagem do JupyterLab com PySpark, Java e Spark pré-instalados
@@ -50,7 +50,7 @@ services:
       # Monta a amostra de dados
       - ./datasample:/home/jovyan/work/datasample
       # Monta o diretório com seus dados CSV completos
-      # - ./full_data:/home/jovyan/work/full_data
+      - ./full_data:/home/jovyan/work/full_data
       # Se você tiver dependências Python adicionais, monte misc/requirements.txt
       # - ./misc/requirements.txt:/home/jovyan/work/misc/requirements.txt
     working_dir: /home/jovyan/work/src # Define o diretório de trabalho padrão no JupyterLab
