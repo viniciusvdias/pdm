@@ -1,0 +1,58 @@
+services:
+  spark-master:
+    image: bitnami/spark:3.5.1 # Imagem base para o Master
+    command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "8080:8080" # Spark Master Web UI
+      - "7077:7077" # Porta interna do Spark Master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_RPC_SSL_ENABLED=no
+    volumes:
+      # Monta o diretório de código-fonte para que o Master possa ver os scripts
+      - ./src:/opt/bitnami/spark/src
+      # Monta a amostra de dados
+      - ./datasample:/opt/bitnami/spark/datasample
+      # Monta o diretório com seus dados CSV completos
+      # - ./full_data:/opt/bitnami/spark/full_data
+
+  spark-worker:
+    image: bitnami/spark:3.5.1 # Imagem base para os Workers
+    command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=1 # Ajuste conforme a capacidade da sua máquina
+      - SPARK_WORKER_MEMORY=1G # Ajuste conforme a capacidade da sua máquina
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_RPC_SSL_ENABLED=no
+    volumes:
+      # Os Workers também precisam ver os scripts e os dados para processá-los
+      - ./src:/opt/bitnami/spark/src
+      - ./datasample:/opt/bitnami/spark/datasample
+      # - ./full_data:/opt/bitnami/spark/full_data
+
+  jupyterlab:
+    image: jupyter/pyspark-notebook:latest # Imagem do JupyterLab com PySpark, Java e Spark pré-instalados
+    ports:
+      - "8888:8888" # Porta para acessar o JupyterLab no navegador
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077 # Conecta este Jupyter ao seu Spark Master
+      - JUPYTER_ENABLE_LAB=yes # Habilita o JupyterLab em vez do clássico Notebook
+    volumes:
+      # Monta a pasta src/ completa, incluindo notebooks e scripts
+      - ./src:/home/jovyan/work/src
+      # Monta a amostra de dados
+      - ./datasample:/home/jovyan/work/datasample
+      # Monta o diretório com seus dados CSV completos
+      # - ./full_data:/home/jovyan/work/full_data
+      # Se você tiver dependências Python adicionais, monte misc/requirements.txt
+      # - ./misc/requirements.txt:/home/jovyan/work/misc/requirements.txt
+    working_dir: /home/jovyan/work/src # Define o diretório de trabalho padrão no JupyterLab
+    depends_on:
+      - spark-master # Garante que o Master suba antes do JupyterLab
