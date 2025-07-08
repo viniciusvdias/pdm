@@ -21,7 +21,7 @@ while [ "$current_date" -le "$end_date" ]; do
 
     # Faz o download do arquivo
     echo "Baixando o arquivo: $file_name"
-    wget -O "../data/$file_name" "$url"
+    wget -O "data/$file_name" "$url"
 
     # Verifica se o download foi bem-sucedido
     if [ $? -ne 0 ]; then

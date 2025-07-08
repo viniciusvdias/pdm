@@ -1,8 +1,8 @@
 amount of files,code_session,time
-12,loading df,7.899103403091431
-12,clean df,6.802720069885254
-12,filter by month,9.563405275344849
-12,filter by hour,5.114935874938965
-12,filter daily pattern,10.084391593933105
-12,filter by day of week,12.808115720748901
-12,detecting outliers,32.325395345687866
+3,loading df,5.782371520996094
+3,clean df,2.59513521194458
+3,filter by month,2.370734691619873
+3,filter by hour,0.9638516902923584
+3,filter daily pattern,2.347296953201294
+3,filter by day of week,2.7403388023376465
+3,detecting outliers,6.653059720993042
