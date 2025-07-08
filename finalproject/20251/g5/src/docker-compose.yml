@@ -40,7 +40,7 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 1G
+          memory: 3G
     command: >
       jupyter notebook
       --ip=0.0.0.0
