@@ -98,31 +98,86 @@ O projeto utiliza contêineres orquestrados com Docker Swarm para processar dado
 
 ## 5. Workloads evaluated
 
+#### [WORKLOAD-1] Agrupamento de letras de músicas por emoção
+
+**Objetivo:** Mostrar quais palavras são mais frequentes nas letras das músicas em cada emoção.
+
+**Etapas:**
+- Leitura do dataset no formato Parquet.
+- Remoção de pontuação e símbolos usando `regex_replace`.
+- Remoção de StopWords (palavras sem sentido semântico).
+- Tokenização por espaços.
+- Conversão para minúsculas.
+- Explosão das palavras em linhas individuais usando `explode`.
+- Ranqueamento de palavras mais recorrentes por emoção.
+
+---
+
+#### [WORKLOAD-2] Cálculo da Similaridade de Jaccard
+
+**Objetivo:** Comparar todos os pares possíveis de artistas dentro do mesmo gênero utilizando a métrica de Jaccard com base no vocabulário textual.
+
+**Etapas:**
+- Realização de um self-join (cruzamento) entre os artistas por gênero.
+- Cálculo de interseção (`array_intersect`) e união (`array_union`) de vocabulários.
+- Cálculo da similaridade de Jaccard: `interseção / união`.
+- Ranqueamento dos pares mais similares por gênero.
+
+---
+
+#### [WORKLOAD-3] Similaridade Léxica entre Gêneros Musicais (Sem Numpy)
+
+**Objetivo:** Encontrar o número de palavras em comum entre os principais gêneros musicais, medindo similaridade léxica sem o uso de bibliotecas externas como NumPy.
+
+**Etapas**:
+
+- Leitura do dataset `musicas_limpas.parquet`.
+- Seleção dos 10 gêneros musicais com mais músicas no dataset.
+- Explosão das palavras com `explode` e `split`.
+- Agrupamento por `main_genre` usando `collect_set("palavra")` para obter vocabulário único por gênero.
+- Self-join do vocabulário de gêneros usando `crossJoin`, comparando pares distintos (`g1 < g2`).
+- Cálculo do número de palavras em comum por par de gêneros usando `array_intersect` + `size`.
+- Ordenação decrescente pelo número de palavras em comum.
+
+---
+
 - Specify each big data task evaluated in your project (queries, data pre-processing, sub-routines, etc.).
 - Be specific: describe the details of each workload, and give each a clear name. These named workloads will be referenced and evaluated via performance experiments in the next section.
   - Example: [WORKLOAD-1] Query that computes the average occupation within each
     time window (include query below). [WORKLOAD-2] Preprocessing, including
   removing duplicates, standardization, etc.
 
+---
+
 ## 6. Experiments and results
 
 ### 6.1 Experimental environment
 
-- Describe the environment used for experiments (machine/VM specs, OS, Docker version, etc.).
-- Example:
-  > Experiments were run on a virtual machine with 4 vCPUs, 8GB RAM, Ubuntu 22.04, Docker 24.x.
+- As execuções foram realizadas em ambiente Docker com Spark.
+- Os experimentos foram realizados em uma máquina:
+> Windows 11
+> Ubuntu 22.04 (containers)
+> Docker Version 28.3.0
+> Spark Version 3.4.1
+> Modo Cluster
+> 1 Spark Master + N workers (varíavel)
+> CPU 3.70 Ghz base (até 4.6 Ghz)
+> 16 GB de RAM DDR4 3200 MHz
 
 ### 6.2 What did you test?
 
-- What parameters did you try changing? What did you measure (e.g. throughput, latency, wall-clock time, resident memory, disk usage, application level metrics)?
-- The ideal is that, for each execution configuration, you repeat the experiments a number of times (replications). With this information, report the average and also the variance/deviation of the results.
+Foram avaliadas as seguintes variações de configuração:
+
+| Parâmetro                 | Valores Testados              |
+|--------------------------|-------------------------------|
+| Workers                  | 1, 2, 6                        |
+| Núcleos por Worker       | 1, 2, 6                        |
+| Métricas observadas      | Tempo total (s), uso de memória, distribuição de tarefas, uso de CPU |
+| Repetições               | 3 execuções por configuração   |
 
 ### 6.3 Results
+#### Tabela Comparativa por Configuração
 
-- Use tables and plots (insert images).
-- Discuss your results: What do they mean? What did you learn about the data or
-about the computational cost of processing this data?
-- Do not just show numbers or plots — always explain what they mean and why they matter.
 
 ## 7. Discussion and conclusions
 
