@@ -19,8 +19,9 @@
 * **Dataset description**
   For each year from **2007 to 2025**, two datasets are provided:
 
-  * One containing **traffic accident records** (30 columns)
-  * Another containing **information about people involved** in those accidents (35 columns)
+  * One containing **traffic accident records** (30 columns) with 2.150.000 rows
+  * Another containing **information about people involved** in those accidents (35 columns) with 4.600.000 rows
+  * with approximately 6,8 million total rows.
 
 * **Overview of key features**:
 
