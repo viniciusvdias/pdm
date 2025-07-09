@@ -53,7 +53,11 @@ services:
     ports:
       - "8888:8888" 
       - "8501:8501" 
-      - "4040:4040" 
+      - "4040:4040"
+    env_file:
+      - ./bin/.env
+    environment:
+      - DATAMODE=${DATAMODE}
     volumes:
       - ./src:/app/src
       - ./full_data:/app/full_data

@@ -1,0 +1,70 @@
+services:
+  # Serviço do Spark Master
+  spark-master:
+    image: bitnami/spark:4.0.0
+    user: root
+    command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      # Publica a porta da UI do Spark Master na rede do host
+      - "8080:8080"
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+    # A chave 'deploy' é usada pelo Swarm para gerenciar o serviço
+    deploy:
+      replicas: 1
+    volumes:
+    - ./src:/app/src
+    - ./full_data:/app/full_data
+    - ./datasample:/app/datasample
+    networks:
+      - spark-net
+
+  # Serviço dos Spark Workers
+  spark-worker:
+    image: bitnami/spark:4.0.0
+    user: root
+    command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+    deploy:
+      replicas: 2
+    volumes:
+      - ./src:/app/src
+      - ./full_data:/app/full_data
+      - ./datasample:/app/datasample
+    networks:
+      - spark-net
+    # A dependência é implícita no comando, Swarm gerencia a ordem
+    depends_on:
+      - spark-master
+
+  # Serviço do JupyterLab
+  jupyterlab:
+    # IMPORTANTE: A imagem deve ser construída previamente
+    image: jupyter-spark:1.0 
+    user: root
+    ports:
+      - "8888:8888" # JupyterLab
+      - "4040:4040" # UI de uma aplicação Spark
+    working_dir: /app/src
+    deploy:
+      replicas: 1
+    volumes:
+    - ./src:/app/src
+    - ./full_data:/app/full_data
+    - ./datasample:/app/datasample
+    networks:
+      - spark-net
+    depends_on:
+      - spark-master
+
+# Definição das redes
+networks:
+  # A rede precisa ter o driver 'overlay' para funcionar em múltiplos nós do Swarm
+  spark-net:
+    driver: overlay
