@@ -14,6 +14,7 @@ services:
       - "7077:7077"
     volumes:
       - ./spark-data:/spark-data
+      - ./datasample:/datasample
     networks:
       - spark-net
     deploy:
@@ -30,6 +31,7 @@ services:
     volumes:
       - ./notebooks:/opt/jupyter/notebooks
       - ./spark-data:/spark-data
+      - ./datasample:/datasample
     environment:
       - JUPYTER_TOKEN=spark123
     depends_on:
@@ -64,6 +66,7 @@ services:
       - spark-master
     volumes:
       - ./spark-data:/spark-data
+      - ./datasample:/datasample
     networks:
       - spark-net
     deploy:
