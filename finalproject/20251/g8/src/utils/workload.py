@@ -18,13 +18,13 @@ class Workload:
     def __str__(self):
         return f"{self.description} ({self.name})"
 
-    def run(self, df):
+    def run(self, *args, **kwargs):
         print(str(self))
         start = perf_counter()
-
-        result = self.execute_fn(df)
-
+    
+        result = self.execute_fn(*args, **kwargs)
+    
         elapsed_time = perf_counter() - start
         print(f"[METRIC] Tempo de execução ({self.name}): {elapsed_time:.2f} segundos")
-
+    
         return result

@@ -6,6 +6,7 @@ from typing import List, Optional
 class DataLoader:
     def __init__(
         self,
+        spark: SparkSession,
         base_dir: str,
         pattern: str = "*.csv",
         header: bool = True,
@@ -23,7 +24,7 @@ class DataLoader:
         self.pattern = pattern
         self.header = header
         self.infer_schema = infer_schema
-        self.spark = SparkSession.builder.getOrCreate()
+        self.spark = spark
 
     def load(self, selected_columns: Optional[List[str]] = None) -> DataFrame:
         """
