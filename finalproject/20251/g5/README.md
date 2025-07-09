@@ -1,7 +1,19 @@
 # Relatório Final do Projeto: *Processamento de Dados Musicais do Spotify com PySpark*
 ## 1. Contexto e motivação
 
-- What is the main goal? What problem are you trying to solve with big data?
+Nos últimos anos, com o crescimento de plataformas de streaming como o Spotify, uma enorme quantidade de dados musicais passou a ser gerada, incluindo letras, metadados, métricas de áudio e classificações emocionais. Esse volume de dados abre oportunidades para análises em larga escala sobre padrões linguísticos, sentimentos e relações entre linguagem e música.
+
+O objetivo principal deste projeto é analisar e processar letras de músicas em escala utilizando ferramentas de Big Data, em particular Apache Spark, com foco em:
+
+- Identificar as palavras mais associadas a diferentes emoções musicais
+
+- Avaliar a distribuição e frequência dessas palavras em um corpus massivo
+
+- Otimizar o processamento através de formato Parquet e execução distribuída
+
+O projeto utiliza um dataset real com aproximadamente 500 mil músicas (extraído do Spotify), com atributos como gênero, artista, letra e emoção associada, o que seria inviável de processar eficientemente com ferramentas tradicionais.
+
+Além disso, o trabalho propõe uma infraestrutura distribuída replicável via Docker Swarm, simulando um cluster Spark com múltiplos nós, de forma prática e portátil, permitindo testar desempenho, escalabilidade e custo computacional em diferentes configurações.
 
 ## 2. Dados 🎧
 
