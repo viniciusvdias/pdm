@@ -125,9 +125,9 @@ O projeto utiliza contêineres orquestrados com Docker Swarm para processar dado
 
 ---
 
-#### [WORKLOAD-3] Similaridade Léxica entre Gêneros Musicais (Sem Numpy)
+#### [WORKLOAD-3] Similaridade Léxica entre Gêneros Musicais
 
-**Objetivo:** Encontrar o número de palavras em comum entre os principais gêneros musicais, medindo similaridade léxica sem o uso de bibliotecas externas como NumPy.
+**Objetivo:** Encontrar o número de palavras em comum entre os principais gêneros musicais, medindo similaridade léxica.
 
 **Etapas**:
 
@@ -177,6 +177,41 @@ Foram avaliadas as seguintes variações de configuração:
 
 ### 6.3 Results
 #### Tabela Comparativa por Configuração
+
+### Workload 1
+
+| WORKERS | CORES | TEMPO (s) |
+|---------|-------|-----------|
+| 1       | 1     | 133       |
+| 1       | 6     | 49        |
+| 2       | 2     | 60        |
+| 6       | 1     | 55        |
+| 6       | 6     | 44        |
+
+---
+
+### Workload 2
+
+| WORKERS | CORES | TEMPO (s) |
+|---------|-------|-----------|
+| 1       | 1     | 91        |
+| 1       | 6     | 49        |
+| 2       | 2     | 70        |
+| 6       | 1     | 59        |
+| 6       | 6     | 46        |
+
+---
+
+### Workload 3
+
+| WORKERS | CORES | TEMPO (s) |
+|---------|-------|-----------|
+| 1       | 1     | 269       |
+| 1       | 6     | 122       |
+| 2       | 2     | 116       |
+| 6       | 1     | 163       |
+| 6       | 6     | 105       |
+
 
 
 ## 7. Discussion and conclusions
