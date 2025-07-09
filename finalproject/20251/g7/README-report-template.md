@@ -133,6 +133,16 @@ No notebook `src/Pre-Process.ipynb`, basta seguir as instruções e executar as 
 
 ![células dataset completo](images/cel_dataset.png)
 
+### 3.3 (Opcional) Execução na VM
+
+Durante a disciplina foi disponibilizado máquina virtuais para os grupos trabalharem seus projetos dentro delas. Portanto, para acessar a VM destinada a este grupo, pode-se executar o comando:
+
+```bash
+./bin/deploy-to-vm.sh
+```
+
+As credenciais serão solicitadas, e automaticamente o usuário será direcionado ao terminal da VM, onde já terá disponível os arquivos necessários para a execução do projeto conforme os passos deste tópico.
+
 ## 4. Arquitetura do projeto
 
 O projeto utiliza uma arquitetura baseada no pré-processamento utilizando Apache Spark, convertendo os resultados para a extensão Parquet, a fim de se realizar as análises de constrained-off via SparkSQL.
