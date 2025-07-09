@@ -61,12 +61,22 @@ function start_jupyter() {
       -p 4040:4040 \
       -p 8501:8501 \
       --network "$NETWORK_NAME" \
+      -v "$(pwd)/src:/app/src" \
+      -v "$(pwd)/datasample:/app/datasample" \
+      -v "$(pwd)/data:/app/data" \
       "$JUPYTER_NAME" \
       jupyter lab --no-browser --ip=0.0.0.0 --allow-root > /dev/null
   fi
 
   # espera token ficar pronto
   sleep 5
+}
+
+function ensure_directories() {
+  echo ">> Garantindo que os diretórios necessários existam..."
+  mkdir -p ./data
+  mkdir -p ./src
+  mkdir -p ./datasample
 }
 
 # Para container Jupyter
@@ -118,6 +128,7 @@ function deploy() {
 
 # Compose up
 function up() {
+  ensure_directories
   create_network_compose
   start_jupyter
 
