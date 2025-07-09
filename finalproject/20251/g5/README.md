@@ -55,22 +55,31 @@ pdmtf init
 - If the dataset is hosted on cloud storage (Google Drive, HTTPS, AWS S3, etc.), provide the public link and the necessary commands.
 - If the data must be generated, provide the Docker command to generate it.
 
-## 3. How to install and run
+## 3. Como rodar o projeto
 
+1. Clone o repositório do projeto
+2. Acesse a branch do grupo e a a pasta do projeto do grupo
+```bash
+git checkout finalproject-20251-G5
+
+cd finalproject/20251/g5
+```
+3. Execute o script de configuração inicial e ative as configurações no terminal
 ```bash
 ./bin/pdmtf setup
 source ~/.bashrc
 pdmtf
 ```
+### ⚙️ Inicialização do ambiente com Docker Swarm
 
-para que os comandos funcionem `cd src`
-
+1. **Acesse a pasta `src` do projeto para rodar os comandos `pdmtf`**
+```bash
+cd src
+```
+2. Inicie os serviços Spark com Jupyter usando Docker Swarm
 ```bash
 pdmtf init
 ```
-
-Acesse a interface web em: http://localhost:8888/lab?token=spark123
-
 
 > Observation: The project must be compatible with a default Docker installation and use only Docker containers for running. No external tools or installations should be necessary — this is a strict requirement.
 
@@ -89,10 +98,21 @@ Acesse a interface web em: http://localhost:8888/lab?token=spark123
 
 - Explain clearly how to configure or mount the full dataset (if different from default sample).
 
-## 4. Project architecture
+## 4. Arquitetura do projeto
 
-- Include a diagram of your system’s architecture and a description of how the components interact. Images are encouraged for clarity.
-- What are the main components? How do they interact?
+O projeto utiliza uma arquitetura em contêineres orquestrada com **Docker Swarm**, focada em processar dados com **Apache Spark** e interagir via **Jupyter Notebook**. Os principais componentes são:
+
+- **Usuário (navegador web): O usuário** interage com o sistema através do navegador web, acessando a interface do Jupyter Notebook em `http://localhost:8888`. Por meio dessa interface, ela escreve e executa códigos PySpark para processar e analisar dados. O navegador em si não faz parte do cluster, mas é o ponto de entrada do sistema para o usuário.
+- **Jupyter Notebook (Spark Driver):** O Jupyter Notebook roda dentro de um contêiner Docker e serve como o ambiente interativo para desenvolvimento e execução de scripts PySpark. Além de prover a interface web  ele também atua como o **Spark Driver**, responsável por iniciar a sessão Spark (`SparkSession`) e enviar os jobs para o cluster. O notebook se comunica diretamente com o Spark Master usando o endereço `spark://spark-master:7077`, e também compartilha com os demais serviços o volume `/spark-data`, onde estão os arquivos CSV de entrada e os arquivos Parquet gerados como saída.
+- **Spark Master:** O Spark Master é o componente central de coordenação do cluster Spark. Ele recebe as tarefas submetidas pelo Driver (no caso, o Jupyter) e distribui essas tarefas entre os Spark Workers disponíveis. Ele roda em um contêiner separado dentro do Docker Swarm e expõe sua interface de monitoramento em `http://localhost:8080`. Por meio dessa interface, é possível visualizar os jobs em execução, os Workers ativos e o status geral do cluster.
+- **Spark Workers:** Os Spark Workers são os nós executores do cluster. São responsáveis por processar os dados de forma distribuída, executando as transformações e ações definidas nos scripts PySpark. Eles se registram automaticamente no Spark Master e recebem tarefas conforme a necessidade de execução. Cada Worker possui acesso ao volume `/spark-data`, permitindo que leiam arquivos de entrada e escrevam os resultados localmente no volume compartilhado. Os Workers também são contêineres Docker, podendo ser escalados horizontalmente dentro do Docker Swarm para simular ambientes maiores.
+- **Volume compartilhado `/spark-data` :** O volume `/spark-data` é montado a partir de uma pasta do host e é compartilhado entre todos os contêineres do projeto: Jupyter, Spark Master e Spark Workers. Esse volume é usado para persistência de dados e comunicação entre os componentes. Nele, são armazenados os arquivos de entrada (como arquivos `.csv`) e os arquivos gerados pelos jobs Spark (como `.parquet`). A existência desse volume evita a necessidade de transferência de dados entre containers via rede, simplificando o fluxo de dados e facilitando o uso com ferramentas locais.
+- **Rede Docker `spark-net`:** Todos os serviços são conectados por meio de uma rede chamada `spark-net`. Essa rede permite que os contêineres se comuniquem entre si.
+
+<p align="center">
+  <img src="presentation/arquitetura-big.png" alt="Texto alternativo" width="700"/>
+</p>
+
 - Example diagram (replace with your own):
 
   ```
