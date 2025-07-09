@@ -184,45 +184,46 @@ Foram avaliadas as seguintes variações de configuração:
 |--------------------------|-------------------------------|
 | Workers                  | 1, 2, 6                        |
 | Núcleos por Worker       | 1, 2, 6                        |
-| Métricas observadas      | Tempo total (s), uso de memória, distribuição de tarefas, uso de CPU |
+| Métricas observadas      | Tempo total (s), uso de memória, distribuição de tarefas, uso de CPU, Throughput (MB/s) |
 | Repetições               | 3 execuções por configuração   |
 
 ### 6.3 Results
 #### Tabela Comparativa por Configuração
+ Todas as execuções foram feitas no mesmo arquivo parquet de 424 MB
 
 ### Workload 1
 
-| WORKERS | CORES | TEMPO (s) |
-|---------|-------|-----------|
-| 1       | 1     | 133       |
-| 1       | 6     | 49        |
-| 2       | 2     | 60        |
-| 6       | 1     | 55        |
-| 6       | 6     | 44        |
+| WORKERS | CORES | TEMPO (s) | Throughput (MB/s) |
+|---------|-------|-----------|------------|
+| 1       | 1     | 133       | 3.18       |
+| 1       | 6     | 49        | 8.65       |
+| 2       | 2     | 60        | 7.06       |
+| 6       | 1     | 55        | 7.70       |
+| 6       | 6     | 44        | 9.63       |
 
 ---
 
 ### Workload 2
 
-| WORKERS | CORES | TEMPO (s) |
-|---------|-------|-----------|
-| 1       | 1     | 91        |
-| 1       | 6     | 49        |
-| 2       | 2     | 70        |
-| 6       | 1     | 59        |
-| 6       | 6     | 46        |
+| WORKERS | CORES | TEMPO (s) | Throughput (MB/s) |
+|---------|-------|-----------|------------|
+| 1       | 1     | 91        | 4.66       |
+| 1       | 6     | 49        | 8.65       |
+| 2       | 2     | 70        | 6.06       |
+| 6       | 1     | 59        | 7.19       |
+| 6       | 6     | 46        | 9.22       |
 
 ---
 
 ### Workload 3
 
-| WORKERS | CORES | TEMPO (s) |
-|---------|-------|-----------|
-| 1       | 1     | 269       |
-| 1       | 6     | 122       |
-| 2       | 2     | 116       |
-| 6       | 1     | 163       |
-| 6       | 6     | 105       |
+| WORKERS | CORES | TEMPO (s) | Throughput (MB/s) |
+|---------|-------|-----------|------------|
+| 1       | 1     | 269       | 1.58       |
+| 1       | 6     | 122       | 3.48       |
+| 2       | 2     | 116       | 4.66       |
+| 6       | 1     | 163       | 2.60       |
+| 6       | 6     | 105       | 4.04       |
 
 
 
