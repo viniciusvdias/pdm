@@ -224,7 +224,6 @@ Foram avaliadas as seguintes variações de configuração:
 | 16      | 1     | 53        | 7.82       |
 
 
-
 ---
 
 ### Workload 2 - Cálculo da Similaridade de Jaccard
@@ -249,13 +248,55 @@ Foram avaliadas as seguintes variações de configuração:
 | 6       | 1     | 163       | 2.60       |
 | 6       | 6     | 105       | 4.04       |
 
+---
+
+## 7. Discussion and Conclusions
+
+### O que funcionou bem:
+
+- A arquitetura com **Apache Spark em Docker Swarm** se mostrou eficiente e escalável para os workloads propostos.
+- Os workloads principais conseguiram demonstrar claramente os ganhos de paralelismo ao aumentar o número de workers e núcleos.
+- As operações mais custosas computacionalmente (como `crossJoin` e `array_intersect`) foram bem distribuídas no cluster com a configuração adequada de particionamento (`spark.sql.shuffle.partitions`).
+- A utilização do método `cache()` em pontos estratégicos (como o vocabulário pré-computado) evitou recomputações dispendiosas e otimizou o tempo final.
+- O workload intermediário que calcula interseções entre gêneros diferentes (sem filtragem por gênero) também forçou um bom estresse no cluster, atingindo milhares de combinações.
+- As análises mostraram que a distribuição de tarefas foi mais eficiente em configurações com múltiplos workers e múltiplos núcleos (como 6 workers × 6 cores).
+
+### O que não funcionou ou teve limitações:
+
+- Workloads aparentemente pesados tiveram performance surpreendentemente leve. Isso se deve ao pequeno número de combinações possíveis, tornando a operação leve para o cluster.
+- Inicialmente, não havia particionamento adequado definido em algumas operações com janela (`Window`), o que gerava **`WARN WindowExec: No Partition Defined`** e resultava em reagrupamento de todos os dados em uma única partição, prejudicando a paralelização.
+- A performance foi limitada em alguns testes pelo uso de limites de recursos (CPU/memória) definidos no `docker-compose.yml`, o que afetou muito o desempenho.
+- O `repartition()` só surtiu efeito visível em workloads intensos e em joins com grandes cardinalidades.
+
+### Desafios encontrados:
+
+- Garantir o balanceamento do workload entre os workers, visto que a simples definição de partições nem sempre resultava em uso igualitário dos recursos.
+- Entender e validar visualmente (via UI do Spark) se os workers estavam realmente processando dados e não apenas o driver.
+- Reproduzir experimentos de forma consistente exigiu controle rigoroso do ambiente (versão do Docker, reinício dos containers, cache clean).
+
+## 8. References and External Resources
+
+### Bibliotecas e Frameworks
+
+- [Apache Spark](https://spark.apache.org/) — processamento distribuído de dados.
+- [PySpark API](https://spark.apache.org/docs/latest/api/python/) — interface Python para Apache Spark.
+- [Docker](https://www.docker.com/) — conteinerização do ambiente.
+- [Docker Compose](https://docs.docker.com/compose/) — orquestração local de containers.
+- [Spark UI](https://spark.apache.org/docs/latest/web-ui.html) — ferramenta visual para monitoramento.
+
+### Dataset
+
+- Dataset Utilizado - [Spotify Dataset](https://www.kaggle.com/datasets/devdope/900k-spotify?select=final_milliondataset_BERT_500K_revised.json)
+- Total de registros: milhares de músicas com metadados como artista, gênero, letra e emoções.
+- Transformado em `.parquet` para leitura otimizada no cluster.
+
+### Inspirações e fontes de consulta
+
+- [Spark Optimization Guide](https://spark.apache.org/docs/latest/sql-performance-tuning.html)
+- Stack Overflow e fóruns sobre uso de `array_intersect`, joins cruzados e tuning de `Window` no Spark.
+- Documentações de `repartition`, `cache`, `join hints` e `crossJoin` no contexto do PySpark.
 
 
-## 7. Discussion and conclusions
+*Esse relatório foi desenvolvido com base em testes práticos, medições diretas via tempo de execução e inspeção da interface web do Spark em ambiente distribuído via Docker Swarm.*
 
-- Summarize what worked and what did not.
-- Discuss any challenges or limitations of this work.
-
-## 8. References and external resources
-
-- List all external resources, datasets, libraries, and tools you used (with links).
+---
