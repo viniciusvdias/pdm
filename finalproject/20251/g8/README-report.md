@@ -76,25 +76,151 @@
 
 - Explain clearly how to configure or mount the full dataset (if different from default sample).
 
-## 4. Project architecture
+## 4. Project Architecture
 
-- Include a diagram of your system’s architecture and a description of how the components interact. Images are encouraged for clarity.
-- What are the main components? How do they interact?
-- Example diagram (replace with your own):
+The project was developed based on a containerized architecture using Docker, composed of three main services:
 
-  ```
-  [Data Source] → [Data Ingestion] → [Processing] → [Results Storage]
-  ```
+* **JupyterLab**: An interactive environment for developing and running PySpark notebooks, hosted in the `jupyterlab` container.
+* **Spark Master**: The coordinator of the Apache Spark cluster, responsible for distributing tasks among the executors.
+* **Spark Worker(s)**: Executors responsible for processing the data on demand from the Spark Master.
 
-- Mention which parts run in which containers, and how data flows between them.
+### Architecture Diagram
 
-## 5. Workloads evaluated
+```
+[CSV Files in /app/full_data] 
+      ↓ 
+[JupyterLab Container] 
+      ↓ imports code →
+[Spark Master Container] ←→ [Spark Worker Container(s)]
+      ↓ 
+[Processed Results (DataFrames and Visualizations)] 
+```
 
-- Specify each big data task evaluated in your project (queries, data pre-processing, sub-routines, etc.).
-- Be specific: describe the details of each workload, and give each a clear name. These named workloads will be referenced and evaluated via performance experiments in the next section.
-  - Example: [WORKLOAD-1] Query that computes the average occupation within each
-    time window (include query below). [WORKLOAD-2] Preprocessing, including
-  removing duplicates, standardization, etc.
+### Data Flow
+
+1. The CSV files from the `ocorrencias` and `pessoas` folders are stored in the shared volume at `/app/full_data`.
+2. The `JupyterLab` container runs scripts that import utility modules (`DataLoader`, `Workload`, etc.) and initialize the `SparkSession`.
+3. Data is loaded into distributed Spark DataFrames, processed by the Spark cluster (Master and Workers), and the results are displayed as visualizations within the Jupyter environment.
+4. Workloads encapsulate analysis blocks, standardizing execution and enabling performance reporting.
+
+## 5. Workloads Evaluated
+
+Below are the main workloads evaluated in the project, along with their descriptions and representative code snippets:
+
+---
+
+### \[WORKLOAD-1] Loading Accident Records
+
+**Description:** Reads CSV files containing traffic accident records.
+
+```python
+df_ocorrencias = Workload.run(
+    title="Loading accident records",
+    execute_fn=lambda spark, path: executar_load(spark, path),
+    spark=spark,
+    path="/app/full_data/ocorrencias"
+)
+```
+
+---
+
+### \[WORKLOAD-2] Loading Person Records
+
+**Description:** Reads CSV files containing data on individuals involved in the accidents.
+
+```python
+df_pessoas = Workload.run(
+    title="Loading person records",
+    execute_fn=lambda spark, path: executar_load(spark, path),
+    spark=spark,
+    path="/app/full_data/pessoas"
+)
+```
+
+---
+
+### \[WORKLOAD-3] Joining Accident and Person Data
+
+**Description:** Performs a join between the two loaded DataFrames based on the `id` column.
+
+```python
+df_joined = Workload.run(
+    title="Joining accidents and persons by ID",
+    execute_fn=executar_join,
+    df1=df_ocorrencias,
+    df2=df_pessoas
+)
+```
+
+---
+
+### \[WORKLOAD-4] Age Group Analysis
+
+**Description:** Categorizes individuals by age group, aggregates the data, and generates a bar chart.
+
+```python
+Workload.run(
+    title="Analyzing the number of individuals involved by age group",
+    execute_fn=analise_faixa_etaria,
+    df=df_pessoas
+)
+```
+
+---
+
+### \[WORKLOAD-5] Gender Analysis
+
+**Description:** Standardizes and categorizes the `sexo` (gender) field, with visualization in a pie chart.
+
+```python
+Workload.run(
+    title="Analyzing the number of individuals involved by gender",
+    execute_fn=analise_distribuicao_genero,
+    df=df_pessoas
+)
+```
+
+---
+
+### \[WORKLOAD-6] Temporal Distribution by Hour of the Day
+
+**Description:** Extracts the hour from the `horario` field to analyze the volume of accidents by time of day.
+
+```python
+Workload.run(
+    title="Temporal analysis of accidents: distribution by hour of the day",
+    execute_fn=lambda df: analise_distribuicao_temporal(df, tipo="hora"),
+    df=df_ocorrencias
+)
+```
+
+---
+
+### \[WORKLOAD-7] Temporal Distribution by Day of the Week
+
+**Description:** Analyzes accidents by day of the week with chronological ordering (Monday to Sunday).
+
+```python
+Workload.run(
+    title="Temporal analysis of accidents: distribution by day of the week",
+    execute_fn=lambda df: analise_distribuicao_temporal(df, tipo="semana"),
+    df=df_ocorrencias
+)
+```
+
+---
+
+### \[WORKLOAD-8] Temporal Distribution by Year
+
+**Description:** Groups accidents based on the year extracted from the `data_inversa` field.
+
+```python
+Workload.run(
+    title="Temporal analysis of accidents: distribution by year",
+    execute_fn=lambda df: analise_distribuicao_temporal(df, tipo="ano"),
+    df=df_ocorrencias
+)
+```
 
 ## 6. Experiments and results
 
