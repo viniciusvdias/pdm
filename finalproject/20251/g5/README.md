@@ -212,7 +212,21 @@ Foram avaliadas as seguintes variações de configuração:
 #### Tabela Comparativa por Configuração
  Todas as execuções foram feitas no mesmo arquivo parquet de 424 MB
 
+---
 ### Workload 1 - Agrupamento de letras de músicas por emoção
+
+ WORKERS | CORES | TEMPO (s)  | Throughput (MB/s) |
+|---------|-------|-----------|------------|
+| 1       | 1     | 133       | 3.18       |
+| 1       | 6     | 49        | 8.65       |
+| 2       | 2     | 60        | 7.06       |
+| 6       | 1     | 55        | 7.70       |
+| 6       | 6     | 44        | 9.63       |
+
+
+---
+
+### Workload 2 - Cálculo da Similaridade de Jaccard
 
 | WORKERS | CORES | TEMPO (s) | Throughput (MB/s) |
 |---------|-------|-----------|------------|
@@ -222,19 +236,6 @@ Foram avaliadas as seguintes variações de configuração:
 | 6       | 1     | 63        | 6.74       |
 | 8       | 1     | 61        | 6.90       |
 | 16      | 1     | 53        | 7.82       |
-
-
----
-
-### Workload 2 - Cálculo da Similaridade de Jaccard
-
-| WORKERS | CORES | TEMPO (s) | Throughput (MB/s) |
-|---------|-------|-----------|------------|
-| 1       | 1     | 91        | 4.66       |
-| 1       | 6     | 49        | 8.65       |
-| 2       | 2     | 70        | 6.06       |
-| 6       | 1     | 59        | 7.19       |
-| 6       | 6     | 46        | 9.22       |
 
 ---
 
@@ -247,7 +248,6 @@ Foram avaliadas as seguintes variações de configuração:
 | 2       | 2     | 116       | 4.66       |
 | 6       | 1     | 163       | 2.60       |
 | 6       | 6     | 105       | 4.04       |
-
 ---
 
 ## 7. Discussion and Conclusions
