@@ -1,30 +1,32 @@
 from time import perf_counter
-from pyspark.sql import DataFrame
-from pyspark import SparkContext
+from typing import Callable, Any, Dict, List
+
 
 class Workload:
-    def __init__(self, name, description, execute_fn):
-        """
-        Representa uma carga de trabalho (workload) associada aos dados carregados.
+    metrics: List[Dict[str, Any]] = []
 
-        :param name: Nome da carga de trabalho.
-        :param description: Descrição do objetivo da análise.
-        :param execute_fn: Função que recebe um DataFrame e executa a análise.
-        """
-        self.name = name
-        self.description = description
-        self.execute_fn = execute_fn
-    
-    def __str__(self):
-        return f"{self.description} ({self.name})"
-
-    def run(self, *args, **kwargs):
-        print(str(self))
+    @staticmethod
+    def run(title: str, execute_fn: Callable[..., Any], *args, **kwargs) -> Any:
+        print(f"[WORKLOAD] {title}")
         start = perf_counter()
-    
-        result = self.execute_fn(*args, **kwargs)
-    
-        elapsed_time = perf_counter() - start
-        print(f"[METRIC] Tempo de execução ({self.name}): {elapsed_time:.2f} segundos")
-    
+
+        result = execute_fn(*args, **kwargs)
+
+        elapsed = perf_counter() - start
+        Workload.metrics.append({
+            "title": title,
+            "execution_time_sec": round(elapsed, 3)
+        })
+
+        print(f"[METRIC] {title} executada em {elapsed:.3f} segundos")
         return result
+
+    @staticmethod
+    def report() -> List[Dict[str, Any]]:
+        return Workload.metrics
+
+    @staticmethod
+    def print_report():
+        print("\n[WORKLOAD REPORT]")
+        for i, metric in enumerate(Workload.metrics, start=1):
+            print(f"- [WORKLOAD-{i}] {metric['title']}: {metric['execution_time_sec']}s")
