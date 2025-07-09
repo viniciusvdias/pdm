@@ -1,4 +1,5 @@
 from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql.types import StructType
 import os
 import glob
 from typing import List, Optional
@@ -10,20 +11,21 @@ class DataLoader:
         base_dir: str,
         pattern: str = "*.csv",
         header: bool = True,
-        infer_schema: bool = True
+        schema: Optional[StructType] = None
     ):
         """
         Inicializa o DataLoader com opções para carregar arquivos CSV de um diretório.
 
+        :param spark: SparkSession ativa.
         :param base_dir: Caminho base onde os arquivos estão localizados.
         :param pattern: Padrão dos arquivos CSV (ex: "*.csv").
         :param header: Indica se a primeira linha contém os cabeçalhos.
-        :param infer_schema: Tenta inferir automaticamente os tipos de dados.
+        :param schema: Schema explícito (opcional). Se não fornecido, o Spark tentará inferir.
         """
         self.base_dir = base_dir
         self.pattern = pattern
         self.header = header
-        self.infer_schema = infer_schema
+        self.schema = schema
         self.spark = spark
 
     def load(self, selected_columns: Optional[List[str]] = None) -> DataFrame:
@@ -37,11 +39,16 @@ class DataLoader:
         if not all_files:
             raise FileNotFoundError(f"Nenhum arquivo encontrado em {self.base_dir} com padrão {self.pattern}")
 
-        df = self.spark.read.option("header", self.header)\
-                            .option("inferSchema", self.infer_schema)\
+        reader = self.spark.read.option("header", self.header)\
                             .option("sep", ";")\
-                            .option("encoding", "iso-8859-1")\
-                            .csv(all_files)
+                            .option("encoding", "iso-8859-1")
+
+        if self.schema:
+            reader = reader.schema(self.schema)
+        else:
+            reader = reader.option("inferSchema", True)
+
+        df = reader.csv(all_files)
 
         if selected_columns:
             df = df.select(*selected_columns)
