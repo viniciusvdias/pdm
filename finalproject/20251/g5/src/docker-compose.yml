@@ -28,6 +28,7 @@ services:
     image: my-jupyter-spark
     ports:
       - "8888:8888"
+      - "4040:4040"
     volumes:
       - ./notebooks:/opt/jupyter/notebooks
       - ./spark-data:/spark-data
