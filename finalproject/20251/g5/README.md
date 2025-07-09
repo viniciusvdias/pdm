@@ -37,6 +37,18 @@ Este projeto utiliza o dataset “500K+ Spotify Songs with Lyrics,Emotions & Mor
 
 ### 2.2 Como obter os dados
 
+Para baixar e extrair os dados do projeto entre no site do kaggle https://www.kaggle.com/datasets/devdope/900k-spotify e faça o download do zip do dataset, ou siga os passos abaixo:
+
+1. Baixe o arquivo zip do dataset usando a API do Kaggle:
+ ```bash
+curl -L -o 500k-spotify.zip \
+https://www.kaggle.com/api/v1/datasets/download/devdope/900k-spotify
+```
+2. Extraia o conteúdo do arquivo zip:
+```bash
+unzip 500k-spotify.zip
+```
+3. Após a extração, um dos arquivos disponíveis será `spotify_dataset.csv` que foi usado no presente projeto
 
 ## 3. Como rodar o projeto
 
