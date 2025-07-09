@@ -80,22 +80,26 @@ pdmtf init
 4. Execute `pdmtf help` para visualizar outros comandos disponíveis como `pdmtf stop` (Parar o cluster Spark) ou `pdmtf scale 3` (Alterar o número de workers)
 
 ### 3.1 Quick start (usando uma amostra de dados em `datasample/`)
-
-1. Acesse `http://localhost:8888/lab?token=spark123`
-2. Execute os notebooks: 
-   - ds_workload_1.ipynb
-   - ds_workload_2.ipynb
-   - ds_workload_3.ipynb
-
-### 3.2 Como rodar com todo o dataset
-
-1. Adicione o dataset `spotify_dataset.csv` ao diretório `spark-data`
+1. Faça uma copia do dataset de exemplo `spotify_dataset.csv` presente do diretório `/datasample` ao diretório `src/spark-data`
 2. Acesse `http://localhost:8888/lab?token=spark123`
 3. Faça o pré-processamento dos dados executando os notebooks:
    - csv_to_parquet.ipynb
    - tratamento_full_dataset.ipynb 
 
-4. Para rodas os workloads, execute os notebooks:
+4. Para rodar os workloads, execute os notebooks:
+   - workload_1.ipynb
+   - workload_2.ipynb
+   - workload_3.ipynb
+
+### 3.2 Como rodar com todo o dataset
+
+1. Utilize o csv baixado no passo 2.2 e coloque esse arquivo `spotify_dataset.csv` no diretório `src/spark-data`
+2. Acesse `http://localhost:8888/lab?token=spark123`
+3. Faça o pré-processamento dos dados executando os notebooks:
+   - csv_to_parquet.ipynb
+   - tratamento_full_dataset.ipynb 
+
+4. Para rodar os workloads, execute os notebooks:
    - workload_1.ipynb
    - workload_2.ipynb
    - workload_3.ipynb
