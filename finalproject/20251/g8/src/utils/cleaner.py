@@ -75,3 +75,38 @@ def salvar_csv(
 
     print(f"[CSV] salvo em: {output_path}")
     return df_resultante
+
+
+
+def salvar_parquet(
+    df=None,
+    output_path=None,
+    amostra=False,
+    frac=0.01,
+    seed=42,
+    coalesce=True
+):
+    """
+    Salva um DataFrame como Parquet (com ou sem amostragem).
+
+    Parâmetros:
+    - df (DataFrame): DataFrame Spark a ser salvo.
+    - output_path (str): Caminho de saída.
+    - amostra (bool): Se True, salva uma amostra do DataFrame.
+    - frac (float): Fração da amostra (se `amostra=True`).
+    - seed (int): Semente para reprodutibilidade (se `amostra=True`).
+    - coalesce (bool): Se True, reduz a 1 partição (útil para testes ou exportação simples).
+
+    Retorna:
+    - df_resultante (DataFrame): Amostra ou DataFrame original.
+    """
+    if df is None or output_path is None:
+        raise ValueError("Parâmetros 'df' e 'output_path' são obrigatórios.")
+
+    df_resultante = df.sample(withReplacement=False, fraction=frac, seed=seed) if amostra else df
+
+    writer = df_resultante.coalesce(1) if coalesce else df_resultante
+    writer.write.mode("overwrite").parquet(output_path)
+
+    print(f"[PARQUET] salvo em: {output_path}")
+    return df_resultante
