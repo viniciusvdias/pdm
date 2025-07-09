@@ -41,7 +41,7 @@ class DataLoader:
 
         reader = self.spark.read.option("header", self.header)\
                             .option("sep", ";")\
-                            .option("encoding", "iso-8859-1")
+                            .option("encoding", "utf-8")
 
         if self.schema:
             reader = reader.schema(self.schema)

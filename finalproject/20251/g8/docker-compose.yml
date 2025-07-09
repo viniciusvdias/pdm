@@ -1,5 +1,6 @@
 services:
   spark-master:
+    container_name: spark-master
     image: bitnami/spark:4.0.0
     user: root
     command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.master.Master
@@ -16,10 +17,12 @@ services:
     volumes:
       - ./src:/app/src
       - ./full_data:/app/full_data
+      - ./datasample:/app/datasample
     networks:
       - spark-network
 
   spark-worker:
+    container_name: spark-worker
     image: bitnami/spark:4.0.0
     user: root
     command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
@@ -38,10 +41,12 @@ services:
     volumes:
       - ./src:/app/src
       - ./full_data:/app/full_data
+      - ./datasample:/app/datasample
     networks:
       - spark-network
 
   jupyterlab:
+    container_name: jupyterlab
     build:
       context: .
       dockerfile: Dockerfile 
@@ -52,6 +57,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./full_data:/app/full_data
+      - ./datasample:/app/datasample
     working_dir: /app/src
     depends_on:
       - spark-master
