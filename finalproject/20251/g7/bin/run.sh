@@ -123,7 +123,7 @@ function up() {
 
   echo ">> Subindo containers com docker-compose..."
 
-  docker compose -f "$COMPOSE_FILE" up -d
+  docker compose -f "$COMPOSE_FILE" up -d --scale spark-worker-g7=2
   print_urls
 }
 
