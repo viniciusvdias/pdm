@@ -40,7 +40,7 @@ class DataLoader:
         df = self.spark.read.option("header", self.header)\
                             .option("inferSchema", self.infer_schema)\
                             .option("sep", ";")\
-                            .option("encoding", "Windows-1252")\
+                            .option("encoding", "iso-8859-1")\
                             .csv(all_files)
 
         if selected_columns:
