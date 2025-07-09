@@ -55,22 +55,31 @@ pdmtf init
 - If the dataset is hosted on cloud storage (Google Drive, HTTPS, AWS S3, etc.), provide the public link and the necessary commands.
 - If the data must be generated, provide the Docker command to generate it.
 
-## 3. How to install and run
+## 3. Como rodar o projeto
 
+1. Clone o repositório do projeto
+2. Acesse a branch do grupo e a a pasta do projeto do grupo
+```bash
+git checkout finalproject-20251-G5
+
+cd finalproject/20251/g5
+```
+3. Execute o script de configuração inicial e ative as configurações no terminal
 ```bash
 ./bin/pdmtf setup
 source ~/.bashrc
 pdmtf
 ```
+### ⚙️ Inicialização do ambiente com Docker Swarm
 
-para que os comandos funcionem `cd src`
-
+1. **Acesse a pasta `src` do projeto para rodar os comandos `pdmtf`**
+```bash
+cd src
+```
+2. Inicie os serviços Spark com Jupyter usando Docker Swarm
 ```bash
 pdmtf init
 ```
-
-Acesse a interface web em: http://localhost:8888/lab?token=spark123
-
 
 > Observation: The project must be compatible with a default Docker installation and use only Docker containers for running. No external tools or installations should be necessary — this is a strict requirement.
 
@@ -100,7 +109,9 @@ O projeto utiliza uma arquitetura em contêineres orquestrada com **Docker Swarm
 - **Volume compartilhado `/spark-data` :** O volume `/spark-data` é montado a partir de uma pasta do host e é compartilhado entre todos os contêineres do projeto: Jupyter, Spark Master e Spark Workers. Esse volume é usado para persistência de dados e comunicação entre os componentes. Nele, são armazenados os arquivos de entrada (como arquivos `.csv`) e os arquivos gerados pelos jobs Spark (como `.parquet`). A existência desse volume evita a necessidade de transferência de dados entre containers via rede, simplificando o fluxo de dados e facilitando o uso com ferramentas locais.
 - **Rede Docker `spark-net`:** Todos os serviços são conectados por meio de uma rede chamada `spark-net`. Essa rede permite que os contêineres se comuniquem entre si.
 
-<img src="presentation\arquitetura-big.png" alt="Texto alternativo" width="500"/>
+<p align="center">
+  <img src="presentation/arquitetura-big.png" alt="Texto alternativo" width="700"/>
+</p>
 
 - Example diagram (replace with your own):
 
