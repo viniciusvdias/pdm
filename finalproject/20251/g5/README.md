@@ -79,6 +79,8 @@ pdmtf init
 
 4. Execute `pdmtf help` para visualizar outros comandos disponíveis como `pdmtf stop` (Parar o cluster Spark) ou `pdmtf scale 3` (Alterar o número de workers)
 
+### Quick start (using sample data in `datasample/`)
+
 
 ## 4. Arquitetura do projeto
 
@@ -191,7 +193,7 @@ Foram avaliadas as seguintes variações de configuração:
 #### Tabela Comparativa por Configuração
  Todas as execuções foram feitas no mesmo arquivo parquet de 424 MB
 
-### Workload 1
+### Workload 1 - Agrupamento de letras de músicas por emoção
 
 | WORKERS | CORES | TEMPO (s) | Throughput (MB/s) |
 |---------|-------|-----------|------------|
@@ -203,7 +205,7 @@ Foram avaliadas as seguintes variações de configuração:
 
 ---
 
-### Workload 2
+### Workload 2 - Cálculo da Similaridade de Jaccard
 
 | WORKERS | CORES | TEMPO (s) | Throughput (MB/s) |
 |---------|-------|-----------|------------|
@@ -215,7 +217,7 @@ Foram avaliadas as seguintes variações de configuração:
 
 ---
 
-### Workload 3
+### Workload 3 - Similaridade Léxica entre Gêneros Musicais
 
 | WORKERS | CORES | TEMPO (s) | Throughput (MB/s) |
 |---------|-------|-----------|------------|
