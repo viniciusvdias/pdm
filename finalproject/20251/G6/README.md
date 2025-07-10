@@ -99,32 +99,32 @@ As evaluation method, we collected the time to run all the processing parts sepa
 
 ### 5.3 filter by month
 
-- Description:
-- Operations:
+- Description: counts how many trips each month of each year had
+- Operations: group the dataframe by month and year, count how many records has for each value, then sort it from the oldest to newest record.
 - Measures: time to process
 
 ### 5.4 filter by hour
 
-- Description:
-- Operations:
+- Description: adds a new filter option containing the trip hour and the type of the day (week or weekend)
+- Operations: create a new column in the dataframe named pickup_hour, that has the time (in hour) of the trip pickup based on its datetime. After that, create another column named day_type, that contains a tag "weekend" for days saturday and sunday and a tag "weekday" to the rest.
 - Measures: time to process
 
 ### 5.5 filter daily pattern
 
-- Description:
-- Operations:
+- Description: counts how many trips each hour of the day had
+- Operations: gets the data created at the step 5.4 and group it by day_type and pickup_hour and then count it. Now, we got how many trips started in which hour of day in which day type
 - Measures: time to process
 
 ### 5.6 filter by day of week
 
-- Description:
-- Operations:
+- Description: counts how many trips each day of week had
+- Operations: create a new column named pickup_day_name, which contains the day (sunday, monday....) in which each trip ocurred. Now, we just sort it by the name of the day.
 - Measures: time to process
 
 ### 5.7 detecting outliers
 
-- Description:
-- Operations:
+- Description: identifies outliers in the total_amount column using IQR and Z-score techniques
+- Operations: calculates quartiles, mean, and standard deviation; defines outlier thresholds using both IQR and Z-score; creates a new column is_outlier with 1.0 for outliers and 0.0 otherwise
 - Measures: time to process
 
 ## 6. Experiments and results
