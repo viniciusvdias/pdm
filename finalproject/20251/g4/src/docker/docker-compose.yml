@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  dask-scheduler:
+    image: custom-dask-notebook:latest
+    command: dask-scheduler
+    ports:
+      - "8786:8786"
+      - "8787:8787"
+    networks:
+      - dask-net
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8787/status"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  dask-worker:
+    image: custom-dask-notebook:latest
+    deploy:
+      replicas: 6
+    command: > 
+      dask-worker tcp://dask-scheduler:8786
+      --nthreads 4
+      --memory-limit 12GB
+    networks:
+      - dask-net
+    volumes:
+      - /home/mardin/Prog/trabalhoBigData/g4/datasample:/home/jovyan/work/datasample
+
+  jupyter:
+    image: custom-dask-notebook:latest
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=token
+    volumes:
+      - /home/mardin/Prog/trabalhoBigData/g4/bin:/home/jovyan/work/bin
+      - /home/mardin/Prog/trabalhoBigData/g4/datasample:/home/jovyan/work/datasample
+      - /home/mardin/Prog/trabalhoBigData/g4/misc:/home/jovyan/work/misc
+      - /home/mardin/Prog/trabalhoBigData/g4/src:/home/jovyan/work/src
+    depends_on:
+      - dask-scheduler
+    networks:
+      - dask-net
+
+networks:
+  dask-net:
+
+volumes:
+  notebook-data:
