@@ -70,7 +70,7 @@ To run the quick start, navigate to the `g8` folder. Then, grant execute permiss
 ```bash
 chmod +x ./start-compose.sh # Grant execute permission
 ./start-compose.sh datasample
-```
+````
 
 -----
 
@@ -83,13 +83,13 @@ chmod +x ./start-compose.sh # Grant execute permission
 ./start-compose.sh full_data
 ```
 
-## 4. Project Architecture
+## 4\. Project Architecture
 
 The project was developed based on a containerized architecture using Docker, composed of three main services:
 
-* **JupyterLab**: An interactive environment for developing and running PySpark notebooks, hosted in the `jupyterlab` container.
-* **Spark Master**: The coordinator of the Apache Spark cluster, responsible for distributing tasks among the executors.
-* **Spark Worker(s)**: Executors responsible for processing the data on demand from the Spark Master.
+  * **JupyterLab**: An interactive environment for developing and running PySpark notebooks, hosted in the `jupyterlab` container.
+  * **Spark Master**: The coordinator of the Apache Spark cluster, responsible for distributing tasks among the executors.
+  * **Spark Worker(s)**: Executors responsible for processing the data on demand from the Spark Master.
 
 ### Architecture Diagram
 
@@ -105,16 +105,16 @@ The project was developed based on a containerized architecture using Docker, co
 
 ### Data Flow
 
-1. The CSV files from the `ocorrencias` and `pessoas` folders are stored in the shared volume at `/app/full_data`.
-2. The `JupyterLab` container runs scripts that import utility modules (`DataLoader`, `Workload`, etc.) and initialize the `SparkSession`.
-3. Data is loaded into distributed Spark DataFrames, processed by the Spark cluster (Master and Workers), and the results are displayed as visualizations within the Jupyter environment.
-4. Workloads encapsulate analysis blocks, standardizing execution and enabling performance reporting.
+1.  The CSV files from the `ocorrencias` and `pessoas` folders are stored in the shared volume at `/app/full_data`.
+2.  The `JupyterLab` container runs scripts that import utility modules (`DataLoader`, `Workload`, etc.) and initialize the `SparkSession`.
+3.  Data is loaded into distributed Spark DataFrames, processed by the Spark cluster (Master and Workers), and the results are displayed as visualizations within the Jupyter environment.
+4.  Workloads encapsulate analysis blocks, standardizing execution and enabling performance reporting.
 
-## 5. Workloads Evaluated
+## 5\. Workloads Evaluated
 
 Below are the main workloads evaluated in the project, along with their descriptions and representative code snippets:
 
----
+-----
 
 ### \[WORKLOAD-1] Loading Accident Records
 
@@ -129,7 +129,7 @@ df_ocorrencias = Workload.run(
 )
 ```
 
----
+-----
 
 ### \[WORKLOAD-2] Loading Person Records
 
@@ -144,7 +144,7 @@ df_pessoas = Workload.run(
 )
 ```
 
----
+-----
 
 ### \[WORKLOAD-3] Joining Accident and Person Data
 
@@ -159,7 +159,7 @@ df_joined = Workload.run(
 )
 ```
 
----
+-----
 
 ### \[WORKLOAD-4] Age Group Analysis
 
@@ -173,7 +173,7 @@ Workload.run(
 )
 ```
 
----
+-----
 
 ### \[WORKLOAD-5] Gender Analysis
 
@@ -187,7 +187,7 @@ Workload.run(
 )
 ```
 
----
+-----
 
 ### \[WORKLOAD-6] Temporal Distribution by Hour of the Day
 
@@ -201,7 +201,7 @@ Workload.run(
 )
 ```
 
----
+-----
 
 ### \[WORKLOAD-7] Temporal Distribution by Day of the Week
 
@@ -215,7 +215,7 @@ Workload.run(
 )
 ```
 
----
+-----
 
 ### \[WORKLOAD-8] Temporal Distribution by Year
 
@@ -233,73 +233,64 @@ Workload.run(
 
 ### 6.1 Experimental Environment
 
-Experiments were run on a virtual machine with **4 vCPUs**, **8GB RAM**, **Ubuntu 22.04**, and **Docker version 24.x**. The project leverages **Docker and Docker Compose** for a reproducible and isolated development environment. The core of the big data processing is an **Apache Spark 4.0.0 cluster** configured in Standalone mode with 1 Master and 1 Worker, using the `bitnami/spark:4.0.0` base image. **JupyterLab with PySpark** serves as the interactive interface and Spark Driver, with a custom Docker image ensuring `pyspark` version 4.0.0 for compatibility. **Python 3.11** and libraries like **Pandas** and **Matplotlib** are used for final aggregation and visualization.
+Experiments were run on a physical machine with the following specifications:
+
+  * **Motherboard:** Gigabyte Technology Co., Ltd. B250M-Gaming 3
+  * **CPU:** Intel® Pentium(R) CPU G4560 @ 3.50GHz × 4
+  * **RAM:** 12.0 GiB
+  * **GPU:** NVIDIA Corporation GP107 [GeForce GTX 1050]
+
+The project leverages **Docker and Docker Compose/Swarm** for a reproducible and isolated environment. The core of the big data processing is an **Apache Spark 4.0.0 cluster** configured in Standalone mode, using the `bitnami/spark:4.0.0` base image. Each Spark Worker was configured to use **2 CPU cores** and **2GiB of memory**. **JupyterLab with PySpark** serves as the interactive interface and Spark Driver, with a custom Docker image ensuring `pyspark` version 4.0.0 for compatibility. **Python 3.11** and libraries like **Pandas** and **Matplotlib** are used for final aggregation and visualization.
 
 ### 6.2 What did you test?
 
-We tested the performance of the data pipeline by measuring the **execution time (in seconds)** for key stages: **data loading, processing, and result writing**. We compared the use of **CSV files** against the optimized columnar format **Parquet**. For each configuration, experiments were repeated **5 times** to report the average execution time.
+We tested the performance of the data pipeline by measuring the **execution time (in seconds)** for key stages: **data loading/caching** and **data processing**. We compared the use of **CSV files** against the optimized columnar format **Parquet**. The specific benchmark involved loading the entire dataset, caching it in memory, and then performing an aggregation analysis (by age group).
 
 We evaluated the pipeline in two main environments:
 
-1.  **Docker Compose (Single-node baseline):** This setup represents a standard single-machine deployment, providing a baseline for performance.
-2.  **Docker Swarm (Orchestrated environment):** This setup simulated a more production-like environment. Initially, we used 1 Master and 2 Workers running on the **same physical machine** to understand the overhead of orchestration. Subsequently, we scaled the Spark Workers to **4 nodes** within the same single physical machine to observe the impact of increased parallelization within the simulated environment.
+1.  **Docker Compose (Single-node baseline):** This setup uses 1 Spark Master and 1 Spark Worker, representing a standard single-machine deployment.
+2.  **Docker Swarm (Orchestrated environment):** This setup simulated a more production-like environment using 1 Master and 2 Workers running on the same physical machine to understand the impact of orchestration and increased parallelism.
 
-The main parameters we varied were the **data format (CSV vs. Parquet)** and the **number of Spark Workers (1, 2, and 4)** in the Docker Swarm setup. We measured the wall-clock time for each stage to quantify the performance gains.
+The main parameters we varied were the **data format (CSV vs. Parquet)** and the **environment (Compose vs. Swarm)**. We measured the wall-clock time for each stage to quantify performance.
 
 ### 6.3 Results
 
-#### Performance Results: Docker Compose (Single-Node Baseline)
+#### Performance Results: Docker Compose (1 Worker)
 
-The table below presents the average of 5 executions of the pipeline in the single-node Docker Compose environment.
+The table below presents the execution of the pipeline in the single-node Docker Compose environment.
 
-| Stage of the Pipeline   | CSV (s) | Parquet (s) | Gain (Parquet)     |
-| :---------------------- | :------ | :---------- | :----------------- |
-| 1. Data Loading         | 5.345s  | 0.048s      | **111.3x faster** |
-| 2. Processing           | 0.038s  | 0.031s      | **1.2x faster** |
-| 3. Result Writing       | 4.679s  | 0.679s      | **6.9x faster** |
+| Stage of the Pipeline | CSV (s) | Parquet (s) |
+| :--- | :--- | :--- |
+| 1. Loading and Caching | 38.172s | 58.528s |
+| 2. Processing (Age Group) | 0.177s | 0.209s |
 
-These results serve as our baseline for comparison with the orchestrated environment. The most significant gain is observed in **data loading**, where Parquet is over 100 times faster than CSV, highlighting the efficiency of columnar storage. Writing results to Parquet is also significantly faster. Processing time shows a smaller but still notable improvement.
+#### Performance Results: Docker Swarm (2 Workers)
 
-#### Performance Results: Docker Swarm (2 Workers on Single Node)
+The table below presents the execution of the pipeline in the orchestrated Swarm environment with 2 Spark Workers on the same physical machine.
 
-The table below presents the average of 5 executions of the pipeline in the orchestrated Swarm environment with 2 Spark Workers, all running on the same physical machine.
-
-| Stage of the Pipeline   | CSV (s) | Parquet (s) | Gain (Parquet)     |
-| :---------------------- | :------ | :---------- | :----------------- |
-| 1. Data Loading         | 3.127s  | 0.071s      | **44x faster** |
-| 2. Processing           | 0.043s  | 0.031s      | **1.4x faster** |
-| 3. Result Writing       | 2.708s  | 0.730s      | **3.7x faster** |
-
-Comparing these results to the Docker Compose baseline reveals some interesting insights. While Parquet still offers substantial gains over CSV, the performance difference for loading and writing is slightly less pronounced in the Swarm environment. This indicates that the **orchestration layer introduces a small overhead**, which becomes more noticeable for very fast operations. However, for CSV loading and writing, Swarm still performs better than Compose, suggesting that the Swarm scheduler might be more efficient in managing I/O resources in a multi-container setup, even on a single machine.
-
-#### Performance Results: Docker Swarm (4 Workers on Single Node)
-
-The table below presents the average of 5 executions of the pipeline in the orchestrated Swarm environment with **4 Spark Workers**, all running on the same physical machine.
-
-| Stage of the Pipeline   | CSV (s) | Parquet (s) | Gain (Parquet)     |
-| :---------------------- | :------ | :---------- | :----------------- |
-| 1. Data Loading         | 2.364s  | 0.079s      | **29.9x faster** |
-| 2. Processing           | 0.038s  | 0.029s      | **1.3x faster** |
-| 3. Result Writing       | 1.890s  | 0.877s      | **2.2x faster** |
-
-With 4 workers, the overall performance for CSV loading and writing continues to improve compared to the 2-worker Swarm and Compose setups. However, the **gain of Parquet over CSV is slightly reduced** for loading. This reinforces the idea that increasing the number of workers on a single physical machine can lead to resource contention, impacting the absolute performance benefits even for optimized formats. The processing time with Parquet remains consistently fast, demonstrating its efficiency regardless of the number of workers on a single node.
+| Stage of the Pipeline | CSV (s) | Parquet (s) |
+| :--- | :--- | :--- |
+| 1. Loading and Caching | 37.551s | 57.494s |
+| 2. Processing (Age Group) | 0.162s | 0.276s |
 
 #### Comparative Analysis: Docker Compose vs. Docker Swarm
 
-| Stage (Format)              | Compose (s) | Swarm (s) (2 Workers) | Swarm (s) (4 Workers) |
-| :-------------------------- | :---------- | :-------------------- | :-------------------- |
-| Data Loading (CSV)          | 5.345s      | 3.127s                | 2.364s                |
-| Data Loading (Parquet)      | 0.048s      | 0.071s                | 0.079s                |
-| Processing (CSV)            | 0.038s      | 0.043s                | 0.038s                |
-| Processing (Parquet)        | 0.031s      | 0.031s                | 0.029s                |
-| Result Writing (CSV)        | 4.679s      | 2.708s                | 1.890s                |
-| Result Writing (Parquet)    | 0.679s      | 0.730s                | 0.877s                |
+| Stage (Format) | Compose (1 Worker) | Swarm (2 Workers) |
+| :--- | :--- | :--- |
+| Loading and Caching (CSV) | 38.172s | 37.551s |
+| Loading and Caching (Parquet) | 58.528s | 57.494s |
+| Processing (CSV) | 0.177s | 0.162s |
+| Processing (Parquet) | 0.209s | 0.276s |
 
 **Interpretation of Results:**
 
-  * **Parquet's Dominance:** The most consistent and significant finding is the overwhelming performance advantage of **Parquet** over CSV across all stages and environments. This validates the importance of using optimized data formats for big data workloads, drastically accelerating analysis cycles.
-  * **Swarm Overhead vs. Optimization:** For very quick operations, like Parquet loading, the Docker Compose (single-node) setup was slightly faster than Docker Swarm. This suggests that the orchestration and networking layer of Swarm introduces a small **overhead** that is perceptible in millisecond-range tasks. However, for the slowest tasks, such as CSV loading and writing, the Swarm environment (with both 2 and 4 workers) showed notable improvements compared to Docker Compose. This might indicate that the Swarm scheduler optimizes I/O resource allocation more efficiently in a multi-container setup, even when running on a single machine.
-  * **Scalability on a Single Node:** While increasing workers from 2 to 4 on the same physical machine generally reduced CSV processing times, the gains for Parquet were less pronounced and sometimes even showed a slight increase in loading/writing times. This highlights the limitations of scaling horizontally on a single machine due to shared resource contention (CPU, RAM, disk I/O). The true performance benefits of Docker Swarm would be realized in a **multi-node cluster**, where real parallelism could overcome any initial orchestration overhead. The tests on a single machine serve as a valuable simulation of the architecture's viability and the impact of worker replication.
+The experimental results revealed a counter-intuitive but insightful finding: for a full-scan operation like loading and caching the entire dataset, **CSV outperformed Parquet in total execution time**.
+
+  * **CPU Trade-Offs (Decompression vs. Parsing):** The primary reason for this result lies in the trade-off between I/O and CPU costs. Parquet significantly reduces disk I/O due to its columnar nature and compression, but it pays a CPU penalty for decompressing the data upon reading. Conversely, CSV has a higher disk I/O cost (larger files) but pays a different CPU penalty for parsing the text-based format. In our specific environment (fast SSD, specific dataset characteristics), the CPU cost to decompress all columns from Parquet was higher than the cost to parse the CSV files.
+
+  * **The Nature of the Benchmark:** It is crucial to note that this benchmark (`.cache().count()`) represents a "worst-case" scenario for Parquet, as it forces a full scan of all data and does not leverage Parquet's main advantage: **column pruning**. In typical analytical queries, where only a subset of columns is needed, Parquet would likely outperform CSV dramatically by reading only the required data from disk.
+
+  * **Swarm vs. Compose:** The difference between the Compose and Swarm environments was minimal. A slight improvement was observed for CSV operations in Swarm, suggesting a minor optimization in I/O management by the orchestrator. However, with all containers competing for the same physical resources, the benefits of adding more workers were negligible. The true advantages of Swarm would only become apparent in a multi-node cluster.
 
 -----
 
@@ -309,22 +300,20 @@ Our **Traffic Collisions Analytics** project successfully established a robust b
 
 ### What Worked and What Did Not
 
-  * **Containerized Architecture (Docker & Docker Compose/Swarm):** The use of Docker proved highly effective in creating a **reproducible and isolated environment**. This significantly streamlined setup and ensured consistent execution across different environments. Docker Compose provided a quick and easy way to spin up the Spark cluster for development and baseline testing.
-  * **Apache Spark for Big Data Processing:** Spark's distributed processing capabilities were crucial for handling the 6.8 million records, enabling efficient data loading, transformation, and analysis. The abstraction of operations into `Workload` objects not only modularized the pipeline but also facilitated performance metric extraction, a key aspect of our experimental evaluation.
-  * **Data Pre-processing and Quality:** The implementation of robust pre-processing steps, such as handling invalid age and gender entries, and standardizing categorical data, was critical. This ensured data quality and prevented errors during analysis, demonstrating the importance of data cleaning in real-world big data projects.
-  * **Performance Benefits of Parquet:** The experiments consistently showed a dramatic performance improvement when using Parquet over CSV for data loading and writing. This validated the strategic decision to prioritize optimized columnar formats in the data pipeline, significantly accelerating analytical cycles.
-  * **Docker Swarm for Orchestration:** While our Swarm tests were limited to a single physical machine, they successfully demonstrated the viability of the orchestrated architecture. The Swarm scheduler showed potential for optimizing resource allocation, especially for I/O-bound tasks. This setup provides a solid foundation for future deployment on a true multi-node cluster, where the benefits of distributed processing and high availability would be fully realized.
+  * **Containerized Architecture (Docker & Docker Compose/Swarm):** The use of Docker proved highly effective in creating a **reproducible and isolated environment**. This significantly streamlined setup and ensured consistent execution.
+  * **Apache Spark for Big Data Processing:** Spark's distributed processing capabilities were crucial for handling the 6.8 million records. The abstraction of operations into `Workload` objects not only modularized the pipeline but also facilitated the extraction of performance metrics.
+  * **Revealing Performance Trade-Offs:** The experiments, contrary to initial expectations, did not show a universal performance benefit for Parquet. Instead, they highlighted a critical concept in data engineering: performance is a function of the data's structure, the hardware, and the specific query being executed. For full-scan operations, the CPU overhead of Parquet's decompression proved to be a significant factor, leading to slower load times compared to CSV in this specific context. This finding, while unexpected, provided a deeper understanding of the formats' practical trade-offs.
+  * **Data Pre-processing and Quality:** The implementation of robust pre-processing steps, such as handling invalid age and gender entries, was critical to ensure data quality and prevent errors during analysis.
 
 ### Challenges and Limitations
 
-  * **Single-Node Swarm Environment:** A significant limitation of our experiments was running Docker Swarm on a **single physical machine**. While this allowed us to simulate the architecture and observe the overhead of orchestration, it did not fully showcase the benefits of true distributed computing and parallel processing that would come from a multi-node cluster. The workers, despite being separate containers, competed for the same underlying CPU and memory resources, leading to potential resource contention that might mask the full performance gains of increased parallelism.
-  * **Data Quality Issues:** Despite implementing robust pre-processing, the presence of a significant "Desconhecida" (Unknown) category for `idade` (age) and `sexo` (gender) highlighted persistent data quality challenges in the raw datasets. This underscores the need for continuous data governance and improved data collection practices at the source.
-  * **Scope of Analysis:** While we performed several key demographic and temporal analyses, the project's scope was limited to these specific workloads. A more comprehensive analysis could involve geospatial analysis, machine learning for accident prediction, or deeper correlation of various accident factors.
-  * **Lack of Fault Tolerance Testing:** Although Docker Swarm inherently provides features for high availability, our experiments did not explicitly test the fault tolerance or self-healing capabilities of the system (e.g., simulating a worker failure).
+  * **Single-Node Swarm Environment:** A significant limitation was running Docker Swarm on a **single physical machine**. The workers competed for the same underlying CPU and memory resources, preventing true parallelism and masking the potential benefits of a distributed architecture.
+  * **Benchmark Scope:** The primary benchmark involved a full data scan (`.cache().count()`), which is not representative of typical analytical queries. This specific test did not allow Parquet to demonstrate its key advantage of **column pruning**, where it would only read a small subset of the data from disk. Consequently, the performance results are specific to this "worst-case" scenario for columnar formats.
+  * **Data Quality Issues:** The presence of a significant "Desconhecida" (Unknown) category for `idade` (age) and `sexo` (gender) highlighted persistent data quality challenges in the raw datasets, underscoring the need for improved data governance at the source.
 
 ### Future Directions
 
-Future work could involve deploying the Docker Swarm setup on a **true multi-node cluster** to fully evaluate its scalability and distributed processing capabilities. Exploring additional Spark features like Spark Streaming for real-time analysis or integrating with other big data tools (e.g., Kafka for data ingestion, Hadoop HDFS for storage) would further enhance the project. Moreover, developing a user-friendly dashboard for interactive visualization of the analytical insights would increase the project's utility for stakeholders.
+Future work could involve deploying the Docker Swarm setup on a **true multi-node cluster** to fully evaluate its scalability. A crucial next step would be to design and run benchmarks based on **analytical queries that select specific columns** (e.g., analyzing accident causes by vehicle type). Such tests would provide a more realistic comparison and would almost certainly demonstrate the superior performance of Parquet in scenarios where its column pruning capabilities are leveraged.
 
 -----
 
