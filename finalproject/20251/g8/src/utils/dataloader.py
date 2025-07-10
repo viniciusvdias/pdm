@@ -11,7 +11,8 @@ class DataLoader:
         base_dir: str,
         pattern: str = "*.csv",
         header: bool = True,
-        schema: Optional[StructType] = None
+        schema: Optional[StructType] = None,
+        encoding: str = "utf-8"
     ):
         """
         Inicializa o DataLoader com opções para carregar arquivos CSV de um diretório.
@@ -21,11 +22,13 @@ class DataLoader:
         :param pattern: Padrão dos arquivos CSV (ex: "*.csv").
         :param header: Indica se a primeira linha contém os cabeçalhos.
         :param schema: Schema explícito (opcional). Se não fornecido, o Spark tentará inferir.
+        :param encoding: Codificação dos arquivos (padrão: 'utf-8').
         """
         self.base_dir = base_dir
         self.pattern = pattern
         self.header = header
         self.schema = schema
+        self.encoding = encoding
         self.spark = spark
 
     def load(self, selected_columns: Optional[List[str]] = None) -> DataFrame:
@@ -41,7 +44,8 @@ class DataLoader:
 
         reader = self.spark.read.option("header", self.header)\
                             .option("sep", ";")\
-                            .option("encoding", "utf-8")
+                            .option("encoding", self.encoding)
+        print(self.encoding)
 
         if self.schema:
             reader = reader.schema(self.schema)
