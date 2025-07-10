@@ -80,7 +80,11 @@ pdmtf init
 4. Execute `pdmtf help` para visualizar outros comandos disponíveis como `pdmtf stop` (Parar o cluster Spark) ou `pdmtf scale 3` (Alterar o número de workers)
 
 ### 3.1 Quick start (usando uma amostra de dados em `datasample/`)
-1. Faça uma copia do dataset de exemplo `spotify_dataset.csv` presente do diretório `/datasample` ao diretório `src/spark-data`
+1. Na raiz do projeto, faça uma copia do dataset de exemplo `spotify_dataset.csv` presente do diretório `/datasample` ao diretório `src/spark-data`
+```bash
+mv ./datasample/spotify_dataset.csv ./spark-data/
+```
+2. Siga os passos de ***Inicialização do ambiente com Docker Swarm***
 2. Acesse `http://localhost:8888/lab?token=spark123`
 3. Faça o pré-processamento dos dados executando os notebooks:
    - csv_to_parquet.ipynb
