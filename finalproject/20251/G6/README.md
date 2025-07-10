@@ -151,8 +151,22 @@ Os experimentos foram executados em:
 ### 6.3 Results
 
 ![Chart showing the outliers detected by total cost of trip](./misc/readme_images/outlier_price.png)
+
+```text
+On the image above, we have a plot that shows the proportion of records that was detected as outlier (is_outlier=1) by the total_amount of the trip, showing that as high is the price, as high the chance to be outlier.
+```
+
 ![Chart showing the amount of trip by day](./misc/readme_images/trips_by_day_of_week.png)
+
+```text
+On the image above, we have a chart that shows the amount of trips (y axis) by day of week (x axis).
+```
+
 ![Chart showing the amount of trip by hour of day](./misc/readme_images/trips_by_hour.png)
+
+```text
+On the image above, we have a chart that shows the amount of trip (y axis) by hour of day (x axis), considering weekdays (blue line) and weekend days (orange lines).
+```
 
 ## 7. Discussion and conclusions
 
