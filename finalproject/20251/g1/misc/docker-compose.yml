@@ -1,0 +1,84 @@
+version: "3.7"
+
+services:
+  spark-master:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - HADOOP_USER_NAME=root
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ../data:/data
+    networks:
+      - hadoop
+
+  spark-worker:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - HADOOP_USER_NAME=root
+      - SPARK_WORKER_CORES=3
+      - SPARK_WORKER_MEMORY=4g
+
+    volumes:
+      - ../data:/data
+    depends_on:
+      - spark-master
+    networks:
+      - hadoop
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    environment:
+      - CLUSTER_NAME=test-cluster
+      - HDFS_CONF_dfs_permissions=false
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    ports:
+      - "9870:9870"
+      - "8020:8020"
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+    networks:
+      - hadoop
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    environment:
+      - CLUSTER_NAME=test-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+      - HDFS_CONF_dfs_datanode_address=0.0.0.0:9866
+      - HDFS_CONF_dfs_datanode_http_address=0.0.0.0:9864
+      - HDFS_CONF_dfs_datanode_ipc_address=0.0.0.0:9867
+    depends_on:
+      - namenode
+    networks:
+      - hadoop
+
+  spark-job:
+    image: enem-spark-job:latest
+    environment:
+      - HADOOP_USER_NAME=root
+      - USE_LOCAL_DATA=${USE_LOCAL_DATA:-false}
+    volumes:
+      - ../data:/data
+      - ./entrypoint.sh:/entrypoint.sh
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - spark-master
+      - spark-worker
+      - namenode
+      - datanode
+    command: ["/bin/bash", "/entrypoint.sh"]
+    networks:
+      - hadoop
+
+volumes:
+  namenode_data:
+
+networks:
+  hadoop:
