@@ -186,6 +186,8 @@ The table above was used as input to generate the chart below, that is more easi
 
 ![Time chart for each code session](./misc/readme_images/times.png)
 
+Looking at the chart above, we can see that all the processing sessions have similar times, except by the outlier detecting, that has a time considering raised compared to the others.
+
 ## 7. Discussion and conclusions
 
 We planned to make the outlier detect using a framework called pyod, but it does not worked with spark enviroment so well, so we made that part using a combination of two methods called IQR and Z-score, to filter some registers with suspect data, as trips too much large or with average speed (trip distance / trip time) too low for example. That worked well, so we decided to mantain it, even the cost being too much high.
