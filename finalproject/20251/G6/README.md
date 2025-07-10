@@ -68,6 +68,15 @@ The concept of "full dataset" in our case is as much as your machine can run. Yo
 
 ![archtecture proposal diagram](./misc/archtecture_proposal.png)
 
+- Basically our project starts to read the whole dataset (all downloaded files at data/ directory) into a spark dataframe.
+- After, we delete some rows containing data with suspicious data, as for exemple:
+
+  - Trip duration too large or too small
+  - total amount (total trip cost) lesser or equal to 0
+  - passanger count lesser or equal to 0
+
+- After that, now we do all our analysis and print the output, or a slice of it
+
 ## 5. Workloads evaluated
 
 ## 6. Experiments and results
@@ -84,30 +93,8 @@ The concept of "full dataset" in our case is as much as your machine can run. Yo
 
 ## 8. References and external resources
 
-First of all, we need to get some data. You can either get the sample already in the data folder, but if you want more data, you can just execute the command bellow:
+- website to download the dataset manually, or see more about it:
 
-```sh
-sh bin/download_data.sh <start_year>-<start_month> <final_year>-<final_month>
 ```
-
-For exemple, to download all records from 2024, you type 'sh bin/download_data.sh 2024-01 2024-12'
-
-Now we have the data, we can go to the code. We just need to build up a docker image by executing:
-
-```sh
-make
+https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
 ```
-
-And then, finally, start up the container, by typing:
-
-```sh
-sh bin/start.sh
-```
-
-Obs: if you have any trouble while starting or executing the container, try to stop it (sh bin/stop.sh) and then remove it (sh bin/remove.sh) and finally, start up it again.
-
-Now, we can be able to acess the jupyter browser enviroment with the directories data containing the data files and src containing the notebook files.
-
-## About the project
-
-...
