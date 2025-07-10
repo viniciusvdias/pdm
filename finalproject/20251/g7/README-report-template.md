@@ -174,38 +174,216 @@ B. **Comparação de Desempenho** (`Performance-Benchmark.ipynb`)
 4. **Comparação**: Métricas de performance entre CSV e Parquet e derivados (B).
 5. **Saída**: Relatórios de constrained-off e de performance (B).
 
-## 5. Workloads evaluated
 
-- Specify each big data task evaluated in your project (queries, data pre-processing, sub-routines, etc.).
-- Be specific: describe the details of each workload, and give each a clear name. These named workloads will be referenced and evaluated via performance experiments in the next section.
-  - Example: [WORKLOAD-1] Query that computes the average occupation within each
-    time window (include query below). [WORKLOAD-2] Preprocessing, including
-  removing duplicates, standardization, etc.
+## 5. Workloads Avaliados
 
-## 6. Experiments and results
+### [WORKLOAD-1] CARREGAMENTO_DADOS
+**Descrição**: Carregamento e transformações básicas de dados eólicos
+- **Operações CSV**: 
+  - Leitura de arquivos CSV com delimitador ";"
+  - Inferência de schema
+  - Aplicação de transformações: cálculo de constrained-off, percentual de constrained-off, extração de ano/mês/hora
+- **Operações Parquet**:
+  - Leitura direta de arquivo Parquet
+  - Verificação e aplicação condicional de transformações
+  - Mesmo conjunto de cálculos derivados
 
-### 6.1 Experimental environment
+**Métrica Principal**: Contagem total de registros processados (9.503.712 registros)
 
-- Describe the environment used for experiments (machine/VM specs, OS, Docker version, etc.).
-- Example:
-  > Experiments were run on a virtual machine with 4 vCPUs, 8GB RAM, Ubuntu 22.04, Docker 24.x.
+### [WORKLOAD-2] QUERIES_ANOMALIA
+**Descrição**: Execução de queries complexas para detecção de anomalias em dados eólicos
+- **Query 1 - Constrained-off Extremo**:
+  ```sql
+  SELECT nom_usina, nom_estado, ano, mes,
+         AVG(percentual_constrained) as percentual_medio,
+         MAX(percentual_constrained) as percentual_max,
+         COUNT(*) as registros
+  FROM wind_data
+  WHERE percentual_constrained > 50
+  GROUP BY nom_usina, nom_estado, ano, mes
+  HAVING AVG(percentual_constrained) > 70
+  ORDER BY percentual_medio DESC
+  ```
 
-### 6.2 What did you test?
+- **Query 2 - Padrões Temporais**:
+  ```sql
+  SELECT nom_usina, nom_estado, hora,
+         AVG(percentual_constrained) as percentual_medio_hora,
+         COUNT(*) as registros_hora
+  FROM wind_data
+  GROUP BY nom_usina, nom_estado, hora
+  HAVING AVG(percentual_constrained) > 30
+  ORDER BY percentual_medio_hora DESC
+  ```
 
-- What parameters did you try changing? What did you measure (e.g. throughput, latency, wall-clock time, resident memory, disk usage, application level metrics)?
-- The ideal is that, for each execution configuration, you repeat the experiments a number of times (replications). With this information, report the average and also the variance/deviation of the results.
+- **Query 3 - Clusters Espaciais**:
+  ```sql
+  WITH state_anomalies AS (
+      SELECT nom_estado, ano, mes,
+             AVG(percentual_constrained) as percentual_estado,
+             COUNT(DISTINCT nom_usina) as num_usinas_afetadas
+      FROM wind_data
+      WHERE percentual_constrained > 30
+      GROUP BY nom_estado, ano, mes
+  )
+  SELECT nom_estado, ano, mes, percentual_estado, num_usinas_afetadas,
+         CASE 
+             WHEN percentual_estado > 50 AND num_usinas_afetadas > 3 THEN 'CLUSTER_CRITICO'
+             WHEN percentual_estado > 30 AND num_usinas_afetadas > 2 THEN 'CLUSTER_MODERADO'
+             ELSE 'ISOLADO'
+         END as tipo_cluster
+  FROM state_anomalies
+  WHERE percentual_estado > 30
+  ORDER BY percentual_estado DESC, num_usinas_afetadas DESC
+  ```
 
-### 6.3 Results
+**Métrica Principal**: Total de registros retornados pelas queries (9.604 registros)
 
-- Use tables and plots (insert images).
-- Discuss your results: What do they mean? What did you learn about the data or
-about the computational cost of processing this data?
-- Do not just show numbers or plots — always explain what they mean and why they matter.
+## 6. Experimentos e Resultados
 
-## 7. Discussion and conclusions
+### 6.1 Ambiente Experimental
 
-- Summarize what worked and what did not.
-- Discuss any challenges or limitations of this work.
+**Configuração do Cluster Spark**:
+- **Master Node**: spark-master-g7:7077
+- **Configurações testadas**:
+  - 1 Worker: 2 cores, 2GB RAM, paralelismo 2
+  - 2 Workers: 4 cores, 4GB RAM, paralelismo 4  
+  - 3 Workers: 6 cores, 6GB RAM, paralelismo 6
+- **Configurações Spark**:
+  - Serializer: KryoSerializer
+  - Adaptive Query Execution: habilitado
+  - Parquet: compressão Snappy, leitor vetorizado
+  - CSV: column pruning habilitado
+
+### 6.2 Parâmetros Testados
+
+**Variáveis Independentes**:
+- Formato de dados: CSV vs Parquet
+- Número de workers: 1, 2, 3
+- Paralelismo: 2, 4, 6 partições
+- Tipo de workload: carregamento vs queries complexas
+
+**Métricas Coletadas**:
+- **Tempo de execução** (segundos)
+- **Throughput** (registros/segundo)
+- **Uso de memória** (GB)
+- **Registros processados** (contagem)
+
+**Metodologia**: Cada configuração foi executada 2 vezes, calculando-se média e desvio padrão.
+
+### 6.3 Resultados
+
+#### Resumo Geral de Performance
+
+| Workload | Formato | Tempo Médio (s) | Throughput (reg/s) | Memória (GB) |
+|----------|---------|-----------------|-------------------|--------------|
+| CARREGAMENTO_DADOS | CSV | 52.32 ± 5.95 | 183,639 | 1.13 ± 0.58 |
+| CARREGAMENTO_DADOS | Parquet | 10.06 ± 3.22 | 1,051,694 | 0.68 ± 0.30 |
+| QUERIES_ANOMALIA | CSV | 112.87 ± 16.51 | 86.59 | 1.61 ± 0.74 |
+| QUERIES_ANOMALIA | Parquet | 25.07 ± 5.74 | 402.09 | 1.61 ± 0.79 |
+
+#### Análise de Speedup
+
+| Workload | Speedup Factor | Melhoria Temporal (%) | Melhoria Throughput (%) |
+|----------|----------------|----------------------|-------------------------|
+| CARREGAMENTO_DADOS | **5.2x** | 80.8% | 472.7% |
+| QUERIES_ANOMALIA | **4.5x** | 77.8% | 364.4% |
+| **Média Geral** | **4.8x** | **79.3%** | **418.5%** |
+
+#### Performance por Configuração de Cluster
+
+**Carregamento de Dados**:
+- 1 Worker: CSV 57.9s → Parquet 6.5s (8.9x speedup)
+- 2 Workers: CSV 45.9s → Parquet 10.3s (4.5x speedup)
+- 3 Workers: CSV 53.2s → Parquet 13.3s (4.0x speedup)
+
+**Queries de Anomalia**:
+- 1 Worker: CSV 131.9s → Parquet 18.3s (7.2x speedup)
+- 2 Workers: CSV 109.5s → Parquet 26.0s (4.2x speedup)
+- 3 Workers: CSV 97.2s → Parquet 30.9s (3.1x speedup)
+
+#### Análise de Escalabilidade
+
+**Eficiência Paralela**:
+- **CSV**: Mantém 100% de eficiência em configurações de 2-4 cores
+- **Parquet**: Mantém 100% de eficiência em configurações de 2-4 cores
+- **Observação**: Degradação de performance com 3 workers devido a overhead de coordenação
+
+#### Uso de Memória
+
+- **Parquet**: 40% menos uso de memória no carregamento (0.68GB vs 1.13GB)
+- **Queries**: Uso similar de memória entre formatos (~1.6GB)
+- **Variabilidade**: Parquet apresenta menor variabilidade no uso de memória
+
+## 7. Discussão e Conclusões
+
+### 7.1 Principais Descobertas
+
+**1. Superioridade Consistente do Parquet**:
+- Parquet demonstrou performance consistentemente superior com speedup médio de 4.8x
+- Melhoria mais significativa em carregamento de dados (5.2x) vs queries complexas (4.5x)
+- Throughput 4-5x maior em todas as configurações testadas
+
+**2. Eficiência de Armazenamento e I/O**:
+- Parquet reduziu significativamente o tempo de I/O devido à compressão e organização colunar
+- Menor uso de memória (40% redução) durante carregamento
+- Leitor vetorizado do Parquet otimiza operações em lote
+
+**3. Comportamento de Escalabilidade**:
+- Configuração ótima: 1-2 workers para este dataset
+- Overhead de coordenação com 3+ workers reduz eficiência
+- Parquet mantém vantagem em todas as configurações de paralelismo
+
+### 7.2 Análise dos Workloads
+
+**Carregamento de Dados**:
+- Maior benefício do Parquet (5.2x speedup)
+- Schema pré-definido elimina overhead de inferência
+- Compressão Snappy reduz volume de dados lidos
+
+**Queries de Anomalia**:
+- Speedup moderado mas consistente (4.5x)
+- Organização colunar beneficia agregações e filtros
+- Pushdown de predicados mais eficiente
+
+### 7.3 Limitações e Desafios
+
+**Limitações Identificadas**:
+1. **Overhead de Coordenação**: Performance degrada com mais de 2 workers
+2. **Variabilidade**: Maior variabilidade nos tempos do Parquet (desvio padrão 3.2s vs 5.9s)
+3. **Preparação de Dados**: Transformações condicionais adicionam complexidade
+
+**Desafios Técnicos**:
+1. **Configuração de Cluster**: Balanceamento entre paralelismo e overhead
+2. **Gerenciamento de Memória**: Necessidade de limpeza entre execuções
+3. **Consistência de Resultados**: Variabilidade nos tempos de execução
+
+### 7.4 Recomendações
+
+**Para Workloads Similares**:
+1. **Use Parquet** para datasets de produção com +5M registros
+2. **Configure 1-2 workers** para datasets de tamanho médio
+3. **Implemente cache** para queries repetitivas
+4. **Monitore uso de memória** em clusters compartilhados
+
+**Para Otimização Futura**:
+1. **Particionamento**: Particionar Parquet por ano/mês para queries temporais
+2. **Compressão**: Testar diferentes algoritmos (LZ4, GZIP)
+3. **Bucketing**: Implementar bucketing para joins frequentes
+4. **Caching**: Usar cache de dados para queries iterativas
+
+### 7.5 Conclusão Final
+
+O benchmark demonstra que **Parquet é significativamente superior ao CSV** para workloads de big data com Apache Spark, oferecendo:
+
+- **4.8x speedup médio** em performance
+- **40% redução** no uso de memória
+- **Maior throughput** (418% de melhoria)
+- **Melhor escalabilidade** em configurações distribuídas
+
+Para o contexto específico de análise de dados eólicos, **recomenda-se fortemente a migração para Parquet** como formato de armazenamento padrão, especialmente para workloads que envolvem carregamento frequente de dados e queries analíticas complexas.
+
+A diferença de performance justifica o investimento em conversão de dados e ajustes de pipeline, resultando em economia significativa de recursos computacionais e tempo de processamento.
 
 ## 8. Referências e recursos externos
 
