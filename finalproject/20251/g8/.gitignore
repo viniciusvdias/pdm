@@ -1,0 +1,30 @@
+# Pasta com os dados completos (grandes)
+full_data/
+
+# Amostra de dados gerada pelo script (se preferir não versionar a amostra gerada)
+# datasample/sample_*.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python/
+.env
+venv/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+.ipynb_vendored/
+.ipynb_metadata/
+
+# Docker
+*.log
+*.tmp
+*.bak
+
+# Logs Spark
+spark-events/
