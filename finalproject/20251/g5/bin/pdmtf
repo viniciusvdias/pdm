@@ -1,0 +1,169 @@
+#!/bin/bash
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+VOLUME_NAME="spark-data"
+STACK_NAME="spark-cluster"
+COMPOSE_FILE="docker-compose.yml"
+
+export_script_path(){
+  files=(.bashrc .zshrc .bash_profile)
+  for f in ${files[@]}; do
+    filename="$HOME/$f"
+
+    if [ -f $filename  ]; then
+      if ! $(grep 'recoloca/web/scripts' $filename &>/dev/null);
+      then
+        echo "Adding pdmtf script to $f ..."
+
+        echo >> $filename
+        echo '# pdmtf' >> $filename
+        echo "export PATH=\"\$PATH:$(pwd)\"" >> $filename
+
+        echo "Done!"
+        echo
+        echo "Now please run the command ${yellow}'source ~/$f'${white} manually and then try to use the ${yellow}'pdmtf'${white} command"
+      fi
+    fi
+  done
+}
+
+init_cluster() {
+    docker build -t my-jupyter-spark ../src/jupyter-spark
+
+    echo -e "${YELLOW}Iniciando Docker Swarm...${NC}"
+    docker swarm init 2>/dev/null || echo -e "${BLUE}Docker Swarm já iniciado${NC}"
+    
+    echo -e "${YELLOW}Criando volume compartilhado...${NC}"
+    docker volume create $VOLUME_NAME >/dev/null
+    
+    echo -e "${YELLOW}Implantando o cluster Spark...${NC}"
+    docker stack deploy -c $COMPOSE_FILE $STACK_NAME
+    
+    echo -e "${GREEN}Cluster Spark implantado com sucesso!${NC}"
+    echo -e "Acesse a interface web em ${BLUE}http://localhost:8888/lab?token=spark123${NC}"
+
+    echo -e "\n${YELLOW}Aguardando inicialização dos serviços...${NC}"
+    sleep 10
+    
+    echo -e "${YELLOW}Serviços em execução:${NC}"
+    echo -e "${BLUE}Use './pdmtf logs [master|worker|jupyter]' para visualizar os logs dos containers${NC}"
+}
+
+# Função para parar o cluster
+stop_cluster() {
+    echo -e "${YELLOW}Parando o cluster Spark...${NC}"
+    docker stack rm $STACK_NAME
+    docker network rm spark-cluster_default
+    echo -e "${GREEN}Cluster Spark parado${NC}"
+}
+
+# Função para status
+cluster_status() {
+    echo -e "${YELLOW}Status dos serviços:${NC}"
+    docker service ls --filter "name=${STACK_NAME}_"
+    
+    echo -e "\n${YELLOW}Contêineres em execução:${NC}"
+    docker ps --filter "name=${STACK_NAME}_"
+}
+
+# Função para escalar workers
+scale_workers() {
+    if [ -z "$1" ]; then
+        echo -e "${RED}Por favor, informe o número de workers desejado${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}Alterando número de workers para $1...${NC}"
+    docker service scale ${STACK_NAME}_spark-worker=$1
+    echo -e "${GREEN}Workers escalonados para $1${NC}"
+}
+
+# Função para acessar o master
+access_master() {
+    echo -e "${YELLOW}Acessando container master...${NC}"
+    MASTER_ID=$(docker ps -q -f "name=${STACK_NAME}_spark-master")
+    if [ -z "$MASTER_ID" ]; then
+        echo -e "${RED}Container master não encontrado${NC}"
+        return 1
+    fi
+    docker exec -it $MASTER_ID bash
+}
+
+# Função para visualizar logs
+show_logs() {
+    SERVICE=$1
+    if [ -z "$SERVICE" ]; then
+        echo -e "${RED}Por favor, informe o serviço (master/worker)${NC}"
+        return 1
+    fi
+    
+    if [ "$SERVICE" = "master" ]; then
+        SERVICE_NAME="${STACK_NAME}_spark-master"
+    elif [ "$SERVICE" = "worker" ]; then
+        SERVICE_NAME="${STACK_NAME}_spark-worker"
+    elif [ "$SERVICE" = "jupyter" ]; then
+        SERVICE_NAME="${STACK_NAME}_jupyter"
+    else
+        echo -e "${RED}Serviço inválido. Use 'master' ou 'worker'${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}Mostrando logs do $SERVICE...${NC}"
+    CONTAINER_ID=$(docker ps -q -f "name=$SERVICE_NAME")
+    if [ -z "$CONTAINER_ID" ]; then
+        echo -e "${RED}Container não encontrado${NC}"
+        return 1
+    fi
+    docker logs $CONTAINER_ID
+}
+
+# Menu de ajuda
+show_help() {
+    echo -e "\n${BLUE}Spark Cluster Management Script${NC}"
+    echo -e "Uso: pdmtf [comando] [opções]\n"
+    echo -e "Comandos disponíveis:"
+    echo -e "  ${GREEN}init${NC}       - Inicia o cluster Spark"
+    echo -e "  ${GREEN}stop${NC}       - Para o cluster Spark"
+    echo -e "  ${GREEN}status${NC}     - Mostra o status do cluster"
+    echo -e "  ${GREEN}scale${NC} [N]  - Altera o número de workers"
+    echo -e "  ${GREEN}access${NC}     - Acessa o container master"
+    echo -e "  ${GREEN}logs${NC} [SVC] - Mostra logs (master/worker)"
+    echo -e "  ${GREEN}help${NC}       - Mostra esta ajuda\n"
+    echo -e "Exemplos:"
+    echo -e "  pdmtf init"
+    echo -e "  pdmtf copy ./data"
+    echo -e "  pdmtf scale 3"
+}
+
+# Processamento dos comandos
+case "$1" in
+    setup)
+        export_script_path
+        ;;
+    init)
+        init_cluster
+        ;;
+    stop)
+        stop_cluster
+        ;;
+    status)
+        cluster_status
+        ;;
+    scale)
+        scale_workers "$2"
+        ;;
+    access)
+        access_master
+        ;;
+    logs)
+        show_logs "$2"
+        ;;
+    help|*)
+        show_help
+        ;;
+esac
