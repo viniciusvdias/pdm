@@ -1,8 +1,0 @@
-amount of files,code_session,time
-3,loading df,5.782371520996094
-3,clean df,2.59513521194458
-3,filter by month,2.370734691619873
-3,filter by hour,0.9638516902923584
-3,filter daily pattern,2.347296953201294
-3,filter by day of week,2.7403388023376465
-3,detecting outliers,6.653059720993042

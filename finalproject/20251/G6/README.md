@@ -66,7 +66,7 @@ The concept of "full dataset" in our case is as much as your machine can run. Yo
 
 ## 4. Project architecture
 
-![archtecture proposal diagram](./misc/archtecture_proposal.png)
+![archtecture proposal diagram](./misc/readme_images/archtecture_proposal.png)
 
 - Basically our project starts to read the whole dataset (all downloaded files at data/ directory) into a spark dataframe.
 - After, we delete some rows containing data with suspicious data, as for example:
@@ -143,7 +143,16 @@ Os experimentos foram executados em:
 
 ### 6.2 What did you test?
 
+- Parameters
+  - Amount of files
+- Measures
+  - Time to execute each task
+
 ### 6.3 Results
+
+![Chart showing the outliers detected by total cost of trip](./misc/readme_images/outlier_price.png)
+![Chart showing the amount of trip by day](./misc/readme_images/trips_by_day_of_week.png)
+![Chart showing the amount of trip by hour of day](./misc/readme_images/trips_by_hour.png)
 
 ## 7. Discussion and conclusions
 
