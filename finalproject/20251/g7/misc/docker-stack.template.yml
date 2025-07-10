@@ -1,0 +1,38 @@
+services:
+  spark-master-g7:
+    image: bitnami/spark:4.0.0
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    deploy:
+      replicas: 1
+    networks:
+      - g7net
+
+  spark-worker-g7:
+    image: bitnami/spark:4.0.0
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master-g7:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    deploy:
+      replicas: ${SPARK_WORKER_REPLICAS}
+    networks:
+      - g7net
+
+networks:
+  g7net:
+    external: true

@@ -1,0 +1,19 @@
+# Python e Notebook
+*.pyc
+__pycache__/
+.ipynb_checkpoints/
+
+# Arquivos
+bin/deploy-to-vm.sh
+bin/vpn-and-ssh-to-host-docker.sh
+misc/Dockerfile
+misc/exclude.txt
+README.md
+README-report-template.md
+.gitignore
+*.gitkeep
+*pdf
+
+# Pastas
+presentation
+images

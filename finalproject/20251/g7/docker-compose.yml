@@ -1,0 +1,54 @@
+services:
+  spark-master-g7:
+    image: bitnami/spark:4.0.0
+    container_name: spark-master-g7
+    user: root
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    volumes:
+      - ./src:/app/src
+      - ./datasample:/app/datasample
+      - spark_data:/app/data
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    networks:
+      - g7net
+
+  spark-worker-g7:
+    image: bitnami/spark:4.0.0
+    # container_name: spark-worker-g7
+    user: root
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master-g7:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    volumes:
+      - ./src:/app/src
+      - ./datasample:/app/datasample
+      - spark_data:/app/data
+    networks:
+      - g7net
+
+volumes:
+  spark_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./data
+      o: bind
+
+networks:
+  g7net:
+    external: true

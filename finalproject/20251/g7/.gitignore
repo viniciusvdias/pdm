@@ -1,0 +1,4 @@
+# Data
+data/
+*.parquet
+*.ovpn
