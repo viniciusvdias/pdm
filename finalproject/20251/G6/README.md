@@ -168,21 +168,15 @@ The experiments were conducted on the following setup:
 
 ![Chart showing the outliers detected by total cost of trip](./misc/readme_images/outlier_price.png)
 
-```text
 In the image above, we see a plot that shows the proportion of records detected as outliers (`is_outlier = 1`) based on the `total_amount` of the trip. It reveals that the higher the trip cost, the greater the likelihood of it being considered an outlier.
-```
 
 ![Chart showing the amount of trip by day](./misc/readme_images/trips_by_day_of_week.png)
 
-```text
 In the image above, we see a chart displaying the number of trips (y-axis) for each day of the week (x-axis).
-```
 
 ![Chart showing the amount of trip by hour of day](./misc/readme_images/trips_by_hour.png)
 
-```text
 In the image above, we see a chart showing the number of trips (y-axis) by hour of the day (x-axis), distinguishing between weekdays (blue line) and weekend days (orange line).
-```
 
 |                       | 1      | 2      | 3      | 4      | 5      | 6       | 7       | 8       | 9       | 10      | 11      | 12      |
 | --------------------- | ------ | ------ | ------ | ------ | ------ | ------- | ------- | ------- | ------- | ------- | ------- | ------- |
@@ -194,11 +188,9 @@ In the image above, we see a chart showing the number of trips (y-axis) by hour 
 | filter by day of week | 0.9175 | 1.7513 | 2.1065 | 2.9912 | 4.2319 | 4.9342  | 6.2013  | 5.9494  | 6.4455  | 7.9319  | 8.3554  | 8.7609  |
 | detecting outliers    | 2.0631 | 3.2505 | 4.7743 | 6.4968 | 8.8774 | 13.1131 | 14.0235 | 14.1566 | 17.8150 | 18.3153 | 25.4703 | 24.3715 |
 
-```text
 In the table above, we present the processing time for each step described in Section 5. The rows represent the processing sessions, while the columns represent the number of files processed. Each cell shows the time taken by that session to process the corresponding number of files.
 
 This table was used as input to generate the chart below, which provides a more visual and easily analyzable representation.
-```
 
 ![Time chart for each code session](./misc/readme_images/times.png)
 
