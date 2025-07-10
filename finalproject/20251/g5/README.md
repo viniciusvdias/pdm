@@ -235,11 +235,10 @@ Foram avaliadas as seguintes variações de configuração:
 | WORKERS | CORES | TEMPO (s) | Throughput (MB/s) |
 |---------|-------|-----------|------------|
 | 1       | 1     | 163       | 2.59       |
-| 2       | 1     | 106       | 3.99       |
-| 4       | 1     | 74        | 5.72       |
+| 1       | 6     | 106       | 3.99       |
+| 2       | 2     | 74        | 5.72       |
 | 6       | 1     | 63        | 6.74       |
-| 8       | 1     | 61        | 6.90       |
-| 16      | 1     | 53        | 7.82       |
+| 6       | 6     | 61        | 6.90       |
 
 ---
 
@@ -252,6 +251,15 @@ Foram avaliadas as seguintes variações de configuração:
 | 2       | 2     | 116       | 4.66       |
 | 6       | 1     | 163       | 2.60       |
 | 6       | 6     | 105       | 4.04       |
+
+---
+
+### Tabela de Tempos de Execução dos Workloads (1, 2 e 3 respectivamente):
+
+<p align="center">
+  <img src="presentation/tabela.png" alt="Texto alternativo" width="700"/>
+</p>
+
 ---
 
 ## 7. Discussion and Conclusions
