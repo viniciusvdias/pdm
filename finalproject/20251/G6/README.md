@@ -2,39 +2,39 @@
 
 ## 1. Context and motivation
 
-    - Use data extracted from cab trips at New York to get some insights, for exemple:
-        - Day of week with more cab trips registered
-        - Hour of day with more cab trips registered
+- Use data extracted from cab trips at New York to get some insights, for exemple:
+  - Day of week with more cab trips registered
+  - Hour of day with more cab trips registered
 
-    That type of insight is useful to optimize the taxi fleet distribution through the city, or improve price policies applied to that service.
+That type of insight is useful to optimize the taxi fleet distribution through the city, or improve price policies applied to that service.
 
-    - Outlying detect into the dataset, aiming to reduce possible issues caused by wrong data.
+- Outlying detect into the dataset, aiming to reduce possible issues caused by wrong data.
 
 ## 2. Data
 
 ### 2.1 Detailed description
 
-    - The dataset used in this project is called TLC Trip Record Data, in which each record represents one cab trip registered at New York. It has 24 columns, that represents infos as like amount of passengers, local pickup, local dropout, time pickup and time dropout.
+- The dataset used in this project is called TLC Trip Record Data, in which each record represents one cab trip registered at New York. It has 24 columns, that represents infos as like amount of passengers, local pickup, local dropout, time pickup and time dropout.
 
-    - The dataset is extracted and made available by the NYC taxi & limousine commission.
+- The dataset is extracted and made available by the NYC taxi & limousine commission.
 
 ### 2.2 How to obtain the data
 
-    - Each file contains all data got through 1 month. You can just download it using the following link:
+- Each file contains all data got through 1 month. You can just download it using the following link:
 
-    ```sh
-    wget -O data/yellow_tripdata_${year}-${month}.parquet https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_${year}-${month}.parquet
-    ```
+  ```sh
+  wget -O data/yellow_tripdata_${year}-${month}.parquet https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_${year}-${month}.parquet
+  ```
 
-    You just need to replace ${year} by an year, 2024 for exemple, and ${month} by a month, 02 for exemple.
+  You just need to replace ${year} by an year, 2024 for exemple, and ${month} by a month, 02 for exemple.
 
-    - Instead of run the code above once for each month, we made an script to do it automatically by passing a range to it. You just need to run:
+  - Instead of run the code above once for each month, we made an script to do it automatically by passing a range to it. You just need to run:
 
-    ```sh
-    sh bin/download_data.sh ${first_year}-${first_month} ${last_year}-${last_month}
-    ```
+  ```sh
+  sh bin/download_data.sh ${first_year}-${first_month} ${last_year}-${last_month}
+  ```
 
-    For exemple, to download the whole data from 2024, you just need to execute `sh bin/download_data.sh 2024-01 2024-12`.
+  For exemple, to download the whole data from 2024, you just need to execute `sh bin/download_data.sh 2024-01 2024-12`.
 
 ## 3. How to install and run
 
