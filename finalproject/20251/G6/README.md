@@ -66,7 +66,7 @@ The concept of "full dataset" in our case is as much as your machine can run. Yo
 
 ## 4. Project architecture
 
-![[misc/archtecture_proposal.png]]
+![archtecture proposal diagram](./misc/archtecture_proposal.png)
 
 ## 5. Workloads evaluated
 
