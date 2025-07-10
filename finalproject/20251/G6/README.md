@@ -79,6 +79,54 @@ The concept of "full dataset" in our case is as much as your machine can run. Yo
 
 ## 5. Workloads evaluated
 
+As evaluation method, we collected the time to run all the processing parts separated, variating the amount of data to process, starting from 1 file (2024-01) and adding 1 by 1 file in which execution until the last file (2024-12) to measure how much that file adding impact to the time in which part of processing.
+
+### 5.1 loading df
+
+- Description: operation that loads all .parquet files into an unique spark dataframe
+- Operations: read all data from all files into different spark dataframes and then marge them into only one
+- Measures: time to process
+
+### 5.2 clean df
+
+- Description: operation that delete from the dataset the inconsistent data, as cited at the architecture topic
+- Operations: removes from dataset all records in which:
+  - total_amount (total cost) is lesser or equal 0
+  - trip_distance is lesser or equal 0
+  - passanger_count (number of passangers) is lesser or equal 0 or greater than 5
+  - trip_duration is lesser or equal to 0 or greater than 180 (minutes)
+- Measures: time to process
+
+### 5.3 filter by month
+
+- Description:
+- Operations:
+- Measures: time to process
+
+### 5.4 filter by hour
+
+- Description:
+- Operations:
+- Measures: time to process
+
+### 5.5 filter daily pattern
+
+- Description:
+- Operations:
+- Measures: time to process
+
+### 5.6 filter by day of week
+
+- Description:
+- Operations:
+- Measures: time to process
+
+### 5.7 detecting outliers
+
+- Description:
+- Operations:
+- Measures: time to process
+
 ## 6. Experiments and results
 
 ### 6.1 Experimental environment
@@ -89,7 +137,9 @@ The concept of "full dataset" in our case is as much as your machine can run. Yo
 
 ## 7. Discussion and conclusions
 
-## How to execute the project
+We planned to make the outlier detect using a framework called pyod, but it does not worked with spark enviroment so well, so we made that part using a combination of two methods called IQR and Z-score, to filter some registers with suspect data, as trips too much large or with average speed (trip distance / trip time) too low for exemple. That worked well, so we decided to mantain it, even the cost being too much high.
+As a limitation of our work, we used an unique computer to process all the processing tasks, so we couldn't collect data about our project running into a cluster to test its limitation in distributed systems.
+In general, this is our project, that got real data from a real dataset to process some insights that can be used into some infrastructure or strategic decisions by the NY city hall or ride application managers (as uber for exemple).
 
 ## 8. References and external resources
 
