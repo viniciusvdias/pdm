@@ -1,0 +1,171 @@
+version: "3.8"
+
+services:
+  spark-master:
+    image: ru-ufla-analytics:latest
+    networks:
+      - spark-network
+    ports:
+      - "8080:8080" # Spark Master Web UI
+      - "7077:7077" # Spark Master Port
+      - "4040:4040" # Spark Application Web UI
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - LOG_LEVEL=INFO
+      - LOG_TO_FILE=true
+      - LOG_COLORS=false
+      - DOCKER_SWARM_MODE=true
+      - SPARK_DRIVER_HOST=spark-master
+      - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
+      - SPARK_DRIVER_MEMORY=8g
+      - SPARK_DRIVER_MAX_RESULT_SIZE=8g
+      - SPARK_EXECUTOR_MEMORY=12g
+      - SPARK_EXECUTOR_CORES=4
+      - SPARK_EXECUTOR_INSTANCES=8
+    volumes:
+      - ./misc:/app/misc
+      - ./datasample:/app/datasample
+    command: >
+      bash -c "
+        /opt/spark/sbin/start-master.sh &&
+        echo 'Spark Master iniciado no cluster Swarm' &&
+        echo 'Cluster configurado para 4 nós com máxima utilização de recursos' &&
+        tail -f /dev/null
+      "
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 10g
+          cpus: "2"
+        reservations:
+          memory: 8g
+          cpus: "1"
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 30s
+
+  spark-worker:
+    image: ru-ufla-analytics:latest
+    networks:
+      - spark-network
+    ports:
+      - "8081-8084:8081" # Worker Web UI (range para múltiplas réplicas)
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_WORKER_MEMORY=12g
+      - SPARK_WORKER_CORES=4
+      - LOG_LEVEL=INFO
+      - LOG_TO_FILE=true
+      - LOG_COLORS=false
+      - DOCKER_SWARM_MODE=true
+      - SPARK_EXECUTOR_MEMORY=12g
+      - SPARK_EXECUTOR_CORES=4
+      - SPARK_DRIVER_MEMORY=8g
+      - SPARK_DRIVER_MAX_RESULT_SIZE=8g
+    volumes:
+      - ./misc:/app/misc
+      - ./datasample:/app/datasample
+    command: >
+      bash -c "
+        echo 'Aguardando Spark Master estar disponível...' &&
+        sleep 30 &&
+        /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+        echo 'Spark Worker iniciado no nó: '$$(hostname) &&
+        tail -f /dev/null
+      "
+    deploy:
+      # Distribuir 2 workers por nó (4 nós x 2 = 8 workers total)
+      replicas: 8
+      placement:
+        max_replicas_per_node: 2
+      resources:
+        limits:
+          memory: 14g
+          cpus: "4"
+        reservations:
+          memory: 12g
+          cpus: "3"
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 5
+        window: 60s
+      update_config:
+        parallelism: 2
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+
+  analytics:
+    image: ru-ufla-analytics:latest
+    networks:
+      - spark-network
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - LOG_LEVEL=INFO
+      - LOG_TO_FILE=true
+      - LOG_COLORS=true
+      - DOCKER_SWARM_MODE=true
+      - SPARK_EXECUTOR_MEMORY=12g
+      - SPARK_DRIVER_MEMORY=8g
+      - SPARK_DRIVER_MAX_RESULT_SIZE=8g
+      - SPARK_EXECUTOR_CORES=4
+      - SPARK_EXECUTOR_INSTANCES=8
+      - SPARK_PYTHON_WORKER_MEMORY=4g
+      - SPARK_NETWORK_TIMEOUT=600s
+      - SPARK_EXECUTOR_HEARTBEAT_INTERVAL=20s
+    volumes:
+      - ./misc:/app/misc
+      - ./datasample:/app/datasample
+    command: >
+      bash -c "
+        echo 'Aguardando cluster Spark estar completamente pronto...' &&
+        sleep 60 &&
+        echo 'Verificando conectividade com cluster...' &&
+        /app/.venv/bin/python -m src.main test-spark --master-url spark://spark-master:7077 &&
+        echo 'Executando análise distribuída com máxima utilização de recursos...' &&
+        /app/.venv/bin/python -m src.main analyze --master-url spark://spark-master:7077 --mode complete
+      "
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 10g
+          cpus: "2"
+        reservations:
+          memory: 8g
+          cpus: "1"
+      restart_policy:
+        condition: on-failure
+        delay: 30s
+        max_attempts: 3
+        window: 120s
+
+networks:
+  spark-network:
+    driver: overlay
+    attachable: true
+    driver_opts:
+      com.docker.network.driver.overlay.vxlanid_list: "4097"
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.9.0/24
+
+volumes:
+  spark-data:
+    driver: local
+  spark-logs:
+    driver: local

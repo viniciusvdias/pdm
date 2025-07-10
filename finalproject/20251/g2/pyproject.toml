@@ -1,0 +1,23 @@
+[project]
+name = "ru-ufla-analytics"
+version = "0.1.0"
+description = "Análise de dados do Restaurante Universitário da UFLA usando PySpark"
+readme = "README-provisorio.md"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.2.1",
+    "gdown>=5.2.0",
+    "graphframes>=0.6",
+    "loguru>=0.7.3",
+    "networkx>=3.4.2",
+    "pandas>=2.3.0",
+    "pyspark==3.5.2",
+    "python-dotenv>=1.1.1",
+    "seaborn>=0.13.2",
+    "sparkmeasure>=0.25.0",
+]
+
+[project.scripts]
+ru-analytics = "src.main:cli"
+
+
