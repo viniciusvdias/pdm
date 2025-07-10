@@ -211,3 +211,9 @@ In summary, our project processed real data from an actual dataset to extract in
 ```
 https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
 ```
+
+- Apache Spark
+- Matplotlib
+- Pandas
+- Seaborn
+- Findspark
