@@ -2,136 +2,152 @@
 
 ## 1. Context and motivation
 
-- Use data extracted from cab trips at New York to get some insights, for example:
-  - Day of week with more cab trips registered
-  - Hour of day with more cab trips registered
+- Use data extracted from cab trips in New York to obtain insights, such as:
+  - Day of the week with the most cab trips registered
+  - Hour of the day with the most cab trips registered
 
-That type of insight is useful to optimize the taxi fleet distribution through the city, or improve price policies applied to that service.
+These types of insights are useful for optimizing taxi fleet distribution throughout the city or improving pricing policies applied to the service.
 
-- Outlying detect into the dataset, aiming to reduce possible issues caused by wrong data.
+- Detect outliers in the dataset to reduce potential issues caused by incorrect data.
 
 ## 2. Data
 
 ### 2.1 Detailed description
 
-- The dataset used in this project is called TLC Trip Record Data, in which each record represents one cab trip registered at New York. It has 24 columns, that represents infos as like amount of passengers, local pickup, local dropout, time pickup and time dropout.
+- The dataset used in this project is called TLC Trip Record Data, where each record represents a cab trip registered in New York. It has 24 columns, representing information such as the number of passengers, pickup location, drop-off location, pickup time, and drop-off time.
 
-- The dataset is extracted and made available by the NYC taxi & limousine commission.
+- The dataset is extracted and made available by the NYC Taxi & Limousine Commission.
 
 ### 2.2 How to obtain the data
 
-- Each file contains all data got through 1 month. You can just download it using the following link:
+- Each file contains all trip data recorded during one month. You can download it using the following link:
 
   ```sh
   wget -O data/yellow_tripdata_${year}-${month}.parquet https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_${year}-${month}.parquet
   ```
 
-  You just need to replace ${year} by an year, 2024 for example, and ${month} by a month, 02 for example.
+  Just replace ${year} with a year (e.g., 2024) and ${month} with a month (e.g., 02).
 
-  - Instead of run the code above once for each month, we made an script to do it automatically by passing a range to it. You just need to run:
+  - Instead of running the command above for each month, we created a script to automate the process by passing a date range. You just need to run:
 
   ```sh
   sh bin/download_data.sh ${first_year}-${first_month} ${last_year}-${last_month}
   ```
 
-  For example, to download the whole data from 2024, you just need to execute `sh bin/download_data.sh 2024-01 2024-12`.
+  For example, to download all data from 2024, you can execute:
+
+  ```sh
+  sh bin/download_data.sh 2024-01 2024-12
+  ```
 
 ## 3. How to install and run
 
-### 3.1 Quick start (using sample data in `datasample/`)
+### 3.1 Quick start (using sample data in `data/`)
 
-Now we have the data, we can go to the code. We just need to build up a docker image by executing:
+Once you have the data, you can proceed to run the code. First, build the Docker image by executing:
 
 ```sh
 make
 ```
 
-And then, finally, start up the container, by typing:
+Then, start the container by typing:
 
 ```sh
 sh bin/start.sh
 ```
 
-Obs: if you have any trouble while starting or executing the container, try to stop it (sh bin/stop.sh) and then remove it (sh bin/remove.sh) and finally, start up it again.
+On the notebook opened by starting the container, you will have the repositories data and src. Into src/ you will see 2 .ipynb. Open analysis_dataset.ipynb and roll to the 3th block of code. edit the variable amount_of_files to the number of files you want to process. In this case, change it to 1.
 
-Now, we can be able to acess the jupyter browser enviroment with the directories data containing the data files and src containing the notebook files.
+Note: If you encounter any issues while starting or running the container, try stopping it (sh bin/stop.sh), then removing it (sh bin/remove.sh), and finally starting it again.
 
-If you don't download another files, you can be able to run all the code with the example available at ./data/, that is the file of 2024-01.
+You will then be able to access the Jupyter browser environment, with the data directory containing the data files and the src directory containing the notebook files.
+
+If you haven't downloaded additional files, you can run the code using the example available in ./data/, which includes data for January 2024.
 
 ### 3.2 How to run with the full dataset
 
-The concept of "full dataset" in our case is as much as your machine can run. You can download data from every month of the range 2009-2025 (at the moment).
+The concept of the "full dataset" in our case, means as much data as your machine can handle. You can download data from any month in the range 2009–2025 (currently available).
 
-- Obs.: The dataset is updated monthly.
+- Note: The dataset is updated monthly.
 
 ## 4. Project architecture
 
 ![archtecture proposal diagram](./misc/readme_images/archtecture_proposal.png)
 
-- Basically our project starts to read the whole dataset (all downloaded files at data/ directory) into a spark dataframe.
-- After, we delete some rows containing data with suspicious data, as for example:
+- Basically, our project starts by reading the entire dataset (all downloaded files in the data/ directory) into a Spark DataFrame.
+- Then, we remove some rows containing suspicious data, such as:
 
-  - Trip duration too large or too small
-  - total amount (total trip cost) lesser or equal to 0
-  - passanger count lesser or equal to 0
+  - Trip duration too long or too short
+  - Total amount (total trip cost) less than or equal to 0
+  - Passenger count less than or equal to 0
 
-- After that, now we do all our analysis and print the output, or a slice of it
+- After that, we perform all our analysis and print the output or a relevant slice of it.
 
 ## 5. Workloads evaluated
 
-As evaluation method, we collected the time to run all the processing parts separated, variating the amount of data to process, starting from 1 file (2024-01) and adding 1 by 1 file in which execution until the last file (2024-12) to measure how much that file adding impact to the time in which part of processing.
+As an evaluation method, we measured the execution time of each processing step separately, varying the amount of data processed — starting with 1 file (2024-01) and incrementally adding one file at a time until the last file (2024-12). This allowed us to measure how the addition of each file impacted the processing time of each step.
 
 ### 5.1 loading df
 
-- Description: operation that loads all .parquet files into an unique spark dataframe
-- Operations: read all data from all files into different spark dataframes and then marge them into only one
-- Measures: time to process
+- Description: Operation that loads all .parquet files into a single Spark DataFrame
+- Operations: Read all data from each file into individual Spark DataFrames, then merge them into a single one
+- Measures: Time to process
 
 ### 5.2 clean df
 
-- Description: operation that delete from the dataset the inconsistent data, as cited at the architecture topic
-- Operations: removes from dataset all records in which:
-  - total_amount (total cost) is lesser or equal 0
-  - trip_distance is lesser or equal 0
-  - passanger_count (number of passangers) is lesser or equal 0 or greater than 5
-  - trip_duration is lesser or equal to 0 or greater than 180 (minutes)
+- Description: Operation that removes inconsistent data from the dataset, as mentioned in the architecture section
+- Operations: Remove from the dataset all records where:
+  - `total_amount` (total cost) is less than or equal to 0
+  - `trip_distance` is less than or equal to 0
+  - `passenger_count` (number of passengers) is less than or equal to 0 or greater than 5
+  - `trip_duration` is less than or equal to 0 or greater than 180 (minutes)
 - Measures: time to process
 
 ### 5.3 filter by month
 
-- Description: counts how many trips each month of each year had
-- Operations: group the dataframe by month and year, count how many records has for each value, then sort it from the oldest to newest record.
+- Description: Counts how many trips occurred in each month of each year
+- Operations: Group the DataFrame by month and year, count how many records exist for each group, then sort them from oldest to newest
 - Measures: time to process
 
 ### 5.4 filter by hour
 
-- Description: adds a new filter option containing the trip hour and the type of the day (week or weekend)
-- Operations: create a new column in the dataframe named pickup_hour, that has the time (in hour) of the trip pickup based on its datetime. After that, create another column named day_type, that contains a tag "weekend" for days saturday and sunday and a tag "weekday" to the rest.
+- Description: Adds a new filtering option based on trip hour and type of day (weekday or weekend)
+- Operations:
+  - Create a new column in the DataFrame named pickup_hour, containing the hour of the pickup timestamp
+  - Create another column named day_type, which contains the tag "weekend" for Saturday and Sunday, and "weekday" for the rest
 - Measures: time to process
 
 ### 5.5 filter daily pattern
 
-- Description: counts how many trips each hour of the day had
-- Operations: gets the data created at the step 5.4 and group it by day_type and pickup_hour and then count it. Now, we got how many trips started in which hour of day in which day type
+- Description: Counts how many trips occurred in each hour of the day
+- Operations:
+  - Use the data from step 5.4
+  - Group it by day_type and pickup_hour, then count the records
+  - This gives us the number of trips that started at each hour, segmented by day type
 - Measures: time to process
 
 ### 5.6 filter by day of week
 
-- Description: counts how many trips each day of week had
-- Operations: create a new column named pickup_day_name, which contains the day (sunday, monday....) in which each trip ocurred. Now, we just sort it by the name of the day.
+- Description: Counts how many trips occurred on each day of the week
+- Operations:
+  - Create a new column named pickup_day_name, which contains the name of the day (e.g., Sunday, Monday...) when each trip occurred
+  - Then, sort the result by day name
 - Measures: time to process
 
 ### 5.7 detecting outliers
 
-- Description: identifies outliers in the total_amount column using IQR and Z-score techniques
-- Operations: calculates quartiles, mean, and standard deviation; defines outlier thresholds using both IQR and Z-score; creates a new column is_outlier with 1.0 for outliers and 0.0 otherwise
+- Description: Identifies outliers in the total_amount column using IQR and Z-score techniques
+- Operations:
+  - Calculate quartiles, mean, and standard deviation
+  - Define outlier thresholds using both IQR and Z-score
+  - Create a new column is_outlier with value 1.0 for outliers and 0.0 otherwise
 - Measures: time to process
 
 ## 6. Experiments and results
 
 ### 6.1 Experimental environment
 
-Os experimentos foram executados em:
+The experiments were conducted on the following setup:
 
 - CPU's: 12
 - Memory: 6gb ddr4
@@ -153,19 +169,19 @@ Os experimentos foram executados em:
 ![Chart showing the outliers detected by total cost of trip](./misc/readme_images/outlier_price.png)
 
 ```text
-On the image above, we have a plot that shows the proportion of records that was detected as outlier (is_outlier=1) by the total_amount of the trip, showing that as high is the price, as high the chance to be outlier.
+In the image above, we see a plot that shows the proportion of records detected as outliers (`is_outlier = 1`) based on the `total_amount` of the trip. It reveals that the higher the trip cost, the greater the likelihood of it being considered an outlier.
 ```
 
 ![Chart showing the amount of trip by day](./misc/readme_images/trips_by_day_of_week.png)
 
 ```text
-On the image above, we have a chart that shows the amount of trips (y axis) by day of week (x axis).
+In the image above, we see a chart displaying the number of trips (y-axis) for each day of the week (x-axis).
 ```
 
 ![Chart showing the amount of trip by hour of day](./misc/readme_images/trips_by_hour.png)
 
 ```text
-On the image above, we have a chart that shows the amount of trip (y axis) by hour of day (x axis), considering weekdays (blue line) and weekend days (orange lines).
+In the image above, we see a chart showing the number of trips (y-axis) by hour of the day (x-axis), distinguishing between weekdays (blue line) and weekend days (orange line).
 ```
 
 |                       | 1      | 2      | 3      | 4      | 5      | 6       | 7       | 8       | 9       | 10      | 11      | 12      |
@@ -179,20 +195,22 @@ On the image above, we have a chart that shows the amount of trip (y axis) by ho
 | detecting outliers    | 2.0631 | 3.2505 | 4.7743 | 6.4968 | 8.8774 | 13.1131 | 14.0235 | 14.1566 | 17.8150 | 18.3153 | 25.4703 | 24.3715 |
 
 ```text
-On the table above, we have the time of each processing step described at the item 5. The rows shows the processing session, while the columns shows the amount of files processed. Each record shows the time taken by that session to be processed with that amount of files.
+In the table above, we present the processing time for each step described in Section 5. The rows represent the processing sessions, while the columns represent the number of files processed. Each cell shows the time taken by that session to process the corresponding number of files.
 
-The table above was used as input to generate the chart below, that is more easily analyzable.
+This table was used as input to generate the chart below, which provides a more visual and easily analyzable representation.
 ```
 
 ![Time chart for each code session](./misc/readme_images/times.png)
 
-Looking at the chart above, we can see that all the processing sessions have similar times, except by the outlier detecting, that has a time considering raised compared to the others.
+Looking at the chart above, we can see that all processing sessions have similar execution times, except for the outlier detection step, which shows a significantly higher processing time compared to the others.
 
 ## 7. Discussion and conclusions
 
-We planned to make the outlier detect using a framework called pyod, but it does not worked with spark enviroment so well, so we made that part using a combination of two methods called IQR and Z-score, to filter some registers with suspect data, as trips too much large or with average speed (trip distance / trip time) too low for example. That worked well, so we decided to mantain it, even the cost being too much high.
-As a limitation of our work, we used an unique computer to process all the processing tasks, so we couldn't collect data about our project running into a cluster to test its limitation in distributed systems.
-In general, this is our project, that got real data from a real dataset to process some insights that can be used into some infrastructure or strategic decisions by the NY city hall or ride application managers (as uber for example).
+We initially planned to implement outlier detection using a framework called PyOD, but it did not work well in the Spark environment. Therefore, we replaced it with a combination of two methods — IQR and Z-score — to filter records with suspicious data, such as trips that were too long or had an unusually low average speed (calculated as trip distance divided by trip time). This approach worked well, so we decided to keep it, even though its computational cost was considerably high.
+
+As a limitation of our work, all processing tasks were executed on a single machine. As a result, we were not able to collect data on the project’s performance in a distributed cluster environment, which could have provided insights into scalability.
+
+In summary, our project processed real data from an actual dataset to extract insights that could support infrastructure or strategic decisions by the New York City Hall or ride-hailing platforms such as Uber.
 
 ## 8. References and external resources
 
