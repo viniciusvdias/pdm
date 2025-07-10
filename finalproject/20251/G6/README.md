@@ -168,6 +168,24 @@ On the image above, we have a chart that shows the amount of trips (y axis) by d
 On the image above, we have a chart that shows the amount of trip (y axis) by hour of day (x axis), considering weekdays (blue line) and weekend days (orange lines).
 ```
 
+|                       | 1      | 2      | 3      | 4      | 5      | 6       | 7       | 8       | 9       | 10      | 11      | 12      |
+| --------------------- | ------ | ------ | ------ | ------ | ------ | ------- | ------- | ------- | ------- | ------- | ------- | ------- |
+| loading df            | 0.5798 | 0.8210 | 1.3156 | 1.5146 | 1.6909 | 1.9029  | 2.8643  | 3.0495  | 2.9942  | 3.3598  | 3.7178  | 5.0746  |
+| clean df              | 0.6693 | 0.7546 | 0.8704 | 1.1677 | 1.4417 | 1.5592  | 2.4726  | 2.5055  | 2.6875  | 2.7043  | 3.1007  | 4.0051  |
+| filter by month       | 0.7927 | 1.0203 | 1.2719 | 2.0350 | 2.4925 | 3.0326  | 3.7496  | 3.8725  | 3.5991  | 4.6688  | 5.6153  | 7.1768  |
+| filter by hour        | 0.2498 | 0.4597 | 0.6204 | 0.8047 | 0.8305 | 1.0971  | 1.8016  | 1.4018  | 2.4147  | 2.8867  | 3.6916  | 3.1769  |
+| filter daily pattern  | 0.8420 | 1.3442 | 1.7344 | 3.2321 | 3.2480 | 3.6106  | 4.9674  | 5.1486  | 5.3170  | 6.2949  | 6.2697  | 7.8087  |
+| filter by day of week | 0.9175 | 1.7513 | 2.1065 | 2.9912 | 4.2319 | 4.9342  | 6.2013  | 5.9494  | 6.4455  | 7.9319  | 8.3554  | 8.7609  |
+| detecting outliers    | 2.0631 | 3.2505 | 4.7743 | 6.4968 | 8.8774 | 13.1131 | 14.0235 | 14.1566 | 17.8150 | 18.3153 | 25.4703 | 24.3715 |
+
+```text
+On the table above, we have the time of each processing step described at the item 5. The rows shows the processing session, while the columns shows the amount of files processed. Each record shows the time taken by that session to be processed with that amount of files.
+
+The table above was used as input to generate the chart below, that is more easily analyzable.
+```
+
+![Time chart for each code session](./misc/readme_images/times.png)
+
 ## 7. Discussion and conclusions
 
 We planned to make the outlier detect using a framework called pyod, but it does not worked with spark enviroment so well, so we made that part using a combination of two methods called IQR and Z-score, to filter some registers with suspect data, as trips too much large or with average speed (trip distance / trip time) too low for example. That worked well, so we decided to mantain it, even the cost being too much high.
