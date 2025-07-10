@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  spark-master:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "8080:8080"   # UI Spark Master
+      - "7077:7077"   # Spark Master port
+
+  spark-worker:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    deploy:
+      replicas: 2
+    depends_on:
+      - spark-master
+
+  app:
+    image: big-sales-app:latest
+    deploy:
+      replicas: 1
+    depends_on:
+      - spark-master
+      - spark-worker
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./results:/app/results
+      - ./report:/app/report
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+

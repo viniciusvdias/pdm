@@ -1,0 +1,4 @@
+Variação,Preproc. (s),Treino (s),Predição (s),MAE (R$),RMSE (R$),R²
+Base (original),432,600,343,14.82,29.47,0.84
+-5% Linhas,410,570,330,15.64,30.81,0.82
+- Colunas (Loja/Forn.),400,530,310,17.89,34.20,0.76
