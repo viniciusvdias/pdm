@@ -4,7 +4,6 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Arquivos
-bin/deploy-to-vm-teste.sh
 bin/deploy-to-vm.sh
 bin/vpn-and-ssh-to-host-docker.sh
 misc/Dockerfile
@@ -13,6 +12,8 @@ README.md
 README-report-template.md
 .gitignore
 *.gitkeep
+*pdf
 
 # Pastas
 presentation
+images
