@@ -2,7 +2,7 @@
 
 ## 1. Context and motivation
 
-- Use data extracted from cab trips at New York to get some insights, for exemple:
+- Use data extracted from cab trips at New York to get some insights, for example:
   - Day of week with more cab trips registered
   - Hour of day with more cab trips registered
 
@@ -26,7 +26,7 @@ That type of insight is useful to optimize the taxi fleet distribution through t
   wget -O data/yellow_tripdata_${year}-${month}.parquet https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_${year}-${month}.parquet
   ```
 
-  You just need to replace ${year} by an year, 2024 for exemple, and ${month} by a month, 02 for exemple.
+  You just need to replace ${year} by an year, 2024 for example, and ${month} by a month, 02 for example.
 
   - Instead of run the code above once for each month, we made an script to do it automatically by passing a range to it. You just need to run:
 
@@ -34,7 +34,7 @@ That type of insight is useful to optimize the taxi fleet distribution through t
   sh bin/download_data.sh ${first_year}-${first_month} ${last_year}-${last_month}
   ```
 
-  For exemple, to download the whole data from 2024, you just need to execute `sh bin/download_data.sh 2024-01 2024-12`.
+  For example, to download the whole data from 2024, you just need to execute `sh bin/download_data.sh 2024-01 2024-12`.
 
 ## 3. How to install and run
 
@@ -56,7 +56,7 @@ Obs: if you have any trouble while starting or executing the container, try to s
 
 Now, we can be able to acess the jupyter browser enviroment with the directories data containing the data files and src containing the notebook files.
 
-If you don't download another files, you can be able to run all the code with the exemple available at ./data/, that is the file of 2024-01.
+If you don't download another files, you can be able to run all the code with the example available at ./data/, that is the file of 2024-01.
 
 ### 3.2 How to run with the full dataset
 
@@ -69,7 +69,7 @@ The concept of "full dataset" in our case is as much as your machine can run. Yo
 ![archtecture proposal diagram](./misc/archtecture_proposal.png)
 
 - Basically our project starts to read the whole dataset (all downloaded files at data/ directory) into a spark dataframe.
-- After, we delete some rows containing data with suspicious data, as for exemple:
+- After, we delete some rows containing data with suspicious data, as for example:
 
   - Trip duration too large or too small
   - total amount (total trip cost) lesser or equal to 0
@@ -131,15 +131,25 @@ As evaluation method, we collected the time to run all the processing parts sepa
 
 ### 6.1 Experimental environment
 
+Os experimentos foram executados em:
+
+- CPU's: 12
+- Memory: 6gb ddr4
+- Fedora 40 workstation
+- Linux kernel v6.14
+- Docker 28.1.1
+
+- Enviroment: Jupyter running Spark driver
+
 ### 6.2 What did you test?
 
 ### 6.3 Results
 
 ## 7. Discussion and conclusions
 
-We planned to make the outlier detect using a framework called pyod, but it does not worked with spark enviroment so well, so we made that part using a combination of two methods called IQR and Z-score, to filter some registers with suspect data, as trips too much large or with average speed (trip distance / trip time) too low for exemple. That worked well, so we decided to mantain it, even the cost being too much high.
+We planned to make the outlier detect using a framework called pyod, but it does not worked with spark enviroment so well, so we made that part using a combination of two methods called IQR and Z-score, to filter some registers with suspect data, as trips too much large or with average speed (trip distance / trip time) too low for example. That worked well, so we decided to mantain it, even the cost being too much high.
 As a limitation of our work, we used an unique computer to process all the processing tasks, so we couldn't collect data about our project running into a cluster to test its limitation in distributed systems.
-In general, this is our project, that got real data from a real dataset to process some insights that can be used into some infrastructure or strategic decisions by the NY city hall or ride application managers (as uber for exemple).
+In general, this is our project, that got real data from a real dataset to process some insights that can be used into some infrastructure or strategic decisions by the NY city hall or ride application managers (as uber for example).
 
 ## 8. References and external resources
 
