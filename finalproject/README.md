@@ -20,15 +20,17 @@ necessarily uses some of the concepts and systems discussed in this course.
    data source, workload and processing architecture.
 
 4. Implement and document your project. Important: **the application MUST be
-   configured to run over Docker Swarm**.
+   configured to run over Docker Compose**.
 
 5. Present your work, include motivation, objective, method, results and
    conclusion. You must present also some kind of performance analysis
-  (throughput or latency studies).
+   (throughput or latency studies). **RESULTS MUST CONTAIN EXPERIMENTAL
+   RESULTS with multiple repetitions (at least 3) and proper statistical
+   reporting including average and standard deviation (minimum requirement)**.
 
 ## Questions for Project proposal (first assignment)
 
-Assignment: (1) presentation slides containing
+Important questions that are going to be considered for grading:
 
 1. Which data source you are going to use? What is the context and motivation?
    Link to where it is available ...
@@ -44,26 +46,28 @@ Assignment: (1) presentation slides containing
 Assignment: (1) slides containing the presentation, including results; (2)
 **Public GitHub Repo** containing documentation and code Dockerized -- in this
 documentation you must include a **full report, with content, results and
-discussion of the results**.
+discussion of the results**. **The results section MUST include experimental
+data with multiple repetitions (minimum 3 runs) and proper statistical analysis
+reporting average and standard deviation as minimum requirement**.
 
 ## Grading
 
-1. In-class proposal presentation (submission: PDF slides)
+1. 
 2. Github repository including Code+Documentation (submission: Github Repository)
 3. Final project presentation to the professor (submission: PDF slides)
 
 Grading considers the following, but not limited to, criteria:
 
 - **100\%**: An outstanding assignment that is significantly above average and
-clearly stands out from the majority.  
+  clearly stands out from the majority.  
 - **90\%**: An above-average assignment, well-organized, with a clear presentation,
-demonstrating a significant amount of work.  
+  demonstrating a significant amount of work.  
 - **80\%**: A good assignment that shows the students’s effort and meets all
-expected criteria.  
+  expected criteria.  
 - **70\%**: An assignment that falls short, either due to a very confusing
-presentation or an effort level below average.  
+  presentation or an effort level below average.  
 - **60\%**: An assignment with significant issues, barely meeting the acceptable
-standard.  
+  standard.  
 - **50\%**: Only if the assignment did not meet the expectations for the course evaluation.
 
 ## Open data sources
@@ -76,8 +80,7 @@ standard.
 - [Awesome Public Datasets](https://github.com/awesomedata/awesome-public-datasets)
 - [Awesome JSON Datasets](https://github.com/jdorfman/awesome-json-datasets)
 - You can also use APIs to generate the data (ask the professor)
-- Any other [open data](https://en.wikipedia.org/wiki/Open_data) resource (ask
-the professor)
+- Any other [open data](https://en.wikipedia.org/wiki/Open_data) resource (ask the professor)
 
 ## Workload examples
 
@@ -121,13 +124,14 @@ What to do with my data? A few examples ...
 
 1. How to describe a data architecture? There is no final answer, but basically you
    need to provide a diagram showing how the data flows in your system,
-including details such as file formats (if any), processing modules, output,
-etc. Below an example of a clear an comprehensible architecture diagram:
+   including details such as file formats (if any), processing modules, output,
+   etc. Below an example of a clear an comprehensible architecture diagram:
 
 <center>
 <img src="https://miro.medium.com/v2/resize:fit:1100/format:webp/0*Mu6CzNQKbugA7iZu" height=400>
 
 source: [Himeji: A Scalable Centralized System for Authorization at Airbnb](https://medium.com/airbnb-engineering/himeji-a-scalable-centralized-system-for-authorization-at-airbnb-341664924574)
+
 </center>
 
 Other good reference (with not that many details) can be found [here](https://www.geeksforgeeks.org/data-architecture-diagrams/).
