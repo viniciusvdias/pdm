@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+NETWORK=${network:-pdmnet-local}
 required="host port topic nmessages maxwaitingtime subject"
 for argname in $required; do
   if [ -z ${!argname+x} ]; then
@@ -22,7 +23,7 @@ DIR=$(dirname "$(realpath $0)")
 
 docker run \
   --rm \
-  --network pdmnet \
+  --network "$NETWORK" \
   kafkafakestream \
   python main.py --security-protocol plaintext \
   --host $host \

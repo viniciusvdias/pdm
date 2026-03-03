@@ -2,7 +2,7 @@ services:
   kafka:
     image: 'bitnami/kafka:latest'
     networks:
-      - pdmnet
+      - pdmnet-local
     environment:
       - KAFKA_CFG_NODE_ID=0
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
@@ -17,7 +17,7 @@ services:
       - "9094:9094"
 
 networks:
-  pdmnet:
+  pdmnet-local:
     external: true
 
   #myapp:

@@ -1,11 +1,11 @@
-# EX3-DATA: Data models, a few examples
+# EX6-STRUCT: SparkSQL basics
 
-> Assignment submission format: a single ipynb file `3-data-models.ipynb`, as describe in step 4.
->
+> Assignment submission format: a single ipynb file `06-struct-sparksql-basics.ipynb`, as describe in step 4.
+> 
 > Need help with Markdown? There is a quick guide [here](https://docs.github.com/pt/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
 
 1. In this repository we have a Dockerfile for a container meant to run [Jupyter](https://jupyter.org/).
-Let us inspect its content:
+   Let us inspect its content:
 
 ```bash
 cat jupytercli/Dockerfile
@@ -30,5 +30,5 @@ You will be prompted with a `http` link to access the service in your browser.
 Notice that the command maps directory `pdm/hostdir` into the container's path
 `/app/hostdir`.
 
-4. Follow instructions from file `/app/hostdir/3-data-models.ipynb`
-(container's path).
+4. Follow instructions from file `/app/hostdir/06-sparksql-basics.ipynb`
+   (container's path).

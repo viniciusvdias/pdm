@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+NETWORK=${1:-pdmnet-local}
 DIR=$(dirname "$(realpath $0)")
 (docker start "jupytercli-$USER" && sleep 5 && docker logs "jupytercli-$USER") || (docker run \
   -d \
@@ -7,6 +8,6 @@ DIR=$(dirname "$(realpath $0)")
   -p 8888:8888 \
   -v $DIR/../../hostdir:/app/hostdir \
   --name "jupytercli-$USER" \
-  --network pdmnet \
+  --network "$NETWORK" \
   jupytercli \
   jupyter lab --no-browser --ip=0.0.0.0 --allow-root && sleep 5 && docker logs "jupytercli-$USER")

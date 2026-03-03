@@ -1,12 +1,12 @@
 networks:
-  pdmnet:
+  pdmnet-local:
     external: true
 
 services:
   neo4j:
-    image: bitnami/neo4j:latest
+    image: neo4j:latest
     networks:
-      - pdmnet
+      - pdmnet-local
     ports:
       - '7474:7474'
       - '7473:7473'

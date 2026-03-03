@@ -1,6 +1,9 @@
 DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-build: buildjupytercli buildvmaccess buildalmondcli buildsocketstreamserver buildkafkafakestream
+build: buildjupytercli buildalmondcli buildsocketstreamserver buildkafkafakestream
+
+buildpdmnet:
+	cd pdmnet && make
 
 buildvmaccess:
 	docker buildx build --output type=docker --tag pdmvmaccess vmaccess/

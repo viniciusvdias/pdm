@@ -1,7 +1,7 @@
 # [EX1-INTRO] Download and explore a CSV file
 
 > Assignment submission format: a single markdown file `ex1-intro-sol.md`.
->
+> 
 > Need help with Markdown? There is a quick guide [here](https://docs.github.com/pt/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
 
 ## Reproduce the steps below
@@ -16,13 +16,12 @@ mkdir cnpj_exercise
 cd cnpj_exercise
 ```
 
-2. Download and unzip the public data [CNPJ - Regime Tributário - Lucro Real](https://arquivos.receitafederal.gov.br/dados/cnpj/regime_tributario/Lucro%20Real.zip).
+2. Download and unzip the public data [CNPJ - Regime Tributário - Lucro Real](https://arquivos.receitafederal.gov.br/public.php/dav/files/MPPfFit7g7zdA8C/entidades-lucro-real.zip).
 
 ```bash
-wget https://arquivos.receitafederal.gov.br/dados/cnpj/regime_tributario/Lucro%20Real.zip
-mv "Lucro Real.zip" lucro_real.zip # spaces in name are a pain :(
+wget https://arquivos.receitafederal.gov.br/public.php/dav/files/MPPfFit7g7zdA8C/entidades-lucro-real.zip
 unzip lucro_real.zip -d lucro_real
-mv "lucro_real/Lucro Real.csv" lucro_real/lucro_real.csv # spaces in name are a pain :(
+mv "lucro_real/Lucro Real.csv" lucro_real/lucro_real.csv # spaces in file    name are a pain :(
 ```
 
 3. Check the extracted files:
@@ -62,8 +61,8 @@ head -n 1 lucro_real/lucro_real.csv | awk -F ',' '{print NF}'
 ```
 
 - `head -n 1` extracts the first row.  
-- `awk -F ',' '{print NF}'` counts the number of fields (columns).  
 
+- `awk -F ',' '{print NF}'` counts the number of fields (columns).  
 9. Count Unique Values in the First Column. To count distinct values in the **first column**:  
 
 ```bash
@@ -71,9 +70,10 @@ cut -d ',' -f1 lucro_real/lucro_real.csv | sort | uniq | wc -l
 ```
 
 - `cut -d ',' -f1` extracts the first column.  
-- `sort | uniq` removes duplicates.  
-- `wc -l` counts the unique values.  
 
+- `sort | uniq` removes duplicates.  
+
+- `wc -l` counts the unique values.  
 10. Automate Everything with a Bash Script. Instead of running each command manually, let's create a **Bash script** to automate the process.
 
 ```bash
@@ -112,7 +112,7 @@ done
 - Save and exit (`CTRL+X`, `Y`, `ENTER`).
 
 - Make the script executable (yes, not all files in a file system are allowed to
-be executed):
+  be executed):
 
 ```bash
 chmod +x extract_info.sh

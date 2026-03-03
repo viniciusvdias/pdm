@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+NETWORK=${network:-pdmnet-local}
 required="bootstrapserver topic"
 for argname in $required; do
   if [ -z ${!argname+x} ]; then
@@ -12,5 +13,5 @@ for argname in $required; do
 done
 
 docker run -it --rm \
-  --network pdmnet \
+  --network "$NETWORK" \
   bitnami/kafka:latest kafka-console-consumer.sh --bootstrap-server $bootstrapserver --topic $topic --from-beginning
