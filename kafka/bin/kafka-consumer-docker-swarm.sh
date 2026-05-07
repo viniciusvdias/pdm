@@ -14,4 +14,5 @@ done
 
 docker run -it --rm \
   --network "$NETWORK" \
-  bitnami/kafka:latest kafka-console-consumer.sh --bootstrap-server $bootstrapserver --topic $topic --from-beginning
+  --workdir /opt/kafka/bin/ \
+  apache/kafka:latest ./kafka-console-consumer.sh --bootstrap-server $bootstrapserver --topic $topic --from-beginning
