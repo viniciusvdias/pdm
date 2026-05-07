@@ -20,7 +20,7 @@ cd cnpj_exercise
 
 ```bash
 wget https://arquivos.receitafederal.gov.br/public.php/dav/files/MPPfFit7g7zdA8C/entidades-lucro-real.zip
-unzip lucro_real.zip -d lucro_real
+unzip entidades-lucro-real.zip -d lucro_real
 mv "lucro_real/Lucro Real.csv" lucro_real/lucro_real.csv # spaces in file    name are a pain :(
 ```
 
