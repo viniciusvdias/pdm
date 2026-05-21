@@ -35,12 +35,13 @@ Replace `GROUPID` with your group identifier (for example: G1, G2, G3, etc).
 A template project with instructions that must be followed is available under `finalproject/20261/gX`.
 
 - Copy the template directory to your group-specific folder. For example, if your group is G1:
-
+  
   ```bash
   cp -r finalproject/20261/gX finalproject/20261/g1
   ```
 
 - Replace `g1` with your actual group folder name (for other groups, use `g2`, `g3`, etc).
+
 - Read and follow all instructions in the template project before adding or modifying any files.
 
 ## 5. Add your project files

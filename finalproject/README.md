@@ -52,23 +52,9 @@ reporting average and standard deviation as minimum requirement**.
 
 ## Grading
 
-1. 
+1. Proper proposal validated with professor in class (no submission, yes or no)
 2. Github repository including Code+Documentation (submission: Github Repository)
 3. Final project presentation to the professor (submission: PDF slides)
-
-Grading considers the following, but not limited to, criteria:
-
-- **100\%**: An outstanding assignment that is significantly above average and
-  clearly stands out from the majority.  
-- **90\%**: An above-average assignment, well-organized, with a clear presentation,
-  demonstrating a significant amount of work.  
-- **80\%**: A good assignment that shows the students’s effort and meets all
-  expected criteria.  
-- **70\%**: An assignment that falls short, either due to a very confusing
-  presentation or an effort level below average.  
-- **60\%**: An assignment with significant issues, barely meeting the acceptable
-  standard.  
-- **50\%**: Only if the assignment did not meet the expectations for the course evaluation.
 
 ## Open data sources
 
