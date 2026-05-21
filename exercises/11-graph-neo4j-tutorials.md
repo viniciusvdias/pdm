@@ -1,4 +1,6 @@
-# EX11-GRAPH: Neo4J tutorials
+# 
+
+:quick:Q!EX11-GRAPH: Neo4J tutorials
 
 > This assignment does not require submission. Just follow the official tutorials.
 > 
@@ -11,7 +13,7 @@
 ```
 
 4. Make sure service is running and access Neo4J Web interface at
-   `http://localhost:7474`. Default username `neo4j`, default password `bitnami1`.
+   `http://localhost:7474`. Default username `neo4j`, default password `neo4j`.
 
 5. Your task is to explore the official tutorials available within the Web
    interface. No submission of any kind is required.
