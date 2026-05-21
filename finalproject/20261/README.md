@@ -1,8 +1,8 @@
-# Instructions for submitting your Final Project (2025/1)
+# Instructions for submitting your Final Project (2026/1)
 
 ‼️ **Make sure you follow all the following instructions. Submissions not following these steps may not be graded.** ‼️
 
-Follow these steps to submit your project by creating a pull request in the `viniciusvdias/pdm` repository under the `finalproject/20251/` directory.
+Follow these steps to submit your project by creating a pull request in the `viniciusvdias/pdm` repository under the `finalproject/20261/` directory.
 
 ## 1. Fork the repository
 
@@ -25,19 +25,19 @@ Replace `YOUR-USERNAME` with your GitHub username.
 Create a branch for your work:
 
 ```bash
-git checkout -b finalproject-20251-GROUPID
+git checkout -b finalproject-20261-GROUPID
 ```
 
 Replace `GROUPID` with your group identifier (for example: G1, G2, G3, etc).
 
 ## 4. Start from the template project
 
-A template project with instructions that must be followed is available under `finalproject/20251/gX`.
+A template project with instructions that must be followed is available under `finalproject/20261/gX`.
 
 - Copy the template directory to your group-specific folder. For example, if your group is G1:
 
   ```bash
-  cp -r finalproject/20251/gX finalproject/20251/g1
+  cp -r finalproject/20261/gX finalproject/20261/g1
   ```
 
 - Replace `g1` with your actual group folder name (for other groups, use `g2`, `g3`, etc).
@@ -45,16 +45,16 @@ A template project with instructions that must be followed is available under `f
 
 ## 5. Add your project files
 
-Work only inside your group’s folder under `finalproject/20251/<GROUPID>`.  
-Do not place files directly in `finalproject/20251/` or in other groups’ folders.
+Work only inside your group’s folder under `finalproject/20261/<GROUPID>`.  
+Do not place files directly in `finalproject/20261/` or in other groups’ folders.
 
 ## 6. Stage and commit your changes
 
 Add and commit only your group’s folder to make sure only your files are included:
 
 ```bash
-git add finalproject/20251/GROUPID
-git commit -m "PDM - final project for 2025/1 - GROUPID"
+git add finalproject/20261/GROUPID
+git commit -m "PDM - final project for 2026/1 - GROUPID"
 ```
 
 Replace `GROUPID` with your group identifier.
@@ -64,7 +64,7 @@ Replace `GROUPID` with your group identifier.
 Push your branch to your fork:
 
 ```bash
-git push origin finalproject-20251-GROUPID
+git push origin finalproject-20261-GROUPID
 ```
 
 You can push changes to your branch multiple times as you make progress. Only after you have completed your work, create a pull request.  
@@ -79,6 +79,6 @@ The pull request you create will be used for grading your final project.
 
 ## Example for group G1
 
-- Project directory: `finalproject/20251/g1`
-- Store all your project files inside this folder. Do not place files in `finalproject/20251/` or in any other group's folder.
-- Copy the template from `finalproject/20251/gX` to `finalproject/20251/g1` and follow the instructions in the template.
+- Project directory: `finalproject/20261/g1`
+- Store all your project files inside this folder. Do not place files in `finalproject/20261/` or in any other group's folder.
+- Copy the template from `finalproject/20261/gX` to `finalproject/20261/g1` and follow the instructions in the template.
