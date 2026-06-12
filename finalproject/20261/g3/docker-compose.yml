@@ -1,0 +1,258 @@
+# =============================================================================
+# Motor de Liquidação estilo Pix — stack completa (Kafka, Flink, MinIO,
+# Postgres, Prometheus, Grafana, producer, consumer).
+#
+# Quick start:   ./bin/run.sh         (ou: docker compose up --build -d)
+# Tudo roda APENAS via Docker; nenhuma instalação adicional é necessária.
+# =============================================================================
+
+x-flink-common: &flink-common
+  build:
+    context: .
+    dockerfile: misc/flink/Dockerfile
+  image: pix-flink:local
+  environment: &flink-env
+    FLINK_PROPERTIES: |
+      jobmanager.rpc.address: flink-jobmanager
+      parallelism.default: ${PARALLELISM:-2}
+      taskmanager.numberOfTaskSlots: ${TASK_SLOTS:-4}
+      taskmanager.memory.process.size: 2048m
+      jobmanager.memory.process.size: 1024m
+      state.backend.type: rocksdb
+      state.backend.incremental: true
+      state.checkpoints.dir: s3://pix/checkpoints
+      state.checkpoint-storage: filesystem
+      s3.endpoint: http://minio:9000
+      s3.path.style.access: true
+      s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+      s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+      metrics.reporter.prom.port: 9249
+    # Parâmetros lidos pelos jobs PyFlink:
+    KAFKA_BOOTSTRAP: kafka:9092
+    CHECKPOINT_MS: ${CHECKPOINT_MS:-5000}
+    GUARANTEE: ${GUARANTEE:-EXACTLY_ONCE}
+    WATERMARK_OOO_MS: ${WATERMARK_OOO_MS:-2000}
+    OPENING_BALANCE_CENTS: ${OPENING_BALANCE_CENTS:-500000000}
+    TX_LIMIT_CENTS: ${TX_LIMIT_CENTS:-20000000}
+    PARALLELISM: ${PARALLELISM:-2}
+    AML_CYCLE_WINDOW_S: ${AML_CYCLE_WINDOW_S:-600}
+    AML_CYCLE_MIN_CENTS: ${AML_CYCLE_MIN_CENTS:-100000000}
+    AML_VELOCITY_N: ${AML_VELOCITY_N:-15}
+    AML_VELOCITY_WINDOW_S: ${AML_VELOCITY_WINDOW_S:-60}
+    AML_STRUCT_N: ${AML_STRUCT_N:-8}
+    AML_STRUCT_WINDOW_S: ${AML_STRUCT_WINDOW_S:-3600}
+    AML_STRUCT_BELOW_CENTS: ${AML_STRUCT_BELOW_CENTS:-1000000}
+  depends_on:
+    minio-setup:
+      condition: service_completed_successfully
+    kafka:
+      condition: service_healthy
+
+services:
+  # ----------------------------------------------------------------- Kafka
+  kafka:
+    image: apache/kafka:3.8.0
+    hostname: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: pix-cluster-0000000000
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  kafka-init:
+    image: apache/kafka:3.8.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        for t in tx.raw tx.outcomes aml.alerts; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
+            --create --if-not-exists --topic $$t --partitions ${PARALLELISM:-2} --replication-factor 1
+        done
+        echo "tópicos criados:"; /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
+    restart: "no"
+
+  # ----------------------------------------------------------------- MinIO
+  minio:
+    image: minio/minio:RELEASE.2024-06-13T22-53-53Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  minio-setup:
+    image: minio/mc:RELEASE.2024-06-12T14-34-03Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}
+        mc mb --ignore-existing local/pix
+        echo "bucket pix pronto"
+    restart: "no"
+
+  # ----------------------------------------------------------------- Postgres
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pix}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pix}
+      POSTGRES_DB: ${POSTGRES_DB:-pix}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./misc/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pix}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ----------------------------------------------------------------- Flink
+  flink-jobmanager:
+    <<: *flink-common
+    command: jobmanager
+    ports:
+      - "8081:8081"   # Flink Web UI
+      - "9249:9249"   # métricas Prometheus do JM
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/overview || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  flink-taskmanager:
+    <<: *flink-common
+    command: taskmanager
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+    # Escalável: docker compose up --scale flink-taskmanager=N
+
+  job-submitter:
+    <<: *flink-common
+    command: ["/submit-jobs.sh"]
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+      flink-taskmanager:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *flink-env
+      JOBMANAGER_HOST: flink-jobmanager
+      JOBMANAGER_PORT: 8081
+    restart: "no"
+
+  # ----------------------------------------------------------------- Producer
+  producer:
+    build:
+      context: .
+      dockerfile: misc/app/Dockerfile
+    image: pix-app:local
+    command: ["python", "/app/src/producer/producer.py"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      job-submitter:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      INPUT_CSV: /data/input.csv
+      RATE: ${RATE:-2000}
+      BURST_MODE: ${BURST_MODE:-rate}
+      BURST_PROB: ${BURST_PROB:-0.02}
+      BURST_MIN_S: ${BURST_MIN_S:-3}
+      BURST_MAX_S: ${BURST_MAX_S:-10}
+      BURST_MULT_MIN: ${BURST_MULT_MIN:-10}
+      BURST_MULT_MAX: ${BURST_MULT_MAX:-80}
+      BURST_VALUE_FACTOR: ${BURST_VALUE_FACTOR:-50}
+      BURST_SEED: ${BURST_SEED:-}
+    volumes:
+      - ${INPUT_CSV:-./datasample/sample.csv.gz}:/data/input.csv:ro
+    restart: "no"
+
+  # ----------------------------------------------------------------- Consumer
+  consumer:
+    build:
+      context: .
+      dockerfile: misc/app/Dockerfile
+    image: pix-app:local
+    command: ["python", "/app/src/consumer/outcome_consumer.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-pix}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-pix}
+      PGDATABASE: ${POSTGRES_DB:-pix}
+      METRICS_PORT: 8000
+      # Mesmos parâmetros do ledger usados pelo baseline (rodado via este serviço).
+      OPENING_BALANCE_CENTS: ${OPENING_BALANCE_CENTS:-500000000}
+      TX_LIMIT_CENTS: ${TX_LIMIT_CENTS:-20000000}
+    ports:
+      - "8000:8000"   # métricas Prometheus do consumer
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------- Observabilidade
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./misc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./misc/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  minio-data:
+  pg-data:

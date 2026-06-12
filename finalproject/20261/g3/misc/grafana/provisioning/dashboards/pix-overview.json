@@ -1,0 +1,60 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "title": "Pix Settlement Engine",
+  "uid": "pix-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-15m", "to": "now" },
+  "refresh": "5s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Throughput (TPS) — outcomes/s",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "rate(pix_outcomes_total[1m])", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latência end-to-end (ms)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, rate(pix_latency_ms_bucket[1m]))", "legendFormat": "P50" },
+        { "expr": "histogram_quantile(0.95, rate(pix_latency_ms_bucket[1m]))", "legendFormat": "P95" },
+        { "expr": "histogram_quantile(0.99, rate(pix_latency_ms_bucket[1m]))", "legendFormat": "P99" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "REJECTED acumulado",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 8 },
+      "targets": [ { "expr": "sum(pix_outcomes_total{status=\"REJECTED\"})" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Fila de alertas AML (alertas/min)",
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 8 },
+      "targets": [
+        { "expr": "rate(pix_aml_alerts_total[1m])", "legendFormat": "{{pattern}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Flink — tamanho do estado / checkpoint (bytes)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "flink_jobmanager_job_lastCheckpointSize", "legendFormat": "{{job_name}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Flink — duração do checkpoint (ms)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        { "expr": "flink_jobmanager_job_lastCheckpointDuration", "legendFormat": "{{job_name}}" }
+      ]
+    }
+  ]
+}

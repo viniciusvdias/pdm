@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # Métricas do Flink (reporter Prometheus em cada JM/TM na porta 9249).
+  - job_name: flink-jobmanager
+    static_configs:
+      - targets: ['flink-jobmanager:9249']
+  - job_name: flink-taskmanager
+    # DNS do compose pode resolver múltiplas réplicas do TM.
+    dns_sd_configs:
+      - names: ['flink-taskmanager']
+        type: A
+        port: 9249
+    static_configs:
+      - targets: ['flink-taskmanager:9249']
+
+  # Métricas operacionais expostas pelo consumer (TPS/latência) via client_python.
+  - job_name: pix-consumer
+    static_configs:
+      - targets: ['consumer:8000']
