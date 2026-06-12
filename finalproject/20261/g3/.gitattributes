@@ -1,0 +1,10 @@
+# Scripts e código que rodam em Linux (avaliação) devem manter EOL LF.
+*.sh   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.sql  text eol=lf
+Dockerfile text eol=lf
+# Amostra comprimida é binária.
+*.gz   binary
+*.pdf  binary

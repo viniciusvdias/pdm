@@ -1,0 +1,12 @@
+# Artefatos de execução e dados grandes — NUNCA versionar o dataset completo.
+results/*
+!results/.gitkeep
+*.png
+.env
+__pycache__/
+*.pyc
+
+# Datasets completos/amplificados (apenas datasample/ é versionado).
+data/
+*.csv
+!datasample/*.csv.gz
