@@ -6,7 +6,8 @@ results/*
 __pycache__/
 *.pyc
 
-# Datasets completos/amplificados (apenas datasample/ é versionado).
-data/
+# Datasets completos/amplificados na raiz de g3 (apenas datasample/ é versionado).
+# Ancorado em /data/ para NÃO ignorar o pacote de código src/data/.
+/data/
 *.csv
 !datasample/*.csv.gz
