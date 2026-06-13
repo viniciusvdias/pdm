@@ -61,9 +61,16 @@ conta-destino) ficou como validação cruzada opcional, fora do escopo central.
 **Modelo de liquidação** (`src/common/ledger.py`, idêntico em stream e batch):
 saldo inicial constante por conta (`OPENING_BALANCE_CENTS`); cada transação
 expande em ops keyed por conta (`CASH_IN`→crédito; `PAYMENT`/`DEBIT`→débito;
-`TRANSFER`/`CASH_OUT`→débito origem + crédito destino); débito checa saldo
-(`SETTLED`/`REJECTED`), crédito sempre soma. Simplificações documentadas na
-§7.
+`TRANSFER`/`CASH_OUT`→débito origem + crédito destino); o **débito só liquida se
+houver saldo suficiente** (`valor ≤ saldo` ⇒ `SETTLED`, senão `REJECTED`), crédito
+sempre soma. Como a aceitação por saldo **depende da ordem**, stream e batch
+aplicam as ops de cada conta na MESMA ordem determinística `(event_time,
+transaction_id, kind)`: o batch ordena globalmente; o operador PyFlink bufferiza
+por conta e aplica em ordem de event-time (timer de event-time guiado por
+watermark + timer de processing-time para drenar a cauda). O consumer reconstrói
+o saldo final mantendo o op de maior **`apply_seq`** (sequência de aplicação por
+conta) — o último efetivamente aplicado ao estado —, o que é robusto a eventos
+atrasados. Simplificações documentadas na §7.
 
 ### 2.2 How to obtain the data
 

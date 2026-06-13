@@ -14,19 +14,19 @@ Modelo (simplificações documentadas no README):
     * CASH_IN              -> [CREDIT origem]
     * PAYMENT, DEBIT       -> [DEBIT  origem]
     * TRANSFER, CASH_OUT   -> [DEBIT  origem, CREDIT destino]
-- **Aceitação do DEBIT por LIMITE POR TRANSAÇÃO** (``TX_LIMIT_CENTS``), e não pelo
-  saldo corrente. O Pix real impõe limite por transação; além disso, um critério
-  que depende só do valor da transação é **independente da ordem** de processamento.
-  Como créditos são comutativos e o conjunto de débitos aceitos não depende da
-  ordem, o saldo final = OPENING + Σcréditos − Σ(débitos aceitos) é o MESMO no
-  stream (exactly-once, qualquer ordem) e no baseline batch -> reconciliação exata
-  ao centavo, **sem necessidade de buffering por event-time** (que sofreria com a
-  razão event-time/ingestão e com o flush da cauda).
-- DEBIT: se ``valor <= TX_LIMIT_CENTS`` debita e marca SETTLED; senão REJECTED.
+- **Aceitação do DEBIT por SALDO SUFICIENTE** (saldo corrente da conta), como num
+  motor de liquidação real: a transação só liquida se a conta tem saldo. Esse
+  critério **depende da ordem** em que as ops são aplicadas por conta (um crédito
+  que chega antes pode viabilizar um débito que, depois, seria rejeitado). Para que
+  stream e batch cheguem ao MESMO saldo final, ambos aplicam as ops de cada conta
+  na MESMA ordem determinística: ``(event_time, transaction_id, kind)``. O batch
+  ordena globalmente; o stream faz buffering por conta e aplica em ordem de
+  event-time (timer de event-time guiado por watermark) -> reconciliação exata ao
+  centavo.
+- DEBIT: se ``valor <= saldo`` debita e marca SETTLED; senão REJECTED.
 - CREDIT: credita e marca SETTLED.
-- O saldo corrente é mantido/reportado como ledger de auditoria, mas NÃO decide a
-  aceitação (que é por limite). Um DEBIT rejeitado não cancela o CREDIT pareado
-  (simplificação; ambos os mundos usam a MESMA regra).
+- Um DEBIT rejeitado não cancela o CREDIT pareado (simplificação; ambos os mundos
+  usam a MESMA regra).
 """
 
 from __future__ import annotations
@@ -39,11 +39,6 @@ from .schema import Transaction
 
 # Saldo inicial de toda conta (centavos).
 OPENING_BALANCE_CENTS = int(os.environ.get("OPENING_BALANCE_CENTS", 500_000_000))
-
-# Limite por transação (centavos). Débitos acima são REJECTED. Independente de
-# ordem -> mantém a reconciliação exata. Default 200.000,00 (rejeita a cauda alta
-# de TRANSFER/CASH_OUT do PaySim, gerando uma taxa de REJECTED visível).
-TX_LIMIT_CENTS = int(os.environ.get("TX_LIMIT_CENTS", 20_000_000))
 
 # Tipos cuja origem é debitada.
 _DEBIT_TYPES = {"PAYMENT", "DEBIT", "TRANSFER", "CASH_OUT"}
@@ -85,11 +80,12 @@ def expand_to_ops(tx: Transaction) -> List[LedgerOp]:
 def apply_op(balance: int, op: LedgerOp) -> tuple[int, str]:
     """Aplica uma op a um saldo. Retorna (novo_saldo, status).
 
-    Aceitação do DEBIT por LIMITE POR TRANSAÇÃO (independente de ordem).
+    Aceitação do DEBIT por SALDO SUFICIENTE (depende da ordem -> stream e batch
+    aplicam as ops de cada conta na mesma ordem determinística por event-time).
     """
     if op.kind == DEBIT:
         amount = -op.delta_cents
-        if amount <= TX_LIMIT_CENTS:
+        if amount <= balance:
             return balance - amount, "SETTLED"
         return balance, "REJECTED"
     # CREDIT

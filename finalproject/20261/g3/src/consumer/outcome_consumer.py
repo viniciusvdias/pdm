@@ -1,7 +1,7 @@
 """Consumer: tx.outcomes + aml.alerts -> Postgres + métricas Prometheus.
 
 - Mantém ``account_balance`` com o saldo final por conta (regra: maior
-  ``order_key = event_time|tid|kind``), base da reconciliação.
+  ``apply_seq`` — o último op aplicado ao estado da conta), base da reconciliação.
 - Grava a trilha ``outcomes`` e os ``aml_alerts``.
 - Calcula latência end-to-end (settle_time_ms - ingest_time_ms) e expõe métricas
   Prometheus (``pix_outcomes_total``, ``pix_latency_ms``, ``pix_aml_alerts_total``)
@@ -46,8 +46,13 @@ def connect_pg():
             time.sleep(2)
 
 
-def order_key(event_time: int, tid: str, kind: str) -> str:
-    return f"{int(event_time):020d}|{tid}|{kind}"
+def order_key(apply_seq: int) -> str:
+    """Chave de ordenação = sequência de aplicação por conta (monotônica).
+
+    O outcome de maior apply_seq foi o ÚLTIMO aplicado ao estado da conta no
+    operador, logo carrega o saldo final — robusto a eventos atrasados/reordenação.
+    """
+    return f"{int(apply_seq):020d}"
 
 
 UPSERT_BAL = """
@@ -129,7 +134,7 @@ def main() -> int:
                 stl = int(d.get("settle_time_ms", 0) or 0)
                 if ing > 0 and stl >= ing:
                     LATENCY.observe(stl - ing)
-                ok = order_key(d["event_time"], d["transaction_id"], d["op_kind"])
+                ok = order_key(d.get("apply_seq", 0))
                 if status in ("SETTLED", "REJECTED"):
                     bal_batch.append((d["account"], d["balance_cents"], ok))
                 out_batch.append((

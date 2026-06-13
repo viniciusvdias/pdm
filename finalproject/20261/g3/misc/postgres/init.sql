@@ -5,9 +5,10 @@
 CREATE TABLE IF NOT EXISTS account_balance (
     account        TEXT PRIMARY KEY,
     balance_cents  BIGINT      NOT NULL,
-    -- chave de ordenação "event_time|tid|kind" (zero-padded) do op que produziu
-    -- este saldo. Mantemos sempre o de MAIOR chave => saldo final por conta,
-    -- robusto a reordenação entre partições Kafka.
+    -- sequência de aplicação por conta (apply_seq, zero-padded) do op que produziu
+    -- este saldo. Mantemos sempre o de MAIOR chave => o ÚLTIMO op aplicado ao
+    -- estado da conta no operador => saldo final, robusto a reordenação/eventos
+    -- atrasados (a ordenação por event_time não basta sob out-of-orderness).
     order_key      TEXT        NOT NULL,
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );

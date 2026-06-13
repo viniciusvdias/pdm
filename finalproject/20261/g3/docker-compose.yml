@@ -32,9 +32,9 @@ x-flink-common: &flink-common
     KAFKA_BOOTSTRAP: kafka:9092
     CHECKPOINT_MS: ${CHECKPOINT_MS:-5000}
     GUARANTEE: ${GUARANTEE:-EXACTLY_ONCE}
-    WATERMARK_OOO_MS: ${WATERMARK_OOO_MS:-2000}
+    WATERMARK_OOO_MS: ${WATERMARK_OOO_MS:-10000}
     OPENING_BALANCE_CENTS: ${OPENING_BALANCE_CENTS:-500000000}
-    TX_LIMIT_CENTS: ${TX_LIMIT_CENTS:-20000000}
+    SETTLE_DRAIN_MS: ${SETTLE_DRAIN_MS:-30000}
     PARALLELISM: ${PARALLELISM:-2}
     AML_CYCLE_WINDOW_S: ${AML_CYCLE_WINDOW_S:-600}
     AML_CYCLE_MIN_CENTS: ${AML_CYCLE_MIN_CENTS:-100000000}
@@ -226,7 +226,6 @@ services:
       METRICS_PORT: 8000
       # Mesmos parâmetros do ledger usados pelo baseline (rodado via este serviço).
       OPENING_BALANCE_CENTS: ${OPENING_BALANCE_CENTS:-500000000}
-      TX_LIMIT_CENTS: ${TX_LIMIT_CENTS:-20000000}
     ports:
       - "8000:8000"   # métricas Prometheus do consumer
     restart: unless-stopped
