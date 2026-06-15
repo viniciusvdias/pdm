@@ -1,34 +1,34 @@
 services:
   spark-master:
-    image: bitnami/spark:3.5
-    environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-      - SPARK_USER=spark
+    image: apache/spark:3.5.0
+    container_name: spark-master
+    hostname: spark-master
+    user: root
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master
     ports:
       - "8080:8080"
       - "7077:7077"
+    networks:
+      - spark-net
 
   spark-worker:
-    image: bitnami/spark:3.5
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=4G
-      - SPARK_WORKER_CORES=4
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-      - SPARK_USER=spark
+    image: apache/spark:3.5.0
+    container_name: spark-worker
+    user: root
     depends_on:
       - spark-master
+    # O SEGREDO ESTÁ AQUI: O Worker também precisa enxergar os arquivos!
+    volumes:
+      - ../src:/app/src
+      - ${DATA_PATH:-../datasample}:/app/data
+      - ./output:/app/output
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077 --cores 4 --memory 4G
+    networks:
+      - spark-net
 
   spark-job:
-    image: bitnami/spark:3.5
+    image: apache/spark:3.5.0
+    container_name: spark-job
     user: root
     volumes:
       - ../src:/app/src
@@ -37,9 +37,14 @@ services:
     depends_on:
       - spark-worker
     command: >
-      spark-submit
+      /opt/spark/bin/spark-submit
       --master spark://spark-master:7077
-      --conf spark.executor.instances=${N_WORKERS:-1}
       /app/src/main.py
       /app/data/${DATA_FILE:-esea_sample.csv}
       /app/output
+    networks:
+      - spark-net
+
+networks:
+  spark-net:
+    driver: bridge
