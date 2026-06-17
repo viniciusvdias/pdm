@@ -193,6 +193,7 @@ services:
       KAFKA_BOOTSTRAP: kafka:9092
       INPUT_CSV: /data/input.csv
       RATE: ${RATE:-2000}
+      MAX_RECORDS: ${MAX_RECORDS:-0}
       BURST_MODE: ${BURST_MODE:-rate}
       BURST_PROB: ${BURST_PROB:-0.02}
       BURST_MIN_S: ${BURST_MIN_S:-3}
