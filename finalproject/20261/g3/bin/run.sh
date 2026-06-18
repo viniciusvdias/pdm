@@ -2,6 +2,8 @@
 # Quick start: sobe a stack completa e processa o datasample.
 # Requisito único: Docker + Docker Compose.
 set -euo pipefail
+ 
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 cd "$(dirname "$0")/.."
 
 [ -f .env ] || { cp .env.example .env; echo "[run] .env criado a partir de .env.example"; }

@@ -2,6 +2,8 @@
 # Gera o datasample (<=1MB) a partir do PaySim completo, dentro de um container.
 # Uso: ./bin/make_sample.sh <paysim.csv> [saida.csv.gz]
 set -euo pipefail
+ 
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 cd "$(dirname "$0")/.."
 
 INPUT="${1:?uso: make_sample.sh <paysim.csv> [saida.csv.gz]}"

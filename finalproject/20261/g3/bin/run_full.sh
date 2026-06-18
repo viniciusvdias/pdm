@@ -2,6 +2,8 @@
 # Roda a stack com o dataset completo (amplificado).
 # Uso: ./bin/run_full.sh <caminho_do_csv_completo_ou_amplificado>
 set -euo pipefail
+ 
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 cd "$(dirname "$0")/.."
 
 FULL="${1:?uso: run_full.sh <csv_completo>}"

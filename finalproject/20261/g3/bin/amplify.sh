@@ -2,6 +2,8 @@
 # Amplifica o PaySim para >=1GB, dentro de um container.
 # Uso: ./bin/amplify.sh <paysim.csv> <saida.csv> [factor]
 set -euo pipefail
+ 
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 cd "$(dirname "$0")/.."
 
 INPUT="${1:?uso: amplify.sh <paysim.csv> <saida.csv> [factor]}"

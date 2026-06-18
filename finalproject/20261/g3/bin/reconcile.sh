@@ -2,6 +2,8 @@
 # Reconciliação financeira: baseline batch × saldo final do stream (Postgres).
 # Requer a stack no ar (./bin/run.sh) e o producer já tendo drenado o input.
 set -euo pipefail
+ 
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 cd "$(dirname "$0")/.."
 
 # Lê INPUT_CSV do .env (default: amostra).

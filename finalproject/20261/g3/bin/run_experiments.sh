@@ -7,6 +7,8 @@
 # É um DRIVER de referência: reinicia a stack a cada run para isolamento e usa
 # um subconjunto controlado (MAX_RECORDS) para manter o tempo viável.
 set -euo pipefail
+ 
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 cd "$(dirname "$0")/.."
 
 REPS="${REPS:-3}"

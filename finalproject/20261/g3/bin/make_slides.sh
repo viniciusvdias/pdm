@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Gera presentation/presentation.pdf de forma reprodutível (container app).
 set -euo pipefail
+ 
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 cd "$(dirname "$0")/.."
 
 docker build -t pix-app:local -f misc/app/Dockerfile .
