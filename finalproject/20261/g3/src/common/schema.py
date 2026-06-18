@@ -1,19 +1,3 @@
-"""Schema compartilhado e parsing determinístico do PaySim.
-
-Usado pelo producer, pelo baseline batch e (via imagem) pelos jobs PyFlink, de
-modo que stream e batch enxerguem EXATAMENTE os mesmos registros normalizados.
-
-Decisões de normalização:
-- ``amount`` vira **centavos inteiros** (``amount_cents``) para que débito/crédito
-  e a reconciliação final sejam exatos, sem erro de ponto flutuante.
-- ``event_time`` é derivado de ``step`` (a hora simulada do PaySim): cada step é
-  uma hora. Espalhamos as transações dentro da hora com um *jitter* determinístico
-  (derivado do ``transaction_id``) para exercitar watermarks/out-of-orderness sem
-  perder reprodutibilidade.
-- ``transaction_id`` é um hash determinístico da linha + índice global, garantindo
-  unicidade e idempotência mesmo após amplificação.
-"""
-
 from __future__ import annotations
 
 import csv
@@ -23,7 +7,6 @@ from dataclasses import dataclass, asdict
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from typing import Iterable, Iterator, Optional
 
-# Colunas originais do CSV PaySim (ordem do header).
 CSV_COLUMNS = [
     "step",
     "type",
@@ -38,35 +21,17 @@ CSV_COLUMNS = [
     "isFlaggedFraud",
 ]
 
-# Epoch base do event-time. 2023-01-01T00:00:00Z. Arbitrário, porém fixo.
 BASE_EPOCH_MS = 1_672_531_200_000
 HOUR_MS = 3_600_000
-
-# Event-time é uma função PURA do input (índice da linha + id), nunca do relógio
-# de execução — isso garante que o stream (exactly-once) e o baseline batch vejam
-# exatamente a mesma linha do tempo e, ordenando por (event_time, tid), produzam
-# balanços idênticos. ``EVENT_SPACING_MS`` espaça os eventos ao longo do tempo
-# simulado; ``MAX_OOO_MS`` é o jitter determinístico que cria out-of-orderness
-# LIMITADA (exercita watermarks) sem quebrar a reprodutibilidade.
-#
-# IMPORTANTE: o jitter deve ser BEM menor que a tolerância do watermark
-# (``WATERMARK_OOO_MS``, default 2000ms). Com spacing de 10ms, 300ms de jitter =
-# ~30 posições de deslocamento máximo, enquanto 2000ms de watermark = 200 posições
-# de folga. Se o jitter chegasse perto da tolerância, muitos eventos virariam
-# "late" e não liquidariam (allowed lateness = 0 na liquidação).
 EVENT_SPACING_MS = 10
 MAX_OOO_MS = 300
-
-# Tipos que movimentam conta->conta (origem e destino são contas "C...").
-# TRANSFER é o único par C->C; é o que viabiliza o padrão circular A->B->C->A.
 ACCOUNT_TO_ACCOUNT_TYPES = {"TRANSFER"}
 
 
 def _to_cents(value: str) -> int:
     """Converte string monetária em centavos inteiros (exato).
-
-    Usa ``Decimal`` para lidar com casas decimais e notação científica
-    (o PaySim ocasionalmente traz valores como ``0E-8``) sem erro de float.
+    Usa Decimal para lidar com casas decimais e notação científica
+    (o PaySim ocasionalmente traz valores como 0E-8) sem erro de float.
     """
     value = (value or "0").strip()
     if not value:
@@ -94,7 +59,7 @@ def make_transaction_id(row_index: int, name_orig: str, name_dest: str,
 class Transaction:
     transaction_id: str
     step: int
-    event_time: int          # epoch ms (event-time)
+    event_time: int          
     type: str
     amount_cents: int
     name_orig: str

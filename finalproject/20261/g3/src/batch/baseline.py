@@ -1,15 +1,3 @@
-"""Baseline batch determinístico: saldo final por conta sobre o mesmo input.
-
-É a "fonte da verdade" contra a qual o resultado do stream é reconciliado.
-Aplica EXATAMENTE a semântica de ``common/ledger.py``, processando todas as ops
-em ordem global ``(event_time, transaction_id, kind)`` — a mesma ordem por conta
-que o operador PyFlink reproduz via event-time. Logo, em exactly-once, o saldo
-final de cada conta deve bater ao centavo.
-
-Saída: CSV ``account,balance_cents`` (ordenado por conta), além de estatísticas.
-Single-process; usa só a stdlib + nosso pacote ``common``.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -31,9 +19,6 @@ def compute(input_path: str, burst_prefix: str = "BURST"):
     balances: dict[str, int] = {}
     settled = rejected = credited = 0
 
-    # Coleta e ordena ops globalmente. Para datasets grandes isto carrega as ops
-    # em memória; o baseline é usado em subconjuntos controlados (1M txs) nos
-    # experimentos de reconciliação, conforme o plano da Ideia 12.
     ops = []
     with open_text(input_path) as f:
         for tx in iter_transactions(f):

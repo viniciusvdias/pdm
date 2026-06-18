@@ -1,10 +1,3 @@
-"""Agrega o CSV de execuções (uma linha por run) em média ± desvio por config.
-
-Entrada: CSV com cabeçalho ``tag,config,<metric1>,<metric2>,...`` (gerado por
-``collect.py --out``). Saída: CSV ``config,metric,mean,std,runs`` consumido por
-``plots.py`` e pelas tabelas do relatório. Desvio padrão amostral (ddof=1).
-"""
-
 from __future__ import annotations
 
 import argparse

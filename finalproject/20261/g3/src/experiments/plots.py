@@ -1,10 +1,3 @@
-"""Gera gráficos (com barras de erro) a partir dos CSVs de resultados.
-
-Lê um CSV no formato agregado ``config,metric,mean,std,runs`` (produzido por
-``aggregate``) e emite um PNG de barras por métrica. Usado pelos experimentos
-para ilustrar média ± desvio padrão conforme exigido pelo template do relatório.
-"""
-
 from __future__ import annotations
 
 import argparse

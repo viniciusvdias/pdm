@@ -1,7 +1,3 @@
-#!/usr/bin/env bash
-# Aguarda o JobManager e submete os jobs PyFlink (settlement + AML) ao cluster.
-# Executado pelo serviço "job-submitter"; sai com 0 após submeter (os jobs
-# continuam rodando nos TaskManagers).
 set -euo pipefail
 
 JM=${JOBMANAGER_HOST:-flink-jobmanager}

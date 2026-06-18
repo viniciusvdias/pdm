@@ -1,20 +1,3 @@
-"""Job de detecção AML (anti-lavagem) com PyFlink.
-
-Três padrões, todos em event-time (mesma estratégia de watermark do settlement):
-
-1. CYCLE  — lavagem circular A->B->C->A usando arestas TRANSFER dentro de uma
-            janela (``AML_CYCLE_WINDOW_S``) com valor agregado acima de um limiar.
-            Operador com paralelismo 1 mantém um grafo recente (podado por
-            event-time) e faz busca em profundidade limitada a 3 saltos.
-2. VELOCITY — N transações da mesma conta de origem em ``AML_VELOCITY_WINDOW_S``.
-3. STRUCTURING — N transferências "just-below-limit" da mesma origem em
-            ``AML_STRUCT_WINDOW_S`` (fragmentação para burlar limite).
-
-Observação: PyFlink CEP é limitado para grafos; usamos KeyedProcessFunction +
-timers de event-time (fallback robusto previsto no plano). Alertas vão para o
-tópico ``aml.alerts`` e são avaliados contra ``isFraud`` (precision/recall).
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -34,7 +17,7 @@ from flink.common.flink_common import (                          # noqa: E402
 RAW_TOPIC = "tx.raw"
 ALERT_TOPIC = "aml.alerts"
 
-# Evento normalizado p/ AML: (orig, dest, amount, event_time, tid, is_fraud, type)
+#Evento normalizado p/ AML: (orig, dest, amount, event_time, tid, is_fraud, type)
 EV_TYPE = Types.TUPLE([
     Types.STRING(), Types.STRING(), Types.LONG(), Types.LONG(),
     Types.STRING(), Types.INT(), Types.STRING(),

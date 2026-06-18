@@ -1,11 +1,3 @@
-"""Coleta métricas de uma execução a partir do Postgres.
-
-Calcula throughput, latência (P50/P95/P99), contagens de outcomes e
-precision/recall do AML (a nível de conta, contra ``isFraud``). Pode anexar uma
-linha a um CSV de resultados (com colunas de configuração) para posterior
-agregação estatística (média ± desvio) em ``run_experiments``.
-"""
-
 from __future__ import annotations
 
 import argparse

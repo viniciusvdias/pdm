@@ -1,31 +1,3 @@
-"""Job de liquidação (settlement) — núcleo do exactly-once.
-
-Fluxo:
-  tx.raw (JSON)
-    -> watermark (event-time, bounded out-of-orderness) — guia a ordenação por
-       conta e as métricas
-    -> flat_map: expande cada transação em ops de ledger keyed por conta
-    -> key_by(account)
-    -> Ledger (KeyedProcessFunction): saldo por conta (ValueState/RocksDB);
-       cada op é BUFFERIZADA e aplicada em ordem de event-time (timer de event-time
-       guiado por watermark). DEBIT aceito por SALDO SUFICIENTE => SETTLED, senão
-       REJECTED; CREDIT sempre soma. Um timer de processing-time drena a cauda
-       quando a entrada cessa (watermark para de avançar numa fonte Kafka ilimitada).
-    -> tx.outcomes (Kafka, sink EXACTLY_ONCE | AT_LEAST_ONCE)
-
-A aceitação por saldo depende da ordem; por isso o stream aplica as ops de cada
-conta na MESMA ordem determinística do baseline batch — ``(event_time,
-transaction_id, kind)``. Sob exactly-once o saldo final por conta é idêntico ao
-baseline -> reconciliação exata ao centavo.
-
-Estado por conta: saldo (ValueState) + buffer de ops pendentes (ListState) +
-contador de aplicação (ValueState) em RocksDB + checkpoints incrementais no MinIO.
-Cada outcome carrega o saldo após a op e um ``apply_seq`` (sequência monotônica de
-aplicação por conta); o consumer mantém o de maior ``apply_seq`` — o último op de
-fato aplicado ao estado —, o que reporta o saldo final mesmo se um evento atrasado
-for aplicado fora da ordem de event-time.
-"""
-
 from __future__ import annotations
 
 import json
@@ -34,31 +6,27 @@ import time as _t
 
 sys.path.insert(0, "/app/src")
 
-from pyflink.common import Types                                  # noqa: E402
-from pyflink.datastream import TimeDomain                         # noqa: E402
-from pyflink.datastream.functions import KeyedProcessFunction, RuntimeContext  # noqa: E402
-from pyflink.datastream.state import (                            # noqa: E402
+from pyflink.common import Types                                  
+from pyflink.datastream import TimeDomain                         
+from pyflink.datastream.functions import KeyedProcessFunction, RuntimeContext  
+from pyflink.datastream.state import (                            
     ValueStateDescriptor, ListStateDescriptor,
 )
 
-from common.schema import Transaction                            # noqa: E402
-from common.ledger import (                                      # noqa: E402
+from common.schema import Transaction                            
+from common.ledger import (                                      
     expand_to_ops, OPENING_BALANCE_CENTS, DEBIT,
 )
-from flink.common.flink_common import (                          # noqa: E402
+from flink.common.flink_common import (                          
     build_env, watermark_strategy, kafka_source, kafka_sink, env_int,
 )
 
 RAW_TOPIC = "tx.raw"
 OUT_TOPIC = "tx.outcomes"
 
-# Ociosidade (ms) após a qual a cauda bufferizada é drenada por processing-time.
-# A fonte Kafka é ilimitada: quando o producer termina, o watermark para de
-# avançar e as últimas ops nunca disparariam por event-time. Esse timer garante
-# que o saldo final feche mesmo assim. Default 30s.
 DRAIN_IDLE_MS = env_int("SETTLE_DRAIN_MS", 30_000)
 
-# Op após o flat_map: (account, tid, event_time, delta, kind, type, is_fraud, ingest_ms)
+#Op após o flat_map: (account, tid, event_time, delta, kind, type, is_fraud, ingest_ms)
 OP_TYPE = Types.TUPLE([
     Types.STRING(), Types.STRING(), Types.LONG(), Types.LONG(),
     Types.STRING(), Types.STRING(), Types.INT(), Types.LONG(),

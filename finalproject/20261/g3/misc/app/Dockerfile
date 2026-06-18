@@ -8,5 +8,4 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY src /app/src
 ENV PYTHONPATH=/app/src
 
-# Comando default sobrescrito por cada serviço no docker-compose.
 CMD ["python", "-c", "print('app image ready')"]

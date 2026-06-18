@@ -1,20 +1,3 @@
-"""Amplificador determinístico do PaySim para atingir o piso de "big data".
-
-O PaySim tem ~470 MB (< 1 GB). Replicamos o dataset ``--factor`` vezes criando
-*shards* com contas em namespaces distintos:
-
-- Shard 0 reproduz os IDs originais.
-- Shard s>0 sufixa cada conta com ``#s`` (ex.: ``C1231006815#3``).
-
-Isso multiplica volume e número de contas PRESERVANDO:
-- a distribuição estatística de ``type``/``amount`` (linhas são cópias exatas),
-- as arestas origem->destino DENTRO de cada shard, de modo que padrões como o
-  ciclo A->B->C->A continuam existindo em cada cópia.
-
-Fator 3 (default) ~ 1,4 GB; fator 10 ~ 4,7 GB. Saída em CSV (mesmo schema).
-Sem dependências externas.
-"""
-
 from __future__ import annotations
 
 import argparse

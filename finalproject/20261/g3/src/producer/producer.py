@@ -1,16 +1,3 @@
-"""Producer: lê o CSV PaySim e publica transações normalizadas em ``tx.raw``.
-
-- Cada registro vira JSON (schema de ``common.schema``) com ``ingest_time_ms``
-  (relógio de parede) injetado para medir latência end-to-end no consumer.
-- A chave Kafka é o ``transaction_id`` (idempotência / dedup downstream).
-- Emissão com controle de taxa (``RATE`` tx/s) modulada pelo ``BurstController``:
-  picos aleatórios de volume e, em modo ``synthetic``, injeção de transações de
-  alto valor.
-
-O event_time é função pura do input (ver schema), então acelerar/atrasar a
-emissão não afeta a reconciliação — só muda a carga (wall-clock) sobre o sistema.
-"""
-
 from __future__ import annotations
 
 import json

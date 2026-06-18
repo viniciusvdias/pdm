@@ -1,12 +1,3 @@
-"""Reconciliação financeira: saldo final do stream × baseline batch.
-
-Compara o ``account_balance`` (produzido pelo stream via consumer) com o CSV do
-baseline determinístico. Em **exactly-once** a diferença deve ser ZERO em todas
-as contas; em **at-least-once** com falha injetada, espera-se divergência
-(double-count). Sai com código !=0 se houver qualquer diferença (assert do
-experimento). Contas de burst (prefixo configurável) são ignoradas.
-"""
-
 from __future__ import annotations
 
 import argparse

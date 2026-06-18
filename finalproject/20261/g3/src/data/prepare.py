@@ -1,10 +1,3 @@
-"""CLI utilitário: valida/normaliza o PaySim e reporta estatísticas.
-
-A lógica de normalização vive em ``common/schema.py`` (reutilizada por producer e
-baseline). Este script serve para inspecionar rapidamente um CSV (sample ou
-completo) e confirmar que o parsing está coerente antes de subir a stack.
-"""
-
 from __future__ import annotations
 
 import argparse

@@ -1,22 +1,3 @@
-"""Gerador de bursts aleatórios de transações.
-
-Dois eixos de stress, configuráveis por env:
-
-- **Burst de TAXA** (modo ``rate`` e ``synthetic``): a cada "tick" de 1s, com
-  probabilidade ``BURST_PROB`` inicia-se um burst de duração aleatória que
-  multiplica a taxa de emissão por um fator alto (``BURST_MULT_MIN..MAX``),
-  elevando rapidamente o volume. Como apenas **acelera o replay de linhas reais**
-  do CSV, não quebra a reconciliação determinística.
-
-- **Injeção SINTÉTICA de alto valor** (modo ``synthetic``): durante um burst,
-  além de acelerar, injeta transações sintéticas de **valor muito alto** em contas
-  dedicadas (prefixo ``BURST``), para estressar settlement/AML. Essas contas são
-  ignoradas na reconciliação (ver baseline/reconcile), então não afetam a prova
-  financeira; servem para os experimentos de carga/recuperação/AML.
-
-``BURST_SEED`` fixa o gerador (experimentos reprodutíveis); ausente => aleatório (demo).
-"""
-
 from __future__ import annotations
 
 import os

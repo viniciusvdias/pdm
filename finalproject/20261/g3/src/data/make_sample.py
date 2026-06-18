@@ -1,16 +1,3 @@
-"""Gera uma amostra pequena (<=1MB) do PaySim para o `datasample/`.
-
-Estratégia (determinística):
-- Mantém um bloco CONTÍGUO das primeiras ``--head`` linhas. Um bloco contíguo
-  preserva os relacionamentos locais entre contas (arestas origem->destino), o
-  que permite que o settlement e parte dos padrões AML funcionem no quick start.
-- Varre até ``--scan`` linhas e ANEXA quaisquer linhas com ``isFraud=1`` ainda
-  não incluídas, para exercitar a avaliação de precision/recall do AML.
-- Escreve gzip e garante o limite de tamanho (aborta se exceder ``--max-bytes``).
-
-Sem dependências externas: roda em qualquer ``python:3.11-slim``.
-"""
-
 from __future__ import annotations
 
 import argparse

@@ -1,13 +1,3 @@
-"""Consumer: tx.outcomes + aml.alerts -> Postgres + métricas Prometheus.
-
-- Mantém ``account_balance`` com o saldo final por conta (regra: maior
-  ``apply_seq`` — o último op aplicado ao estado da conta), base da reconciliação.
-- Grava a trilha ``outcomes`` e os ``aml_alerts``.
-- Calcula latência end-to-end (settle_time_ms - ingest_time_ms) e expõe métricas
-  Prometheus (``pix_outcomes_total``, ``pix_latency_ms``, ``pix_aml_alerts_total``)
-  na porta ``METRICS_PORT`` para o Grafana.
-"""
-
 from __future__ import annotations
 
 import json
