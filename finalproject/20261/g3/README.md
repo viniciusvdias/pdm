@@ -37,7 +37,7 @@ batch determinístico calculado sobre o mesmo input.
 **Fonte primária: PaySim** — simulador open-source de transações de *mobile money*
 baseado em logs reais de uma operadora africana.
 
-- Origem: Kaggle — <https://www.kaggle.com/datasets/ealaxi/paysim1>
+- Origem: Kaggle — <https://www.kaggle.com/datasets/mtalaltariq/paysim-data/data>
 - ~6,36 milhões de transações, ~470 MB (CSV).
 - Schema: `step, type, amount, nameOrig, oldbalanceOrg, newbalanceOrig, nameDest,
   oldbalanceDest, newbalanceDest, isFraud, isFlaggedFraud`.
@@ -45,11 +45,6 @@ baseado em logs reais de uma operadora africana.
   é conta→conta (`C...`→`C...`), o que viabiliza o padrão de lavagem circular.
 - Rótulo `isFraud` usado para avaliar precision/recall do AML.
 
-**Por que PaySim e não o IBM TabFormer** (também disponível, ~2,4 GB de transações
-de cartão): o schema do PaySim casa **1:1** com o workload de liquidação (contas
-origem/destino e saldos), oferece *ground-truth* para a reconciliação e é o único
-que permite o padrão circular `A→B→C→A`. O TabFormer (cartão→merchant, sem
-conta-destino) ficou como validação cruzada opcional, fora do escopo central.
 
 **Normalização determinística** (`src/common/schema.py`):
 - `amount` → **centavos inteiros** (reconciliação exata, sem erro de float);
@@ -130,13 +125,6 @@ docker compose up -d --scale flink-taskmanager=3
 
 Parâmetros (paralelismo, intervalo de checkpoint, garantia, bursts, limiares AML)
 ficam em `.env` (veja `.env.example`).
-
-### 3.3 Slides da apresentação
-
-O PDF é gerado de forma reprodutível (conteúdo em `src/presentation/make_slides.py`):
-```bash
-./bin/make_slides.sh        # cria presentation/presentation.pdf
-```
 
 ## 4. Project architecture
 
@@ -377,7 +365,7 @@ Gráficos com barras de erro: `results/plot_tps.png` (throughput por configuraç
   torna o resultado exactly-once idêntico ao baseline — base da demo de falha.
 
 Conclusão: o projeto demonstra de forma visual e mensurável o **valor do
-exactly-once** — o sistema cai, recupera do último checkpoint e o saldo final bate
+exactly-once**, o sistema cai, recupera do último checkpoint e o saldo final bate
 ao centavo com o baseline determinístico, enquanto o modo at-least-once diverge.
 
 ## 8. References and external resources
