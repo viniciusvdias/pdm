@@ -22,6 +22,15 @@ BINANCE_SYMBOLS = [
     if s.strip()
 ]
 
+# --- Processador Spark ---
+WINDOW_SIZE_SECONDS = int(os.getenv("WINDOW_SIZE_SECONDS", "10"))
+WATERMARK_SECONDS = int(os.getenv("WATERMARK_SECONDS", "10"))
+TRIGGER_SECONDS = int(os.getenv("TRIGGER_SECONDS", "5"))
+
+# --- Métricas ---
+METRICS_DIR = os.getenv("METRICS_DIR", "metrics")
+EXPERIMENT_LABEL = os.getenv("EXPERIMENT_LABEL", "default")
+
 # Endpoint de streams combinados da Binance (funciona com 1 ou N símbolos).
 BINANCE_WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
