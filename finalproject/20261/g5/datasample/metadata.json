@@ -1,0 +1,802 @@
+[
+  {
+    "movieId": 1,
+    "title": "Toy Story (2020)",
+    "genres": "Action",
+    "year": 2020,
+    "imdbId": "4714226",
+    "tmdbId": 32198
+  },
+  {
+    "movieId": 2,
+    "title": "Jumanji (1994)",
+    "genres": "Children",
+    "year": 1994,
+    "imdbId": "9249732",
+    "tmdbId": 11495
+  },
+  {
+    "movieId": 3,
+    "title": "Heat (2017)",
+    "genres": "Adventure|Action",
+    "year": 2017,
+    "imdbId": "1671945",
+    "tmdbId": 28757
+  },
+  {
+    "movieId": 4,
+    "title": "Casino (1994)",
+    "genres": "Action|Documentary|Romance",
+    "year": 1994,
+    "imdbId": "3798379",
+    "tmdbId": 58978
+  },
+  {
+    "movieId": 5,
+    "title": "Babe (2017)",
+    "genres": "Action|Crime",
+    "year": 2017,
+    "imdbId": "7190293",
+    "tmdbId": 44697
+  },
+  {
+    "movieId": 6,
+    "title": "The Usual Suspects (1997)",
+    "genres": "Documentary",
+    "year": 1997,
+    "imdbId": "5747119",
+    "tmdbId": 13496
+  },
+  {
+    "movieId": 7,
+    "title": "Shawshank Redemption (1985)",
+    "genres": "Children|Musical",
+    "year": 1985,
+    "imdbId": "5870619",
+    "tmdbId": 79231
+  },
+  {
+    "movieId": 8,
+    "title": "Forrest Gump (1996)",
+    "genres": "Sci-Fi",
+    "year": 1996,
+    "imdbId": "9096414",
+    "tmdbId": 16461
+  },
+  {
+    "movieId": 9,
+    "title": "Pulp Fiction (2004)",
+    "genres": "Western",
+    "year": 2004,
+    "imdbId": "5018715",
+    "tmdbId": 82497
+  },
+  {
+    "movieId": 10,
+    "title": "The Silence of the Lambs (2019)",
+    "genres": "Documentary|Animation",
+    "year": 2019,
+    "imdbId": "0868805",
+    "tmdbId": 86773
+  },
+  {
+    "movieId": 11,
+    "title": "Schindler's List (1994)",
+    "genres": "Animation|Drama",
+    "year": 1994,
+    "imdbId": "1794522",
+    "tmdbId": 49923
+  },
+  {
+    "movieId": 12,
+    "title": "The Dark Knight (1997)",
+    "genres": "Musical|Crime",
+    "year": 1997,
+    "imdbId": "6310606",
+    "tmdbId": 46666
+  },
+  {
+    "movieId": 13,
+    "title": "Inception (1993)",
+    "genres": "Fantasy|Animation|Crime",
+    "year": 1993,
+    "imdbId": "9061380",
+    "tmdbId": 95668
+  },
+  {
+    "movieId": 14,
+    "title": "Interstellar (1995)",
+    "genres": "Sci-Fi",
+    "year": 1995,
+    "imdbId": "6466205",
+    "tmdbId": 35482
+  },
+  {
+    "movieId": 15,
+    "title": "The Matrix (2020)",
+    "genres": "Western|Drama|Horror",
+    "year": 2020,
+    "imdbId": "1038483",
+    "tmdbId": 30121
+  },
+  {
+    "movieId": 16,
+    "title": "Goodfellas (1982)",
+    "genres": "Mystery|Fantasy",
+    "year": 1982,
+    "imdbId": "1210460",
+    "tmdbId": 27753
+  },
+  {
+    "movieId": 17,
+    "title": "Fight Club (2016)",
+    "genres": "Horror|Documentary|Thriller",
+    "year": 2016,
+    "imdbId": "6737601",
+    "tmdbId": 84359
+  },
+  {
+    "movieId": 18,
+    "title": "The Godfather (2009)",
+    "genres": "Fantasy",
+    "year": 2009,
+    "imdbId": "2442608",
+    "tmdbId": 32425
+  },
+  {
+    "movieId": 19,
+    "title": "Blade Runner (2015)",
+    "genres": "Fantasy|Romance|Mystery",
+    "year": 2015,
+    "imdbId": "6173292",
+    "tmdbId": 28846
+  },
+  {
+    "movieId": 20,
+    "title": "Alien (1988)",
+    "genres": "Thriller|Animation|Adventure",
+    "year": 1988,
+    "imdbId": "1939607",
+    "tmdbId": 20133
+  },
+  {
+    "movieId": 21,
+    "title": "Star Wars (2020)",
+    "genres": "Romance",
+    "year": 2020,
+    "imdbId": "1165818",
+    "tmdbId": 50532
+  },
+  {
+    "movieId": 22,
+    "title": "Back to the Future (2004)",
+    "genres": "Sci-Fi|War|Fantasy",
+    "year": 2004,
+    "imdbId": "9381590",
+    "tmdbId": 1604
+  },
+  {
+    "movieId": 23,
+    "title": "Jurassic Park (2023)",
+    "genres": "Children|Fantasy|Horror",
+    "year": 2023,
+    "imdbId": "1971534",
+    "tmdbId": 38569
+  },
+  {
+    "movieId": 24,
+    "title": "The Lion King (2007)",
+    "genres": "Sci-Fi",
+    "year": 2007,
+    "imdbId": "0154447",
+    "tmdbId": 94746
+  },
+  {
+    "movieId": 25,
+    "title": "Titanic (1996)",
+    "genres": "Crime|War|Children",
+    "year": 1996,
+    "imdbId": "5107072",
+    "tmdbId": 83848
+  },
+  {
+    "movieId": 26,
+    "title": "Avatar (2012)",
+    "genres": "Documentary|Comedy|Musical",
+    "year": 2012,
+    "imdbId": "2810343",
+    "tmdbId": 70797
+  },
+  {
+    "movieId": 27,
+    "title": "The Avengers (2013)",
+    "genres": "Horror",
+    "year": 2013,
+    "imdbId": "8297443",
+    "tmdbId": 2652
+  },
+  {
+    "movieId": 28,
+    "title": "Iron Man (1987)",
+    "genres": "Film-Noir|Drama",
+    "year": 1987,
+    "imdbId": "1071823",
+    "tmdbId": 31671
+  },
+  {
+    "movieId": 29,
+    "title": "Spider-Man (2016)",
+    "genres": "Animation",
+    "year": 2016,
+    "imdbId": "8253566",
+    "tmdbId": 9171
+  },
+  {
+    "movieId": 30,
+    "title": "Batman Begins (2014)",
+    "genres": "Comedy",
+    "year": 2014,
+    "imdbId": "8073915",
+    "tmdbId": 72163
+  },
+  {
+    "movieId": 31,
+    "title": "Memento (1990)",
+    "genres": "War|Romance",
+    "year": 1990,
+    "imdbId": "3653384",
+    "tmdbId": 70786
+  },
+  {
+    "movieId": 32,
+    "title": "The Departed (1992)",
+    "genres": "Film-Noir|Mystery|Musical",
+    "year": 1992,
+    "imdbId": "7450099",
+    "tmdbId": 67939
+  },
+  {
+    "movieId": 33,
+    "title": "American History X (2008)",
+    "genres": "Drama",
+    "year": 2008,
+    "imdbId": "3869795",
+    "tmdbId": 8492
+  },
+  {
+    "movieId": 34,
+    "title": "Gladiator (2001)",
+    "genres": "Western",
+    "year": 2001,
+    "imdbId": "3960684",
+    "tmdbId": 77228
+  },
+  {
+    "movieId": 35,
+    "title": "Saving Private Ryan (1994)",
+    "genres": "Animation",
+    "year": 1994,
+    "imdbId": "1087737",
+    "tmdbId": 30107
+  },
+  {
+    "movieId": 36,
+    "title": "A Beautiful Mind (1984)",
+    "genres": "Horror",
+    "year": 1984,
+    "imdbId": "1288789",
+    "tmdbId": 67491
+  },
+  {
+    "movieId": 37,
+    "title": "Good Will Hunting (1995)",
+    "genres": "Thriller|Documentary",
+    "year": 1995,
+    "imdbId": "9146844",
+    "tmdbId": 17442
+  },
+  {
+    "movieId": 38,
+    "title": "The Truman Show (2016)",
+    "genres": "Thriller|Drama|Western",
+    "year": 2016,
+    "imdbId": "6929332",
+    "tmdbId": 25057
+  },
+  {
+    "movieId": 39,
+    "title": "Eternal Sunshine (1986)",
+    "genres": "Romance",
+    "year": 1986,
+    "imdbId": "6044126",
+    "tmdbId": 55619
+  },
+  {
+    "movieId": 40,
+    "title": "Lost in Translation (2006)",
+    "genres": "Adventure|Children",
+    "year": 2006,
+    "imdbId": "1116911",
+    "tmdbId": 52872
+  },
+  {
+    "movieId": 41,
+    "title": "Her (2001)",
+    "genres": "Drama",
+    "year": 2001,
+    "imdbId": "3314348",
+    "tmdbId": 25031
+  },
+  {
+    "movieId": 42,
+    "title": "Arrival (2014)",
+    "genres": "Comedy|Romance",
+    "year": 2014,
+    "imdbId": "3178418",
+    "tmdbId": 36609
+  },
+  {
+    "movieId": 43,
+    "title": "Ex Machina (2009)",
+    "genres": "Animation",
+    "year": 2009,
+    "imdbId": "7534500",
+    "tmdbId": 72232
+  },
+  {
+    "movieId": 44,
+    "title": "Mad Max: Fury Road (1986)",
+    "genres": "Western",
+    "year": 1986,
+    "imdbId": "0347595",
+    "tmdbId": 12324
+  },
+  {
+    "movieId": 45,
+    "title": "The Martian (1995)",
+    "genres": "Romance",
+    "year": 1995,
+    "imdbId": "8247706",
+    "tmdbId": 63192
+  },
+  {
+    "movieId": 46,
+    "title": "Gravity (1993)",
+    "genres": "Adventure|Crime",
+    "year": 1993,
+    "imdbId": "6458113",
+    "tmdbId": 382
+  },
+  {
+    "movieId": 47,
+    "title": "Moon (2004)",
+    "genres": "Sci-Fi|Film-Noir",
+    "year": 2004,
+    "imdbId": "7196887",
+    "tmdbId": 91403
+  },
+  {
+    "movieId": 48,
+    "title": "District 9 (2015)",
+    "genres": "Thriller|Comedy|Documentary",
+    "year": 2015,
+    "imdbId": "5077931",
+    "tmdbId": 28634
+  },
+  {
+    "movieId": 49,
+    "title": "Children of Men (1983)",
+    "genres": "Western|Adventure|Horror",
+    "year": 1983,
+    "imdbId": "1059074",
+    "tmdbId": 6672
+  },
+  {
+    "movieId": 50,
+    "title": "Pan's Labyrinth (2017)",
+    "genres": "War|Western",
+    "year": 2017,
+    "imdbId": "2741282",
+    "tmdbId": 7555
+  },
+  {
+    "movieId": 51,
+    "title": "Oldboy (2012)",
+    "genres": "Crime",
+    "year": 2012,
+    "imdbId": "1249597",
+    "tmdbId": 78092
+  },
+  {
+    "movieId": 52,
+    "title": "Spirited Away (1984)",
+    "genres": "Drama|Mystery|Children",
+    "year": 1984,
+    "imdbId": "9657567",
+    "tmdbId": 32371
+  },
+  {
+    "movieId": 53,
+    "title": "Princess Mononoke (2017)",
+    "genres": "Adventure|Animation|Romance",
+    "year": 2017,
+    "imdbId": "9892396",
+    "tmdbId": 74185
+  },
+  {
+    "movieId": 54,
+    "title": "Akira (2013)",
+    "genres": "Fantasy|Documentary",
+    "year": 2013,
+    "imdbId": "5371130",
+    "tmdbId": 31385
+  },
+  {
+    "movieId": 55,
+    "title": "Trainspotting (1996)",
+    "genres": "Comedy|Film-Noir",
+    "year": 1996,
+    "imdbId": "7770955",
+    "tmdbId": 41541
+  },
+  {
+    "movieId": 56,
+    "title": "Requiem for a Dream (1984)",
+    "genres": "Sci-Fi",
+    "year": 1984,
+    "imdbId": "9545465",
+    "tmdbId": 13204
+  },
+  {
+    "movieId": 57,
+    "title": "Black Swan (1984)",
+    "genres": "Documentary|War|Fantasy",
+    "year": 1984,
+    "imdbId": "2322252",
+    "tmdbId": 45845
+  },
+  {
+    "movieId": 58,
+    "title": "Whiplash (1984)",
+    "genres": "Musical",
+    "year": 1984,
+    "imdbId": "4881295",
+    "tmdbId": 20776
+  },
+  {
+    "movieId": 59,
+    "title": "Birdman (2008)",
+    "genres": "Film-Noir|War|Action",
+    "year": 2008,
+    "imdbId": "9404682",
+    "tmdbId": 39340
+  },
+  {
+    "movieId": 60,
+    "title": "The Grand Budapest Hotel (2022)",
+    "genres": "Comedy",
+    "year": 2022,
+    "imdbId": "4537001",
+    "tmdbId": 15229
+  },
+  {
+    "movieId": 61,
+    "title": "Moonlight (1986)",
+    "genres": "Western|Comedy|Fantasy",
+    "year": 1986,
+    "imdbId": "4827085",
+    "tmdbId": 79376
+  },
+  {
+    "movieId": 62,
+    "title": "Parasite (1993)",
+    "genres": "Horror|Documentary|Fantasy",
+    "year": 1993,
+    "imdbId": "8579356",
+    "tmdbId": 64132
+  },
+  {
+    "movieId": 63,
+    "title": "Joker (1996)",
+    "genres": "Animation",
+    "year": 1996,
+    "imdbId": "7206422",
+    "tmdbId": 36365
+  },
+  {
+    "movieId": 64,
+    "title": "1917 (1982)",
+    "genres": "Horror",
+    "year": 1982,
+    "imdbId": "2294789",
+    "tmdbId": 83607
+  },
+  {
+    "movieId": 65,
+    "title": "Marriage Story (1996)",
+    "genres": "Sci-Fi",
+    "year": 1996,
+    "imdbId": "9355661",
+    "tmdbId": 92593
+  },
+  {
+    "movieId": 66,
+    "title": "The Irishman (2007)",
+    "genres": "Action|Children|Animation",
+    "year": 2007,
+    "imdbId": "2600715",
+    "tmdbId": 71611
+  },
+  {
+    "movieId": 67,
+    "title": "Knives Out (1982)",
+    "genres": "Western|Comedy",
+    "year": 1982,
+    "imdbId": "7310624",
+    "tmdbId": 16804
+  },
+  {
+    "movieId": 68,
+    "title": "Ford v Ferrari (1982)",
+    "genres": "Musical|Adventure",
+    "year": 1982,
+    "imdbId": "6103042",
+    "tmdbId": 27635
+  },
+  {
+    "movieId": 69,
+    "title": "Little Women (2023)",
+    "genres": "Children",
+    "year": 2023,
+    "imdbId": "6033742",
+    "tmdbId": 73485
+  },
+  {
+    "movieId": 70,
+    "title": "Nomadland (2006)",
+    "genres": "Comedy|Drama|Crime",
+    "year": 2006,
+    "imdbId": "3070445",
+    "tmdbId": 54140
+  },
+  {
+    "movieId": 71,
+    "title": "Soul (1981)",
+    "genres": "Horror",
+    "year": 1981,
+    "imdbId": "7007400",
+    "tmdbId": 87906
+  },
+  {
+    "movieId": 72,
+    "title": "Tenet (1995)",
+    "genres": "Crime|Children",
+    "year": 1995,
+    "imdbId": "6517985",
+    "tmdbId": 5175
+  },
+  {
+    "movieId": 73,
+    "title": "News of the World (2010)",
+    "genres": "Documentary",
+    "year": 2010,
+    "imdbId": "7822606",
+    "tmdbId": 45930
+  },
+  {
+    "movieId": 74,
+    "title": "Mank (1999)",
+    "genres": "Drama",
+    "year": 1999,
+    "imdbId": "0497023",
+    "tmdbId": 86611
+  },
+  {
+    "movieId": 75,
+    "title": "Promising Young Woman (1992)",
+    "genres": "Horror|Fantasy",
+    "year": 1992,
+    "imdbId": "1264686",
+    "tmdbId": 36685
+  },
+  {
+    "movieId": 76,
+    "title": "Minari (2002)",
+    "genres": "War|Mystery|Horror",
+    "year": 2002,
+    "imdbId": "0563060",
+    "tmdbId": 15218
+  },
+  {
+    "movieId": 77,
+    "title": "The Father (1996)",
+    "genres": "Fantasy",
+    "year": 1996,
+    "imdbId": "0741849",
+    "tmdbId": 14308
+  },
+  {
+    "movieId": 78,
+    "title": "Judas (2018)",
+    "genres": "Musical|Horror",
+    "year": 2018,
+    "imdbId": "7421474",
+    "tmdbId": 79557
+  },
+  {
+    "movieId": 79,
+    "title": "Sound of Metal (2012)",
+    "genres": "Mystery",
+    "year": 2012,
+    "imdbId": "9773542",
+    "tmdbId": 25014
+  },
+  {
+    "movieId": 80,
+    "title": "Da 5 Bloods (1996)",
+    "genres": "Romance",
+    "year": 1996,
+    "imdbId": "0128374",
+    "tmdbId": 68246
+  },
+  {
+    "movieId": 81,
+    "title": "Ma Rainey (2014)",
+    "genres": "Documentary|Musical|Romance",
+    "year": 2014,
+    "imdbId": "1273965",
+    "tmdbId": 87162
+  },
+  {
+    "movieId": 82,
+    "title": "One Night (2001)",
+    "genres": "Horror|Children|Film-Noir",
+    "year": 2001,
+    "imdbId": "8608103",
+    "tmdbId": 40638
+  },
+  {
+    "movieId": 83,
+    "title": "Wolfwalkers (2022)",
+    "genres": "Horror|Mystery",
+    "year": 2022,
+    "imdbId": "5060271",
+    "tmdbId": 72767
+  },
+  {
+    "movieId": 84,
+    "title": "Over the Moon (1988)",
+    "genres": "Romance",
+    "year": 1988,
+    "imdbId": "6461002",
+    "tmdbId": 88877
+  },
+  {
+    "movieId": 85,
+    "title": "Onward (1991)",
+    "genres": "Film-Noir|Mystery|Action",
+    "year": 1991,
+    "imdbId": "5198175",
+    "tmdbId": 37706
+  },
+  {
+    "movieId": 86,
+    "title": "Greyhound (1993)",
+    "genres": "Horror|Sci-Fi",
+    "year": 1993,
+    "imdbId": "7511939",
+    "tmdbId": 58054
+  },
+  {
+    "movieId": 87,
+    "title": "The Lighthouse (2023)",
+    "genres": "War",
+    "year": 2023,
+    "imdbId": "8038746",
+    "tmdbId": 96563
+  },
+  {
+    "movieId": 88,
+    "title": "Uncut Gems (1990)",
+    "genres": "Animation|Film-Noir|Horror",
+    "year": 1990,
+    "imdbId": "1666777",
+    "tmdbId": 98553
+  },
+  {
+    "movieId": 89,
+    "title": "Marriage Story (1995)",
+    "genres": "Film-Noir|Drama|Documentary",
+    "year": 1995,
+    "imdbId": "2572189",
+    "tmdbId": 3301
+  },
+  {
+    "movieId": 90,
+    "title": "1917 (1982)",
+    "genres": "Thriller",
+    "year": 1982,
+    "imdbId": "1321854",
+    "tmdbId": 59792
+  },
+  {
+    "movieId": 91,
+    "title": "Parasite (2006)",
+    "genres": "Documentary|Mystery|Thriller",
+    "year": 2006,
+    "imdbId": "6805062",
+    "tmdbId": 32079
+  },
+  {
+    "movieId": 92,
+    "title": "Once Upon a Time (1989)",
+    "genres": "Action|Children|Romance",
+    "year": 1989,
+    "imdbId": "3771545",
+    "tmdbId": 23153
+  },
+  {
+    "movieId": 93,
+    "title": "Avengers Endgame (2013)",
+    "genres": "Adventure|Drama",
+    "year": 2013,
+    "imdbId": "2136059",
+    "tmdbId": 59929
+  },
+  {
+    "movieId": 94,
+    "title": "Us (1988)",
+    "genres": "War|Horror",
+    "year": 1988,
+    "imdbId": "7525149",
+    "tmdbId": 80401
+  },
+  {
+    "movieId": 95,
+    "title": "Midsommar (2012)",
+    "genres": "Western|Sci-Fi",
+    "year": 2012,
+    "imdbId": "2770226",
+    "tmdbId": 97572
+  },
+  {
+    "movieId": 96,
+    "title": "Hereditary (2010)",
+    "genres": "Fantasy|Drama",
+    "year": 2010,
+    "imdbId": "4752512",
+    "tmdbId": 68427
+  },
+  {
+    "movieId": 97,
+    "title": "Get Out (2011)",
+    "genres": "Drama|Fantasy|Sci-Fi",
+    "year": 2011,
+    "imdbId": "1399954",
+    "tmdbId": 93625
+  },
+  {
+    "movieId": 98,
+    "title": "It Follows (1998)",
+    "genres": "Fantasy",
+    "year": 1998,
+    "imdbId": "5734586",
+    "tmdbId": 42004
+  },
+  {
+    "movieId": 99,
+    "title": "A Quiet Place (2014)",
+    "genres": "Comedy",
+    "year": 2014,
+    "imdbId": "2630518",
+    "tmdbId": 30411
+  },
+  {
+    "movieId": 100,
+    "title": "Bird Box (2004)",
+    "genres": "Comedy|Documentary|Animation",
+    "year": 2004,
+    "imdbId": "7060328",
+    "tmdbId": 53524
+  }
+]
