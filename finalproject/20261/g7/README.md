@@ -67,18 +67,39 @@ This runs `spark-submit` inside Docker against the ~5,000-row sample. Results ar
 
 ### 3.2 How to run with the full dataset
 
-Place the downloaded CSV somewhere accessible, then:
+Download the dataset from [Kaggle](https://www.kaggle.com/datasets/skihikingkevin/csgo-matchmaking-damage) and place it in a local directory. Then set `DATA_PATH` to the **absolute path** of that directory and `DATA_FILE` to the CSV filename:
 
 ```bash
-DATA_PATH=/path/to/data DATA_FILE=esea_master_dmg_demos.part1.csv ./bin/run.sh 4
+DATA_PATH=/absolute/path/to/folder \
+  DATA_FILE=esea_master_dmg_demos.part1.csv \
+  ./bin/run.sh 4
 ```
 
-To run the full benchmark (5 repetitions, 4 workers):
+Example (if the file is inside the `data/` folder of this project):
 
 ```bash
-DATA_PATH=/path/to/data DATA_FILE=esea_master_dmg_demos.part1.csv \
+DATA_PATH=$(pwd)/data \
+  DATA_FILE=esea_master_dmg_demos.part1.csv \
+  ./bin/run.sh 4
+```
+
+### 3.3 Full benchmark (all worker configurations)
+
+```bash
+# 1 worker, 5 repetitions
+DATA_PATH=$(pwd)/data DATA_FILE=esea_master_dmg_demos.part1.csv \
+  ./bin/benchmark.sh 1 5
+
+# 2 workers, 5 repetitions
+DATA_PATH=$(pwd)/data DATA_FILE=esea_master_dmg_demos.part1.csv \
+  ./bin/benchmark.sh 2 5
+
+# 4 workers, 5 repetitions
+DATA_PATH=$(pwd)/data DATA_FILE=esea_master_dmg_demos.part1.csv \
   ./bin/benchmark.sh 4 5
 ```
+
+> **Note:** `DATA_PATH` must be an absolute path — Docker volume mounts do not accept relative paths.
 
 ## 4. Project architecture
 
@@ -149,10 +170,7 @@ groupBy(att_side, vic_side, is_bomb_planted)
 
 ### 6.1 Experimental environment
 
-> To be filled after running experiments.
-
-Example:
-> Experiments run on a machine with X vCPUs, Y GB RAM, Ubuntu 22.04, Docker 24.x.
+Experiments run on Linux 6.17.0 (Ubuntu), Docker 24+, dataset: `esea_master_dmg_demos.part1.csv` (5,992,097 rows, 1.2 GB). Each worker configured with 4 cores and 4 GB RAM (`apache/spark:3.5.0`).
 
 ### 6.2 How to perform benchmarking
 
@@ -172,11 +190,10 @@ Collect the `[TIMING]` lines from output. Each line has the format:
 [TIMING] WORKLOAD-N (description): X.XXXs
 ```
 
-Calculate statistics with Python:
-```python
-import numpy as np
-times = [t1, t2, t3, t4, t5]
-print(f"{np.mean(times):.2f}s ± {np.std(times, ddof=1):.2f}s")
+To regenerate the bar charts with error bars after new runs:
+```bash
+cd misc && python3 plot_results.py
+# output: misc/output/benchmark_results.png
 ```
 
 ### 6.3 What was tested
@@ -191,17 +208,17 @@ print(f"{np.mean(times):.2f}s ± {np.std(times, ddof=1):.2f}s")
 
 | Workload | Workers | Avg Time (s) | Std Dev (s) | Runs |
 |---|---|---|---|---|
-| WORKLOAD-1 | 1 | — | — | 5 |
-| WORKLOAD-1 | 2 | — | — | 5 |
-| WORKLOAD-1 | 4 | — | — | 5 |
-| WORKLOAD-2 | 1 | — | — | 5 |
-| WORKLOAD-2 | 2 | — | — | 5 |
-| WORKLOAD-2 | 4 | — | — | 5 |
-| WORKLOAD-3 | 1 | — | — | 5 |
-| WORKLOAD-3 | 2 | — | — | 5 |
-| WORKLOAD-3 | 4 | — | — | 5 |
+| WORKLOAD-1 | 1 | 2.06 | 0.12 | 5 |
+| WORKLOAD-1 | 2 | 1.99 | 0.22 | 5 |
+| WORKLOAD-1 | 4 | 1.89 | 0.12 | 5 |
+| WORKLOAD-2 | 1 | 1.63 | 0.13 | 5 |
+| WORKLOAD-2 | 2 | 1.61 | 0.16 | 5 |
+| WORKLOAD-2 | 4 | 1.50 | 0.11 | 5 |
+| WORKLOAD-3 | 1 | 1.36 | 0.19 | 5 |
+| WORKLOAD-3 | 2 | 1.42 | 0.24 | 5 |
+| WORKLOAD-3 | 4 | 1.37 | 0.21 | 5 |
 
-Include bar charts with error bars (one per workload, x-axis = workers, y-axis = time).
+![Benchmark Results](misc/output/benchmark_results.png)
 
 ## 7. Limitations and conclusions
 
