@@ -14,7 +14,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-PY="venv/bin/python"
+PY=".venv/bin/python"
 BOOTSTRAP="localhost:9092"
 TOPIC="trades"
 PARTITIONS="${PARTITIONS:-1}"   # ./run.sh com PARTITIONS=4 para os experimentos
