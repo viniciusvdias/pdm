@@ -14,7 +14,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-PY=".venv/bin/python"
+PY="venv/bin/python"
 BOOTSTRAP="localhost:9092"
 TOPIC="trades"
 PARTITIONS="${PARTITIONS:-1}"   # ./run.sh com PARTITIONS=4 para os experimentos
@@ -57,6 +57,10 @@ $PY -u binance.py &
 COLETOR_PID=$!
 sleep 2  # dá um tempo pra conectar na Binance antes de começar a consumir
 
-echo "==> Consumidor ao vivo (Ctrl+C para parar):"
+#echo "==> Consumidor ao vivo (Ctrl+C para parar):"
+#echo "------------------------------------------------------------"
+#$PY -u consumer.py
+
+echo "==> Iniciando o Processador Spark (OHLC)..."
 echo "------------------------------------------------------------"
-$PY -u consumer.py
+$PY -u processor.py

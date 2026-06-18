@@ -19,18 +19,5 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
 
-  postgres:
-    image: postgres:16
-    container_name: postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
 volumes:
   kafka_data:
-  postgres_data:
