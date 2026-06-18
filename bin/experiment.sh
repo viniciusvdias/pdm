@@ -16,7 +16,7 @@
 #   EXPERIMENTS="1_10 2_10 4_10" ./experiment.sh   # só a varredura de partições
 #
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # raiz do repositório (o script vive em bin/)
 
 PY=".venv/bin/python"
 BOOTSTRAP="localhost:9092"
@@ -62,7 +62,7 @@ for exp in $EXPERIMENTS; do
         rm -f "metrics/performance_${LABEL}.csv" "metrics/candles_${LABEL}.csv"
 
         # 3. Coletor em background
-        $PY -u binance.py &
+        $PY -u src/binance.py &
         COLETOR_PID=$!
         sleep 3
 
@@ -71,7 +71,7 @@ for exp in $EXPERIMENTS; do
         WATERMARK_SECONDS="$WINDOW_SIZE" \
         EXPERIMENT_LABEL="$LABEL" \
         PARTITIONS="$PARTITIONS" \
-        timeout "$DURATION" $PY -u processor.py || true
+        timeout "$DURATION" $PY -u src/processor.py || true
 
         # 5. Encerra o coletor
         kill "$COLETOR_PID" 2>/dev/null || true

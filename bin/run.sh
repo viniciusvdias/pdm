@@ -12,7 +12,7 @@
 # Uso:  ./run.sh
 #
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # raiz do repositório (o script vive em bin/)
 
 PY=".venv/bin/python"
 BOOTSTRAP="localhost:9092"
@@ -53,7 +53,7 @@ cleanup() {
 trap cleanup INT TERM EXIT
 
 echo "==> Iniciando o coletor (binance.py) em background..."
-$PY -u binance.py &
+$PY -u src/binance.py &
 COLETOR_PID=$!
 sleep 2  # dá um tempo pra conectar na Binance antes de começar a consumir
 
@@ -63,4 +63,4 @@ sleep 2  # dá um tempo pra conectar na Binance antes de começar a consumir
 
 echo "==> Iniciando o Processador Spark (OHLC)..."
 echo "------------------------------------------------------------"
-$PY -u processor.py
+$PY -u src/processor.py
