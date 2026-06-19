@@ -47,7 +47,7 @@ baseline`. No fim, `reconcile` compara os dois: diff zero prova o exactly-once.
 
 ---
 
-## 2. O truque central: tempo e ordem como função pura do input
+## 2. Tempo e ordem como função pura do input
 
 ```mermaid
 flowchart TD

@@ -128,6 +128,9 @@ ficam em `.env` (veja `.env.example`).
 
 ## 4. Project architecture
 
+> Diagramas detalhados (mermaid) da arquitetura, do fluxo de dados e da
+> demonstração de falha: [`presentation/ARQUITETURA.md`](presentation/ARQUITETURA.md).
+
 ```
 [PaySim CSV (sample/amplificado)]
         │  producer (event-time acelerado, transaction_id único, BURSTS aleatórios)
@@ -158,6 +161,41 @@ Componentes e containers:
 - **producer** / **consumer** (imagem Python leve) — ingestão e materialização+métricas.
 - **prometheus** + **grafana** — dashboard *Pix Settlement Engine* (TPS, latência
   P50/95/99, fila AML, tamanho/duração de checkpoint).
+
+### 4.1 Paralelismo
+
+No Flink, **paralelismo** é o número de cópias (subtarefas) de um operador que rodam
+ao mesmo tempo, cada uma processando uma fatia dos dados. Em vez de um único
+processo computando todas as transações em série, o trabalho é dividido entre várias
+subtarefas que executam em paralelo, em *task slots* distintos do TaskManager. É o
+principal eixo de escala horizontal do projeto, avaliado no experimento W1.
+
+O paralelismo default do job é lido da variável
+`PARALLELISM` (`env.set_parallelism(...)` em `flink_common.py`), e cada TaskManager
+oferece um número fixo de *task slots* (`TASK_SLOTS`, 4 no ambiente dos experimentos)
+que limita quantas subtarefas rodam de fato em paralelo na mesma máquina. Aumentar o
+paralelismo sem slots ou TaskManagers suficientes não traz ganho.
+
+O paralelismo só é correto porque
+o estado é **particionado por conta**. O `settlement_job` faz `key_by(account)` antes
+do `Ledger`, então cada conta é roteada sempre para a mesma subtarefa. Assim cada
+subtarefa é dona de um subconjunto disjunto de contas e mantém, isolado, o saldo e o
+buffer de ops dessas contas. Como as contas são independentes entre si (o saldo de
+uma não depende do saldo de outra), processá-las em paralelo não altera o resultado;
+a ordem que importa é a ordem **por conta**, e essa é preservada dentro de cada
+subtarefa.
+
+No `aml_job`, os padrões
+VELOCITY e STRUCTURING são *keyed* por conta de origem e portanto paralelizáveis. Já
+a detecção de ciclo (`A→B→C→A`) precisa enxergar o **grafo global** de transferências
+recentes para achar o caminho que fecha o ciclo; se as arestas fossem espalhadas por
+várias subtarefas, nenhuma teria a visão completa. Por isso ela é forçada a
+paralelismo 1 (uma única subtarefa mantém o grafo recente em memória, podado por
+event-time). Esse é o ponto de contenção do AML sob volume muito alto, documentado na
+§7.
+
+Mais paralelismo aumenta o throughput e reduz a latência,
+porque o backlog drena mais rápido, mas o ganho é **sublinear**. Os números estão na §6.4.
 
 ## 5. Workloads evaluated
 
@@ -336,12 +374,12 @@ Gráficos com barras de erro: `results/plot_tps.png` (throughput por configuraç
   dos saldos por linha do PaySim, inconsistentes entre linhas) e ops aplicadas
   independentemente (um débito rejeitado não cancela o crédito pareado). Ambos os
   mundos (stream e batch) usam a **mesma** regra, então a reconciliação permanece
-  exata — o objetivo do experimento de exactly-once é preservado.
+  exata.
 - **Bursts e reconciliação**: o modo `synthetic` injeta transações de alto valor em
   contas `BURST*`, **excluídas** da reconciliação; a prova financeira usa o modo
   `rate` (replay determinístico) ou bursts apenas de taxa.
 - **AML**: a detecção de ciclo roda com paralelismo 1 (grafo recente em memória,
-  podado por event-time) — adequado para a fração `TRANSFER`, mas é o ponto de
+  podado por event-time), adequado para a fração `TRANSFER`, mas é o ponto de
   contenção sob volume muito alto. Precision/recall são avaliados a nível de conta.
   **Nos experimentos (subconjunto de 10 k) o AML não emitiu alertas** (cada origem
   aparece ~1 vez): a avaliação de precision/recall exige o dataset completo ou
@@ -350,8 +388,7 @@ Gráficos com barras de erro: `results/plot_tps.png` (throughput por configuraç
   ~90–270 ops/s (§6.4), limitada pelo overhead do operador PyFlink (Python UDF +
   buffering por event-time + estado RocksDB) num único TaskManager. A ingestão no
   Kafka é muito maior (~15 k reg/s). O ganho com paralelismo é claro mas sublinear;
-  escalar exigiria mais TaskManagers e/ou reduzir o custo por elemento (ex.: lógica
-  em Java/Table API). A "latência" medida reflete a fila desse backlog sob rajada,
+  escalar exigiria mais TaskManagers e/ou reduzir o custo por elemento. A "latência" medida reflete a fila desse backlog sob rajada,
   não latência de rede.
 - **Defeitos encontrados e corrigidos ao habilitar os benchmarks** (a suíte não
   media corretamente antes): (1) `MAX_RECORDS` não era repassado ao container do
@@ -362,7 +399,7 @@ Gráficos com barras de erro: `results/plot_tps.png` (throughput por configuraç
   O harness passou a esperar a contagem de outcomes atingir o alvo determinístico
   (`EXPECTED`). Os resultados da §6 já usam a versão corrigida.
 - **Reprodutibilidade**: event-time e ordenação são função pura do input, o que
-  torna o resultado exactly-once idêntico ao baseline — base da demo de falha.
+  torna o resultado exactly-once idêntico ao baseline, base da demo de falha.
 
 Conclusão: o projeto demonstra de forma visual e mensurável o **valor do
 exactly-once**, o sistema cai, recupera do último checkpoint e o saldo final bate
