@@ -4,7 +4,12 @@
 # Raíz;
 cd "$(dirname "$0")/.." || exit
 
-TOPIC_NAME="wikimediaRecentchange"
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+else
+    echo ".env not found! Exiting..."
+    exit 1
+fi
 
 echo "--- --------------- ---"
 echo "Starting the project..."
@@ -20,10 +25,10 @@ done
 # Iniciando tópicos do Kafka;
 docker exec -it kafka /opt/kafka/bin/kafka-topics.sh \
   --create \
-  --topic ${TOPIC_NAME} \
+  --topic "$KAFKA_TOPIC" \
   --bootstrap-server localhost:9092 \
-  --partitions 3 \
-  --replication-factor 1 \
+  --partitions "$KAFKA_PARTITIONS" \
+  --replication-factor "$KAFKA_REPLICATION_FACTOR" \
   --if-not-exists
 
-echo "Kafka ready, topic created successfully: '${TOPIC_NAME}'!"
+echo "Kafka ready, topic created successfully: '${KAFKA_TOPIC}'!"
