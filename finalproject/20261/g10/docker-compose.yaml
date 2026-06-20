@@ -25,5 +25,17 @@ services:
       timeout: 5s
       retries: 10
 
+  producer:
+    build: ./src/producer
+    container_name: wikimedia_producer
+    restart: always
+    depends_on:
+      - kafka
+    environment:
+      - PYTHONUNBUFFERED=1
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC=${KAFKA_TOPIC}
+      - WIKIMEDIA_URL=${WIKIMEDIA_URL}
+
 volumes:
   kafka_data:
