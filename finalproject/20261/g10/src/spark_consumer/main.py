@@ -141,6 +141,7 @@ df_raw = spark.readStream \
     .option("subscribe", TOPIC_NAME) \
     .option("startingOffsets", "latest") \
     .option("maxOffsetsPerTrigger", MAX_OFFSETS_PER_TRIGGER) \
+    .option("failOnDataLoss", "false") \
     .load()
 
 df_parsed = df_raw.selectExpr("CAST(value AS STRING) as json_str") \
@@ -163,19 +164,27 @@ df_windowed = df_inference \
     ).count()
 
 df_result = df_windowed.select(
+    col("time_window.start").alias("win_start"),
     expr("concat(date_format(time_window.start, 'HH:mm'), '-', date_format(time_window.end, 'HH:mm'))").alias("janela"),
     col("category").alias("categoria"),
     col("count").alias("quantidade")
 )
 
-# Exibe o resultado agregado por janela no Console
+# Mostra apenas a janela mais recente de cada micro-batch (evita repetir janelas antigas).
+def show_latest_window(batch_df, batch_id):
+    latest_start = batch_df.agg({"win_start": "max"}).first()[0]
+    if latest_start is None:
+        return
+    batch_df.filter(col("win_start") == latest_start) \
+        .orderBy(col("quantidade").desc()) \
+        .drop("win_start") \
+        .show(50, truncate=False)
+
 query = df_result \
     .writeStream \
     .outputMode("update") \
     .option("checkpointLocation", CHECKPOINT_LOCATION) \
-    .format("console") \
-    .option("truncate", "false") \
-    .option("numRows", "200") \
+    .foreachBatch(show_latest_window) \
     .start()
 
 query.awaitTermination()
