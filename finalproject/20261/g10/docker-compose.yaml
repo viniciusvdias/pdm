@@ -25,6 +25,26 @@ services:
       timeout: 5s
       retries: 10
 
+  spark-consumer:
+    image: apache/spark:3.5.1
+    container_name: spark_consumer
+    user: root
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC=${KAFKA_TOPIC}
+    volumes:
+      - ./src/spark_consumer:/app
+      - ./misc:/misc
+    working_dir: /app
+    # O apache/spark roda como usuário padrão 'spark', mudamos para instalar pacotes no requirements
+    command: >
+      /opt/spark/bin/spark-submit 
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1
+      main.py
+
   producer:
     build: ./src/producer
     container_name: wikimedia_producer
