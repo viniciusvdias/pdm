@@ -1,8 +1,11 @@
 import os
 import json
-import re
+import pandas as pd
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, udf, expr, window, to_timestamp, from_unixtime
+from pyspark.sql.functions import (
+    col, from_json, pandas_udf, expr, window, to_timestamp, from_unixtime,
+    coalesce, lit, when, regexp_replace, trim, concat_ws,
+)
 from pyspark.sql.types import StringType, StructType, StructField, IntegerType, LongType
 
 # --- CONFIGURAÇÕES DE AMBIENTE ---
@@ -54,22 +57,34 @@ schema = StructType([
 ])
 
 # --- LIMPEZA (WORKLOAD-2) ---
-def clean_text_python(title, comment, parsedcomment, namespace):
-    title = title or ""
-    comment = comment or ""
-    parsedcomment = parsedcomment or ""
-    namespace = namespace or 0
-    
-    if re.match(r"^Q\d+", title) and parsedcomment:
-        return re.sub(r"<[^>]*>", "", parsedcomment)
-    if namespace in [6, 14]:
-        title = re.sub(r"^(File:|Category:|Categoria:)", "", title)
-        
-    clean_comment = re.sub(r"\[\[(.*\|)?(.*?)\]\]", r"\2", comment)
-    clean_comment = re.sub(r"\/\*.*?\*\/", "", clean_comment).strip()
-    return f"{title} {clean_comment}".strip()
+def clean_text_column():
+    title_c = coalesce(col("title"), lit(""))
+    comment_c = coalesce(col("comment"), lit(""))
+    parsed_c = coalesce(col("parsedcomment"), lit(""))
+    ns_c = coalesce(col("namespace"), lit(0))
 
-clean_text_udf = udf(clean_text_python, StringType())
+    # Itens Wikidata (título "Q123..."): usa o parsedcomment sem tags HTML.
+    is_wikidata = title_c.rlike(r"^Q\d+") & (parsed_c != "")
+    wikidata_text = regexp_replace(parsed_c, r"<[^>]*>", "")
+
+    # Remove prefixos File:/Category: quando namespace é 6 (File) ou 14 (Category).
+    title_stripped = when(
+        ns_c.isin(6, 14),
+        regexp_replace(title_c, r"^(File:|Category:|Categoria:)", ""),
+    ).otherwise(title_c)
+
+    # Resolve wiki-links [[alvo|texto]] -> texto e remove seções /* ... */.
+    clean_comment = trim(
+        regexp_replace(
+            regexp_replace(comment_c, r"\[\[(.*\|)?(.*?)\]\]", "$2"),
+            r"/\*.*?\*/",
+            "",
+        )
+    )
+
+    return when(is_wikidata, wikidata_text).otherwise(
+        trim(concat_ws(" ", title_stripped, clean_comment))
+    )
 
 # --- PIPELINE DE CLASSIFICAÇÃO SEMÂNTICA DIRETA ---
 # Carregamos a taxonomia no Driver apenas para os metadados leves (nomes/descrições das categorias).
@@ -79,9 +94,7 @@ with open(TAXONOMY_PATH, 'r', encoding='utf-8') as f:
 category_names = [cat['name'] for cat in taxonomy_data['categories']]
 text_categories = [f"{cat['name']}: {cat['description']}" for cat in taxonomy_data['categories']]
 
-# O modelo NÃO é capturado no closure da UDF (evitamos serializar ~90MB em CADA task).
-# Em vez disso, cada processo worker Python carrega o modelo do cache local UMA única vez,
-# sob demanda, e o reutiliza nas chamadas seguintes (acesso, não cópia).
+
 _model = None
 _category_vectors = None
 
@@ -92,20 +105,30 @@ def _get_classifier():
         _category_vectors = _model.encode(text_categories, convert_to_tensor=True)
     return _model, _category_vectors
 
-def classify_text(text_to_classify):
-    if not text_to_classify or text_to_classify.strip() == "":
-        return "Others|0.0"
+ENCODE_BATCH_SIZE = int(os.environ.get('ENCODE_BATCH_SIZE', '64'))
 
+# Pandas UDF (vetorizada via Arrow): recebe a coluna inteira do micro-batch como uma
+# pandas.Series e faz UMA única chamada de inferência em lote (model.encode em toda a
+# lista).
+@pandas_udf(StringType())
+def classify_udf(texts: pd.Series) -> pd.Series:
     model, category_vectors = _get_classifier()
 
-    # Executa a comparação vetorial
-    text_vector = model.encode(text_to_classify, convert_to_tensor=True)
-    scores = util.cos_sim(text_vector, category_vectors)[0]
-    best_idx = torch.argmax(scores).item()
+    s = texts.fillna("").astype(str)
+    nonempty = s.str.strip() != ""
 
-    return f"{category_names[best_idx]}|{float(scores[best_idx].item()):.2f}"
+    # Linhas vazias não vão para o modelo
+    results = pd.Series(["Others|0.0"] * len(s), index=s.index)
 
-classify_udf = udf(classify_text, StringType())
+    if nonempty.any():
+        batch = s[nonempty].tolist()
+        embeddings = model.encode(batch, convert_to_tensor=True, batch_size=ENCODE_BATCH_SIZE)
+        scores = util.cos_sim(embeddings, category_vectors)  # [N, num_categorias]
+        best_idx = torch.argmax(scores, dim=1).tolist()
+        best_val = torch.max(scores, dim=1).values.tolist()
+        results[nonempty] = [f"{category_names[i]}|{v:.2f}" for i, v in zip(best_idx, best_val)]
+
+    return results
 
 # --- STREAMING ---
 df_raw = spark.readStream \
@@ -119,7 +142,7 @@ df_parsed = df_raw.selectExpr("CAST(value AS STRING) as json_str") \
     .select(from_json(col("json_str"), schema).alias("data")) \
     .select("data.*")
 
-df_cleaned = df_parsed.withColumn("cleaned_text", clean_text_udf(col("title"), col("comment"), col("parsedcomment"), col("namespace")))
+df_cleaned = df_parsed.withColumn("cleaned_text", clean_text_column())
 df_timed = df_cleaned.withColumn("event_time", to_timestamp(from_unixtime(col("timestamp"))))
 
 # Aplica a IA e quebra o resultado em Categoria e Confiança
