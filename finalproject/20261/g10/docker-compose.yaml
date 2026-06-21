@@ -38,6 +38,7 @@ services:
       - KAFKA_TOPIC=${KAFKA_TOPIC}
       - WINDOW_DURATION=${WINDOW_DURATION_NUMERIC} ${WINDOW_DURATION_UNIT}
       - WINDOW_SLIDE_DURATION=${WINDOW_SLIDE_DURATION_NUMERIC} ${WINDOW_SLIDE_DURATION_UNIT}
+      - MODEL_NAME=${MODEL_NAME}
     volumes:
       - ./src/spark_consumer:/app
       - ./misc:/misc
