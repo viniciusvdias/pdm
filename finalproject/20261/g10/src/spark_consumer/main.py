@@ -166,7 +166,7 @@ df_result = df_windowed.select(
 # Exibe o resultado agregado por janela no Console
 query = df_result \
     .writeStream \
-    .outputMode("complete") \
+    .outputMode("update") \
     .format("console") \
     .option("truncate", "false") \
     .option("numRows", "200") \
