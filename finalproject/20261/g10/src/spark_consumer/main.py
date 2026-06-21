@@ -42,7 +42,7 @@ print(f"Torch device selected for inference: {DEVICE}", flush=True)
 
 # Força o download do modelo no Driver ANTES de iniciar o Spark Streaming.
 # Apenas popula o cache local
-print("Downloading/loading the MiniLM model (ensuring cache)...", flush=True)
+print(f"Downloading/loading the model '{MODEL_NAME}' (ensuring cache)...", flush=True)
 SentenceTransformer(MODEL_NAME, device='cpu')
 print("Model loaded successfully!", flush=True)
 
