@@ -32,4 +32,15 @@ docker exec -it kafka /opt/kafka/bin/kafka-topics.sh \
   --if-not-exists
 
 echo "Kafka ready, topic created successfully: '${KAFKA_TOPIC}'!"
-echo "Logs: docker logs -f wikimedia_producer"
+
+
+echo "Waiting for Spark consumer..."
+while [ "$(docker inspect -f '{{.State.Health.Status}}' spark_consumer)" != "healthy" ]; do
+    sleep 1
+done
+
+echo "Spark consumer ready!"
+
+echo "Logs:"
+echo "Producer: docker logs -f wikimedia_producer"
+echo "Spark Consumer: docker logs -f spark_consumer"

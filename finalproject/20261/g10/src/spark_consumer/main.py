@@ -15,12 +15,10 @@ try:
     from sentence_transformers import SentenceTransformer, util
     import torch
 except ImportError:
-    import subprocess
-    import sys
-    print("📦 Primeira execução: Instalando dependências de NLP no container...", flush=True)
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "sentence-transformers==3.0.1", "torch==2.2.1", "numpy==1.24.4"])
-    from sentence_transformers import SentenceTransformer, util
-    import torch
+    raise RuntimeError(
+        "Dependências de NLP ausentes da imagem do spark-consumer. "
+        "Refaça o build do serviço para instalar sentence-transformers e torch."
+    )
 
 # Força o download do modelo no Driver ANTES de iniciar o Spark Streaming
 print("📥 Baixando/Carregando modelo MiniLM (Garantindo Cache)...", flush=True)
@@ -33,7 +31,7 @@ spark = SparkSession.builder \
     .config("spark.sql.shuffle.partitions", "3") \
     .getOrCreate()
 
-spark.sparkContext.setLogLevel("WARN")
+spark.sparkContext.setLogLevel("ERROR") # Evita logs de warning KAFKA-1894;
 
 # --- SCHEMA ---
 schema = StructType([
