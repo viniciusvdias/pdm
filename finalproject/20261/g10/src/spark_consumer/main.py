@@ -21,7 +21,10 @@ MAX_OFFSETS_PER_TRIGGER = os.environ.get('MAX_OFFSETS_PER_TRIGGER', '5000')
 CHECKPOINT_LOCATION = os.environ.get('CHECKPOINT_LOCATION', '/checkpoint')
 
 TAXONOMY_PATH = '/misc/topics.json'
-MODEL_NAME = 'all-MiniLM-L6-v2'
+# Modelo de classificação (sentence-transformers). Troque via .env para comparar modelos.
+MODEL_NAME = os.environ.get('MODEL_NAME', 'all-MiniLM-L6-v2')
+# Modelos e5 exigem o prefixo "query: " nos textos; demais modelos não usam prefixo.
+TEXT_PREFIX = "query: " if "e5" in MODEL_NAME.lower() else ""
 
 print("Initializing and testing the NLP environment...", flush=True)
 try:
@@ -39,7 +42,7 @@ print(f"Torch device selected for inference: {DEVICE}", flush=True)
 
 # Força o download do modelo no Driver ANTES de iniciar o Spark Streaming.
 # Apenas popula o cache local
-print("Downloading/loading the MiniLM model (ensuring cache)...", flush=True)
+print(f"Downloading/loading the model '{MODEL_NAME}' (ensuring cache)...", flush=True)
 SentenceTransformer(MODEL_NAME, device='cpu')
 print("Model loaded successfully!", flush=True)
 
@@ -106,7 +109,9 @@ def _get_classifier():
     global _model, _category_vectors
     if _model is None:
         _model = SentenceTransformer(MODEL_NAME, device=DEVICE)
-        _category_vectors = _model.encode(text_categories, convert_to_tensor=True)
+        _category_vectors = _model.encode(
+            [TEXT_PREFIX + t for t in text_categories], convert_to_tensor=True
+        )
     return _model, _category_vectors
 
 ENCODE_BATCH_SIZE = int(os.environ.get('ENCODE_BATCH_SIZE', '64'))
@@ -126,7 +131,9 @@ def classify_udf(texts: pd.Series) -> pd.Series:
 
     if nonempty.any():
         batch = s[nonempty].tolist()
-        embeddings = model.encode(batch, convert_to_tensor=True, batch_size=ENCODE_BATCH_SIZE)
+        embeddings = model.encode(
+            [TEXT_PREFIX + t for t in batch], convert_to_tensor=True, batch_size=ENCODE_BATCH_SIZE
+        )
         scores = util.cos_sim(embeddings, category_vectors)  # [N, num_categorias]
         best_idx = torch.argmax(scores, dim=1).tolist()
         best_val = torch.max(scores, dim=1).values.tolist()
