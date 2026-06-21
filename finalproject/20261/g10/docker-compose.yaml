@@ -36,6 +36,8 @@ services:
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - KAFKA_TOPIC=${KAFKA_TOPIC}
+      - WINDOW_DURATION=${WINDOW_DURATION_NUMERIC} ${WINDOW_DURATION_UNIT}
+      - WINDOW_SLIDE_DURATION=${WINDOW_SLIDE_DURATION_NUMERIC} ${WINDOW_SLIDE_DURATION_UNIT}
     volumes:
       - ./src/spark_consumer:/app
       - ./misc:/misc

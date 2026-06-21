@@ -2,28 +2,34 @@ import os
 import json
 import re
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, udf, expr
-from pyspark.sql.types import StringType, StructType, StructField, IntegerType
+from pyspark.sql.functions import col, from_json, udf, expr, window, to_timestamp, from_unixtime
+from pyspark.sql.types import StringType, StructType, StructField, IntegerType, LongType
 
 # --- CONFIGURAÇÕES DE AMBIENTE ---
 KAFKA_BOOTSTRAP_SERVERS = os.environ.get('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
 TOPIC_NAME = os.environ.get('KAFKA_TOPIC', 'wikimediaRecentchange')
+WINDOW_DURATION = os.environ.get('WINDOW_DURATION', '5 minutes')
+WINDOW_SLIDE_DURATION = os.environ.get('WINDOW_SLIDE_DURATION', WINDOW_DURATION)
+
+print("====================")
+print("Window Duration:", WINDOW_DURATION)
+
 TAXONOMY_PATH = '/misc/topics.json'
 
-print("🧠 Inicializando e testando ambiente de NLP...", flush=True)
+print("Initializing and testing the NLP environment...", flush=True)
 try:
     from sentence_transformers import SentenceTransformer, util
     import torch
 except ImportError:
     raise RuntimeError(
-        "Dependências de NLP ausentes da imagem do spark-consumer. "
-        "Refaça o build do serviço para instalar sentence-transformers e torch."
+        "NLP dependencies are missing from the spark-consumer image. "
+        "Rebuild the service to install sentence-transformers and torch."
     )
 
 # Força o download do modelo no Driver ANTES de iniciar o Spark Streaming
-print("📥 Baixando/Carregando modelo MiniLM (Garantindo Cache)...", flush=True)
+print("Downloading/loading the MiniLM model (ensuring cache)...", flush=True)
 dummy_model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
-print("✅ Modelo carregado com sucesso!", flush=True)
+print("Model loaded successfully!", flush=True)
 
 # --- INICIALIZAÇÃO DO SPARK ---
 spark = SparkSession.builder \
@@ -38,7 +44,8 @@ schema = StructType([
     StructField("namespace", IntegerType(), True),
     StructField("title", StringType(), True),
     StructField("comment", StringType(), True),
-    StructField("parsedcomment", StringType(), True)
+    StructField("parsedcomment", StringType(), True),
+    StructField("timestamp", LongType(), True)
 ])
 
 # --- LIMPEZA (WORKLOAD-2) ---
@@ -94,18 +101,33 @@ df_parsed = df_raw.selectExpr("CAST(value AS STRING) as json_str") \
     .select("data.*")
 
 df_cleaned = df_parsed.withColumn("cleaned_text", clean_text_udf(col("title"), col("comment"), col("parsedcomment"), col("namespace")))
+df_timed = df_cleaned.withColumn("event_time", to_timestamp(from_unixtime(col("timestamp"))))
 
 # Aplica a IA e quebra o resultado em Categoria e Confiança
-df_inference = df_cleaned.withColumn("inference_raw", classify_udf(col("cleaned_text"))) \
+df_inference = df_timed.withColumn("inference_raw", classify_udf(col("cleaned_text"))) \
     .withColumn("category", expr("split(inference_raw, '\\\\|')[0]")) \
-    .withColumn("confidence", expr("split(inference_raw, '\\\\|')[1]"))
+    .withColumn("confidence", expr("split(inference_raw, '\\\\|')[1]").cast("float"))
 
-# Exibe o resultado direto no Console
-query = df_inference.select("title", "cleaned_text", "category", "confidence") \
+df_windowed = df_inference \
+    .withWatermark("event_time", "10 minutes") \
+    .groupBy(
+        window(col("event_time"), WINDOW_DURATION, WINDOW_SLIDE_DURATION).alias("time_window"),
+        col("category")
+    ).count()
+
+df_result = df_windowed.select(
+    expr("concat(date_format(time_window.start, 'HH:mm'), '-', date_format(time_window.end, 'HH:mm'))").alias("janela"),
+    col("category").alias("categoria"),
+    col("count").alias("quantidade")
+)
+
+# Exibe o resultado agregado por janela no Console
+query = df_result \
     .writeStream \
-    .outputMode("append") \
+    .outputMode("complete") \
     .format("console") \
     .option("truncate", "false") \
+    .option("numRows", "200") \
     .start()
 
 query.awaitTermination()
