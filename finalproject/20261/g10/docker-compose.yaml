@@ -38,10 +38,11 @@ services:
       - KAFKA_TOPIC=${KAFKA_TOPIC}
       - WINDOW_DURATION=${WINDOW_DURATION_NUMERIC} ${WINDOW_DURATION_UNIT}
       - WINDOW_SLIDE_DURATION=${WINDOW_SLIDE_DURATION_NUMERIC} ${WINDOW_SLIDE_DURATION_UNIT}
+      - SQLITE_DB_PATH=/data/analytics.sqlite3
     volumes:
-      - ./src/spark_consumer:/app
       - ./misc:/misc
       - spark_checkpoint:/checkpoint
+      - sqlite_data:/data
     working_dir: /app
     deploy:
       resources:
@@ -60,6 +61,20 @@ services:
       /opt/spark/bin/spark-submit
       main.py
 
+  sqlite-init:
+    build: ./src/spark_consumer
+    image: g10-spark-consumer:3.5.1
+    container_name: sqlite_init
+    user: root
+    environment:
+      - SQLITE_DB_PATH=/data/analytics.sqlite3
+    volumes:
+      - sqlite_data:/data
+    working_dir: /app
+    command: >
+      python3.9 sqlite_store.py --init-only
+    restart: "no"
+
   producer:
     build: ./src/producer
     container_name: wikimedia_producer
@@ -75,3 +90,4 @@ services:
 volumes:
   kafka_data:
   spark_checkpoint:
+  sqlite_data:
