@@ -14,6 +14,9 @@ TOPIC_NAME = os.environ.get('KAFKA_TOPIC', 'wikimediaRecentchange')
 WINDOW_DURATION = os.environ.get('WINDOW_DURATION', '5 minutes')
 WINDOW_SLIDE_DURATION = os.environ.get('WINDOW_SLIDE_DURATION', WINDOW_DURATION)
 
+# Backpressure: máximo de registros lidos do Kafka por micro-batch.
+MAX_OFFSETS_PER_TRIGGER = os.environ.get('MAX_OFFSETS_PER_TRIGGER', '5000')
+
 # Checkpoint
 CHECKPOINT_LOCATION = os.environ.get('CHECKPOINT_LOCATION', '/checkpoint')
 
@@ -137,6 +140,7 @@ df_raw = spark.readStream \
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
     .option("subscribe", TOPIC_NAME) \
     .option("startingOffsets", "latest") \
+    .option("maxOffsetsPerTrigger", MAX_OFFSETS_PER_TRIGGER) \
     .load()
 
 df_parsed = df_raw.selectExpr("CAST(value AS STRING) as json_str") \
