@@ -42,6 +42,13 @@ services:
       - ./src/spark_consumer:/app
       - ./misc:/misc
     working_dir: /app
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'spark-submit .*main.py' >/dev/null"]
       interval: 10s

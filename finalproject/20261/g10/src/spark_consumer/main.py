@@ -24,9 +24,14 @@ except ImportError:
         "Rebuild the service to install sentence-transformers and torch."
     )
 
+# Seleciona GPU automaticamente quando disponível (ex.: RTX 50xx / Blackwell); caso contrário, CPU.
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f"Torch device selected for inference: {DEVICE}", flush=True)
+
 # Força o download do modelo no Driver ANTES de iniciar o Spark Streaming.
 # Objetivo aqui é apenas popular o cache local do modelo; o objeto NÃO é
 # reutilizado nem serializado para os workers (ver _get_classifier abaixo).
+# Warmup em CPU para não alocar memória de GPU no processo Driver.
 print("Downloading/loading the MiniLM model (ensuring cache)...", flush=True)
 SentenceTransformer(MODEL_NAME, device='cpu')
 print("Model loaded successfully!", flush=True)
@@ -83,7 +88,7 @@ _category_vectors = None
 def _get_classifier():
     global _model, _category_vectors
     if _model is None:
-        _model = SentenceTransformer(MODEL_NAME, device='cpu')
+        _model = SentenceTransformer(MODEL_NAME, device=DEVICE)
         _category_vectors = _model.encode(text_categories, convert_to_tensor=True)
     return _model, _category_vectors
 

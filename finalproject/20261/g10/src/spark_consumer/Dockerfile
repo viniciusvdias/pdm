@@ -3,12 +3,18 @@ FROM apache/spark:3.5.1
 USER root
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3-pip python3-dev \
+    && apt-get install -y --no-install-recommends python3.9 python3.9-dev python3-pip \
+    && python3.9 -m pip install --no-cache-dir --upgrade pip \
     && rm -rf /var/lib/apt/lists/*
+
+# Faz o Spark (driver e workers Python) usar o 3.9
+ENV PYSPARK_PYTHON=python3.9
+ENV PYSPARK_DRIVER_PYTHON=python3.9
 
 WORKDIR /app
 
-RUN python3 -m pip install --no-cache-dir torch==2.2.1 --index-url https://download.pytorch.org/whl/cpu --no-deps
+# Build do PyTorch com CUDA 12.8 — necessário para GPUs Blackwell (RTX 50xx / sm_120).
+RUN python3.9 -m pip install --no-cache-dir torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
 
 RUN mkdir -p /tmp/ivy-cache \
     && printf 'print("warmup")\n' > /tmp/spark-package-warmup.py \
@@ -19,7 +25,7 @@ RUN mkdir -p /tmp/ivy-cache \
     && cp /tmp/ivy-cache/jars/*.jar /opt/spark/jars/
 
 COPY requirements.txt .
-RUN python3 -m pip install --no-cache-dir -r requirements.txt
+RUN python3.9 -m pip install --no-cache-dir -r requirements.txt
 
 COPY main.py .
 
