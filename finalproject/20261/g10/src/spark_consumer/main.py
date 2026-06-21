@@ -11,10 +11,8 @@ TOPIC_NAME = os.environ.get('KAFKA_TOPIC', 'wikimediaRecentchange')
 WINDOW_DURATION = os.environ.get('WINDOW_DURATION', '5 minutes')
 WINDOW_SLIDE_DURATION = os.environ.get('WINDOW_SLIDE_DURATION', WINDOW_DURATION)
 
-print("====================")
-print("Window Duration:", WINDOW_DURATION)
-
 TAXONOMY_PATH = '/misc/topics.json'
+MODEL_NAME = 'all-MiniLM-L6-v2'
 
 print("Initializing and testing the NLP environment...", flush=True)
 try:
@@ -26,9 +24,11 @@ except ImportError:
         "Rebuild the service to install sentence-transformers and torch."
     )
 
-# Força o download do modelo no Driver ANTES de iniciar o Spark Streaming
+# Força o download do modelo no Driver ANTES de iniciar o Spark Streaming.
+# Objetivo aqui é apenas popular o cache local do modelo; o objeto NÃO é
+# reutilizado nem serializado para os workers (ver _get_classifier abaixo).
 print("Downloading/loading the MiniLM model (ensuring cache)...", flush=True)
-dummy_model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
+SentenceTransformer(MODEL_NAME, device='cpu')
 print("Model loaded successfully!", flush=True)
 
 # --- INICIALIZAÇÃO DO SPARK ---
@@ -67,23 +67,37 @@ def clean_text_python(title, comment, parsedcomment, namespace):
 clean_text_udf = udf(clean_text_python, StringType())
 
 # --- PIPELINE DE CLASSIFICAÇÃO SEMÂNTICA DIRETA ---
-# Como rodamos em CPU local simples, a UDF padrão com modelo global evita o overhead de RDDs no streaming básico
+# Carregamos a taxonomia no Driver apenas para os metadados leves (nomes/descrições das categorias).
 with open(TAXONOMY_PATH, 'r', encoding='utf-8') as f:
     taxonomy_data = json.load(f)
 
 category_names = [cat['name'] for cat in taxonomy_data['categories']]
 text_categories = [f"{cat['name']}: {cat['description']}" for cat in taxonomy_data['categories']]
-category_vectors = dummy_model.encode(text_categories, convert_to_tensor=True)
+
+# O modelo NÃO é capturado no closure da UDF (evitamos serializar ~90MB em CADA task).
+# Em vez disso, cada processo worker Python carrega o modelo do cache local UMA única vez,
+# sob demanda, e o reutiliza nas chamadas seguintes (acesso, não cópia).
+_model = None
+_category_vectors = None
+
+def _get_classifier():
+    global _model, _category_vectors
+    if _model is None:
+        _model = SentenceTransformer(MODEL_NAME, device='cpu')
+        _category_vectors = _model.encode(text_categories, convert_to_tensor=True)
+    return _model, _category_vectors
 
 def classify_text(text_to_classify):
     if not text_to_classify or text_to_classify.strip() == "":
         return "Others|0.0"
-    
+
+    model, category_vectors = _get_classifier()
+
     # Executa a comparação vetorial
-    text_vector = dummy_model.encode(text_to_classify, convert_to_tensor=True)
+    text_vector = model.encode(text_to_classify, convert_to_tensor=True)
     scores = util.cos_sim(text_vector, category_vectors)[0]
     best_idx = torch.argmax(scores).item()
-    
+
     return f"{category_names[best_idx]}|{float(scores[best_idx].item()):.2f}"
 
 classify_udf = udf(classify_text, StringType())
