@@ -41,6 +41,7 @@ services:
     volumes:
       - ./src/spark_consumer:/app
       - ./misc:/misc
+      - spark_checkpoint:/checkpoint
     working_dir: /app
     deploy:
       resources:
@@ -73,3 +74,4 @@ services:
 
 volumes:
   kafka_data:
+  spark_checkpoint:

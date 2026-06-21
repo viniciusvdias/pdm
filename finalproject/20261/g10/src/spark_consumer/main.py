@@ -14,6 +14,9 @@ TOPIC_NAME = os.environ.get('KAFKA_TOPIC', 'wikimediaRecentchange')
 WINDOW_DURATION = os.environ.get('WINDOW_DURATION', '5 minutes')
 WINDOW_SLIDE_DURATION = os.environ.get('WINDOW_SLIDE_DURATION', WINDOW_DURATION)
 
+# Checkpoint
+CHECKPOINT_LOCATION = os.environ.get('CHECKPOINT_LOCATION', '/checkpoint')
+
 TAXONOMY_PATH = '/misc/topics.json'
 MODEL_NAME = 'all-MiniLM-L6-v2'
 
@@ -32,9 +35,7 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Torch device selected for inference: {DEVICE}", flush=True)
 
 # Força o download do modelo no Driver ANTES de iniciar o Spark Streaming.
-# Objetivo aqui é apenas popular o cache local do modelo; o objeto NÃO é
-# reutilizado nem serializado para os workers (ver _get_classifier abaixo).
-# Warmup em CPU para não alocar memória de GPU no processo Driver.
+# Apenas popula o cache local
 print("Downloading/loading the MiniLM model (ensuring cache)...", flush=True)
 SentenceTransformer(MODEL_NAME, device='cpu')
 print("Model loaded successfully!", flush=True)
@@ -167,6 +168,7 @@ df_result = df_windowed.select(
 query = df_result \
     .writeStream \
     .outputMode("update") \
+    .option("checkpointLocation", CHECKPOINT_LOCATION) \
     .format("console") \
     .option("truncate", "false") \
     .option("numRows", "200") \
