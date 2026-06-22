@@ -55,11 +55,9 @@ A arquitetura do projeto foi desenhada para isolar o ambiente de execução e ga
 > **MANDATORY**: This section is a core requirement of the project. You MUST perform experimental benchmarking with multiple repetitions and statistical analysis.
 
 ### 6.1 Experimental environment
-
-- Describe the environment used for experiments (machine/VM specs, OS, Docker version, etc.).
-- Example:
-  
-  > Experiments were run on a virtual machine with 4 vCPUs, 8GB RAM, Ubuntu 22.04, Docker 24.x.
+- 16 GB RAM
+- Processador i5 13450hx
+- ubuntu 24.04
 
 ## 📊 Benchmark Results
 
