@@ -61,68 +61,6 @@ A arquitetura do projeto foi desenhada para isolar o ambiente de execução e ga
   
   > Experiments were run on a virtual machine with 4 vCPUs, 8GB RAM, Ubuntu 22.04, Docker 24.x.
 
-### 6.2 How to perform benchmarking (simple guide)
-
-**Step 1: Define what to measure**
-
-- Choose metrics relevant to your workload:
-  - **Execution time** (wall-clock time): Total time to complete the task
-  - **Throughput**: Records/events processed per second
-  - **Latency**: Time to process a single record/query
-  - **Resource usage**: CPU, memory, disk I/O
-
-**Step 2: Run multiple repetitions**
-
-- **MANDATORY**: Run each experiment at least 3 times (preferably 5-10 times)
-- This helps account for system variability and ensures reliable results
-- Example command:
-  
-  ```bash
-  for i in {1..5}; do
-    echo "Run $i"
-    docker compose up
-    # For example, you stack may generate runtime statistics (metrics) in the logs
-  done
-  ```
-
-**Step 3: Collect and record data**
-
-- Create a spreadsheet or CSV file with your measurements
-- Example data collection:
-  
-  ```
-  Run 1: 45.2 seconds
-  Run 2: 46.1 seconds
-  Run 3: 44.8 seconds
-  Run 4: 45.5 seconds
-  Run 5: 45.9 seconds
-  ```
-
-**Step 4: Calculate statistics**
-
-- **Average (mean)**: Sum all values and divide by number of runs
-- **Standard deviation**: Measure of variability in your results
-- Most tools (Excel, Python, R) can calculate these automatically
-- Python example:
-  
-  ```python
-  import numpy as np
-  times = [45.2, 46.1, 44.8, 45.5, 45.9]
-  avg = np.mean(times)
-  std = np.std(times, ddof=1)  # Sample standard deviation
-  print(f"Average: {avg:.2f}s ± {std:.2f}s")
-  ```
-  The main parameter varied in the experiments was the chunk size used during CSV reading and Parquet writing.
-  The evaluated configurations were:
-  - chunk size = 10,000
-  - chunk size = 50,000
-  - chunk size = 100,000
-  The measured metrics were:
-  - total execution time (seconds)
-  - average execution time
-  - standard deviation
-  - total output size in Parquet format
-**Step 5: Present results in tables**
 ## 📊 Benchmark Results
 
 | Chunk Size | Execution Times (s)                 | Mean (s)| Std Dev (s) | Parquet Size (MB) |
