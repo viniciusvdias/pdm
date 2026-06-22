@@ -1,0 +1,8 @@
+services:
+  processor:
+    build: 
+      context: ..
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/app
+    command: python /app/src/main.py
