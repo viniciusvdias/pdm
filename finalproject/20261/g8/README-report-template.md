@@ -1,4 +1,4 @@
-# Final project report: Análise de séries temporais meterológicas do Brasil
+# Final project report: Processamento em lote de dados meteorológicos do Brasil com chunking e conversão para Parquet
 
 ## 1. Context and motivation
 
@@ -112,73 +112,70 @@ A arquitetura do projeto foi desenhada para isolar o ambiente de execução e ga
   std = np.std(times, ddof=1)  # Sample standard deviation
   print(f"Average: {avg:.2f}s ± {std:.2f}s")
   ```
-
+  The main parameter varied in the experiments was the chunk size used during CSV reading and Parquet writing.
+  The evaluated configurations were:
+  - chunk size = 10,000
+  - chunk size = 50,000
+  - chunk size = 100,000
+  The measured metrics were:
+  - total execution time (seconds)
+  - average execution time
+  - standard deviation
+  - total output size in Parquet format
 **Step 5: Present results in tables**
+## 📊 Benchmark Results
 
-- Use clear tables showing average ± standard deviation
-- See examples in section 6.3 below
+| Chunk Size | Execution Times (s)                 | Mean (s)| Std Dev (s) | Parquet Size (MB) |
+|------------|--------------------|----------|-------------|--------------------|
+| 10,000     | 58.22 / 57.20 / 53.65 / 51.14 / 51.71 | 54.38 | 3.20 | 270.39 |
+| 50,000     | 36.89 / 36.27 / 36.38 / 36.22 / 37.18 | 36.59 | 0.43 | 230.41 |
+| 100,000    | 33.99 / 33.61 / 33.39 / 34.57 / 33.97 | 33.91 | 0.45 | 224.27 |
 
 ### 6.3 What did you test?
 
-- What parameters did you vary? (e.g., data size, number of workers, batch size)
-- What metrics did you measure? (execution time, throughput, memory usage, etc.)
-- **MANDATORY**: For each configuration, run multiple repetitions (minimum 3) and report average and standard deviation
+  O principal parâmetro variado nos experimentos foi o tamanho do chunk utilizado durante a leitura do arquivo CSV e a escrita do arquivo Parquet. Três configurações foram avaliadas:
 
-### 6.4 Results
+  10.000 linhas por chunk
+  50.000 linhas por chunk
+  100.000 linhas por chunk
 
-**MANDATORY**: Results must include tables with average and standard deviation. Below are simple examples:
+  Cada configuração foi executada 5 vezes utilizando o conjunto de dados completo (central_west.csv, aproximadamente 1,9 GB).
 
-#### Example 1: Execution Time Comparison (not real measurements)
+  As seguintes métricas foram medidas:
 
-| Workload   | Configuration | Avg Time (s) | Std Dev (s) | Runs |
-| ---------- | ------------- | ------------ | ----------- | ---- |
-| WORKLOAD-1 | Single worker | 145.3        | 3.2         | 5    |
-| WORKLOAD-1 | 2 workers     | 78.6         | 2.1         | 5    |
-| WORKLOAD-1 | 4 workers     | 42.4         | 1.8         | 5    |
-| WORKLOAD-2 | Single worker | 89.2         | 4.5         | 5    |
-| WORKLOAD-2 | 2 workers     | 46.1         | 2.3         | 5    |
+  Tempo de execução (em segundos) para cada execução
+  Tempo médio de execução
+  Desvio padrão do tempo de execução
+  Tamanho total do arquivo Parquet gerado (MB)
 
-**Discussion**: Increasing the number of workers from 1 to 4 reduced execution time by ~70% for WORKLOAD-1. The low standard deviation (<5% of mean) indicates consistent performance.
+O objetivo do experimento foi analisar como o tamanho do chunk afeta o desempenho e a estabilidade do pipeline de conversão de CSV para Parquet.
 
-#### Example 2: Throughput Analysis (not real measurements)
+### 6.4 Discussion
+  Os resultados mostram que chunks maiores melhoraram o desempenho da conversão de CSV para Parquet. A configuração com 100.000 linhas por chunk teve o melhor tempo médio de execução (33,91 s), enquanto a de 10.000 linhas foi a mais lenta (54,38 s).
 
-| Data Size (GB) | Throughput (MB/s) | Std Dev (MB/s) | Runs |
-| -------------- | ----------------- | -------------- | ---- |
-| 1              | 125.4             | 5.2            | 5    |
-| 5              | 118.7             | 6.8            | 5    |
-| 10             | 112.3             | 4.1            | 5    |
-| 20             | 108.9             | 7.3            | 5    |
+  A estabilidade das execuções também variou. O chunk de 10.000 linhas apresentou maior desvio padrão (3,20 s), indicando desempenho menos consistente. Já as configurações de 50.000 e 100.000 linhas tiveram baixa variação (0,43 s e 0,45 s), mostrando execuções mais estáveis.
 
-**Discussion**: Throughput decreased slightly (~13%) as data size increased from 1GB to 20GB, suggesting good scalability with minimal degradation.
+  Além disso, chunks maiores geraram arquivos Parquet menores. A configuração de 100.000 linhas produziu o menor arquivo (224,27 MB), enquanto a de 10.000 linhas gerou o maior (270,39 MB), sugerindo maior fragmentação e sobrecarga de metadados com chunks menores.
 
-#### Example 3: Resource Usage (not real measurements)
+  No geral, o tamanho de 100.000 linhas por chunk apresentou o melhor equilíbrio entre tempo de execução, estabilidade e eficiência de armazenamento.
 
-| Configuration    | Avg Memory (GB) | Std Dev (GB) | Peak CPU (%) | Runs |
-| ---------------- | --------------- | ------------ | ------------ | ---- |
-| Batch size 1000  | 2.4             | 0.15         | 78           | 3    |
-| Batch size 5000  | 3.8             | 0.22         | 85           | 3    |
-| Batch size 10000 | 5.2             | 0.31         | 92           | 3    |
-
-**Discussion**: Memory usage scales linearly with batch size. Larger batches improve efficiency but require more memory.
-
-#### Plots (recommended)
-
-- Include bar charts or line plots showing your results
-- Always include error bars representing standard deviation
-
-**Key points for your results**:
-
-- Always report both average AND standard deviation (or variance)
-- Explain what the numbers mean in plain language
-- Discuss trends, patterns, and unexpected results
-- Compare different configurations or approaches
-- Relate results back to your workload characteristics
 
 ## 7. Limitations and conclusions
 
-- Summarize what worked and what did not.
-- Discuss any challenges or limitations of this work.
+  Este trabalho demonstrou que o processamento em lote baseado em chunks é uma estratégia prática para lidar com grandes conjuntos de dados em formato CSV em ambientes com recursos limitados. O pipeline converteu com sucesso um conjunto de dados meteorológicos de 1,9 GB para o formato Apache Parquet, utilizando execução em Docker e experimentos reproduzíveis.
+
+  Os resultados experimentais mostraram que o tamanho do chunk tem impacto direto tanto no tempo de execução quanto no tamanho do arquivo gerado. Chunks maiores levaram a melhor desempenho e a arquivos Parquet mais compactos no ambiente testado. Entre as configurações avaliadas, 100.000 linhas por chunk apresentou os melhores resultados.
+
+  Como limitações, este projeto se concentra em um ambiente de processamento em nó único utilizando Pandas, o que não representa uma arquitetura distribuída de Big Data, como Apache Spark ou Apache Hadoop. Além disso, a carga de trabalho enfatiza a ingestão e a conversão de formato, em vez de tarefas analíticas posteriores sobre as séries meteorológicas processadas.
+
+  Como trabalhos futuros, o pipeline pode ser estendido com 
+  processamento paralelo, 
+  frameworks de execução distribuída ou 
+  consultas analíticas sobre os dados Parquet gerados.
 
 ## 8. References and external resources
 
-- List all external resources, datasets, libraries, and tools you used (with links).
+- Climate Weather Surface of Brazil dataset: [kaggle.com](https://www.kaggle.com/datasets/PROPPG-PPG/hourly-weather-surface-brazil-southeast-region)
+- Pandas documentation: [pandas.pydata.org](https://pandas.pydata.org/)
+- Apache Parquet documentation: [parquet.apache.org](https://parquet.apache.org/)
+- Docker documentation: [docs.docker.com](https://docs.docker.com/)
