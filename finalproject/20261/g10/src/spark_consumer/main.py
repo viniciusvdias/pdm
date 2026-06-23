@@ -7,6 +7,7 @@ from pyspark.sql.functions import (
     coalesce, lit, when, regexp_replace, trim, concat_ws,
 )
 from pyspark.sql.types import StringType, StructType, StructField, IntegerType, LongType
+from sqlite_store import SQLiteStore, DEFAULT_DB_PATH
 
 # --- CONFIGURAÇÕES DE AMBIENTE ---
 KAFKA_BOOTSTRAP_SERVERS = os.environ.get('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
@@ -19,6 +20,9 @@ MAX_OFFSETS_PER_TRIGGER = os.environ.get('MAX_OFFSETS_PER_TRIGGER', '5000')
 
 # Checkpoint
 CHECKPOINT_LOCATION = os.environ.get('CHECKPOINT_LOCATION', '/checkpoint')
+
+# Persistência SQLite
+SQLITE_DB_PATH = os.environ.get('SQLITE_DB_PATH', DEFAULT_DB_PATH)
 
 TAXONOMY_PATH = '/misc/topics.json'
 # Modelo de classificação (sentence-transformers). Troque via .env para comparar modelos.
@@ -172,20 +176,62 @@ df_windowed = df_inference \
 
 df_result = df_windowed.select(
     col("time_window.start").alias("win_start"),
+    col("time_window.end").alias("win_end"),
     expr("concat(date_format(time_window.start, 'HH:mm'), '-', date_format(time_window.end, 'HH:mm'))").alias("janela"),
     col("category").alias("categoria"),
     col("count").alias("quantidade")
 )
 
-# Mostra apenas a janela mais recente de cada micro-batch (evita repetir janelas antigas).
+# Mostra e persiste apenas a janela mais recente de cada micro-batch.
 def show_latest_window(batch_df, batch_id):
     latest_start = batch_df.agg({"win_start": "max"}).first()[0]
     if latest_start is None:
         return
-    batch_df.filter(col("win_start") == latest_start) \
-        .orderBy(col("quantidade").desc()) \
-        .drop("win_start") \
+
+    latest = batch_df.filter(col("win_start") == latest_start)
+    latest.orderBy(col("quantidade").desc()) \
+        .drop("win_start", "win_end") \
         .show(50, truncate=False)
+
+    rows = latest.collect()
+    if not rows:
+        return
+
+    max_count = max(r["quantidade"] for r in rows) or 1
+    try:
+        with SQLiteStore(SQLITE_DB_PATH) as store:
+            for row in rows:
+                store.insert_metric({
+                    "window_start": row["win_start"],
+                    "window_end": row["win_end"],
+                    "category": row["categoria"],
+                    "count": int(row["quantidade"]),
+                    "trend_score": round(row["quantidade"] / max_count * 100.0, 2),
+                })
+    except Exception as e:
+        print(f"[SQLite] Error writing window_metrics: {e}", flush=True)
+
+
+# Persiste uma amostra dos eventos individuais classificados por micro-batch.
+def write_events_sample(batch_df, batch_id):
+    rows = batch_df.filter(col("title").isNotNull()) \
+        .orderBy(col("event_time").desc()) \
+        .limit(100) \
+        .select("event_time", "title", "category") \
+        .collect()
+    if not rows:
+        return
+    try:
+        with SQLiteStore(SQLITE_DB_PATH) as store:
+            for row in rows:
+                store.insert_event({
+                    "timestamp": row["event_time"],
+                    "title": row["title"],
+                    "category": row["category"],
+                })
+    except Exception as e:
+        print(f"[SQLite] Error writing events: {e}", flush=True)
+
 
 query = df_result \
     .writeStream \
@@ -194,4 +240,11 @@ query = df_result \
     .foreachBatch(show_latest_window) \
     .start()
 
-query.awaitTermination()
+events_query = df_inference \
+    .writeStream \
+    .outputMode("append") \
+    .option("checkpointLocation", CHECKPOINT_LOCATION + "/events") \
+    .foreachBatch(write_events_sample) \
+    .start()
+
+spark.streams.awaitAnyTermination()

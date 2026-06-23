@@ -88,6 +88,21 @@ services:
       - KAFKA_TOPIC=${KAFKA_TOPIC}
       - WIKIMEDIA_URL=${WIKIMEDIA_URL}
 
+  dashboard:
+    build: ./src/dashboard
+    image: g10-dashboard:latest
+    container_name: wikimedia_dashboard
+    restart: unless-stopped
+    depends_on:
+      - sqlite-init
+    ports:
+      - "8501:8501"
+    environment:
+      - SQLITE_DB_PATH=/data/analytics.sqlite3
+      - REFRESH_INTERVAL_SECONDS=30
+    volumes:
+      - sqlite_data:/data
+
 volumes:
   kafka_data:
   spark_checkpoint:
