@@ -1,20 +1,35 @@
-# Final project report: Processamento em lote de dados meteorológicos do Brasil com chunking e conversão para Parquet
+# Final project report: Análise de séries temporais meteorológicas do Brasil
 
 ## 1. Context and motivation
 
-- O objetivo deste projeto é processar um dataset meteorológico de 1.9GB utilizando a técnica de chunking (processamento em blocos) com Python e Pandas. Este trabalho resolve o problema da limitação de memória RAM ao manipular datasets massivos. O resultado é a conversão eficiente dos dados para o formato Parquet, otimizado para análise e consultas.
+* O objetivo deste projeto é processar um dataset meteorológico de 1.9GB utilizando a técnica de chunking (processamento em blocos) com Python e Pandas. Este trabalho resolve o problema da limitação de memória RAM ao manipular datasets massivos. O resultado é a conversão eficiente dos dados para o formato Parquet, otimizado para análise e consultas.
+
+* Embora o dataset não esteja na escala de dezenas de terabytes, ele apresenta desafios típicos de Big Data relacionados ao volume dos dados. O arquivo possui aproximadamente 1.9GB e exige estratégias específicas de processamento para evitar o carregamento integral dos dados em memória.
+
+* O projeto aborda principalmente o conceito de **Volume**, um dos pilares clássicos do Big Data, demonstrando como técnicas de processamento em chunks permitem manipular grandes volumes de dados utilizando recursos computacionais limitados.
 
 ## 2. Data
 
 ### 2.1 Detailed description
 
-- Fonte: [Climate Weather Surface of Brazil](https://www.kaggle.com/datasets/PROPPG-PPG/hourly-weather-surface-brazil-southeast-region?resource=download)
+* Fonte: [Climate Weather Surface of Brazil](https://www.kaggle.com/datasets/PROPPG-PPG/hourly-weather-surface-brazil-southeast-region?resource=download)
+
+* O dataset contém séries temporais meteorológicas do Brasil, incluindo variáveis como:
+
+  * Temperatura
+  * Umidade
+  * Pressão atmosférica
+  * Precipitação
+  * Velocidade do vento
+  * Data e hora das medições
+
+* Tamanho aproximado do dataset utilizado: **1.9 GB**
 
 ### 2.2 How to obtain the data
 
-- Dataset de Amostra: Disponível na pasta datasample/ deste repositório.
+* Dataset de Amostra: Disponível na pasta `datasample/` deste repositório.
 
-- Dataset Completo: Para executar o processamento massivo, baixe o arquivo central_west.csv do [Climate Weather Surface of Brazil](https://www.kaggle.com/datasets/PROPPG-PPG/hourly-weather-surface-brazil-southeast-region?resource=download) e coloque-o na pasta data/ na raiz do projeto.
+* Dataset Completo: Para executar o processamento massivo, baixe o arquivo `central_west.csv` do [Climate Weather Surface of Brazil](https://www.kaggle.com/datasets/PROPPG-PPG/hourly-weather-surface-brazil-southeast-region?resource=download) e coloque-o na pasta `data/` na raiz do projeto.
 
 ## 3. How to install and run
 
@@ -22,96 +37,259 @@
 
 ### 3.1 Quick start (using sample data in `datasample/`)
 
-  ```bash
-  ./bin/run.sh
-  ```
+```bash
+./bin/run.sh
+```
 
 ### 3.2 How to run with the full dataset
 
-- Coloque o arquivo central_west.csv na raiz do projeto, ajuste o caminho no arquivo main.py e  execute ./bin/run.sh. O script detectará automaticamente o arquivo completo e realizará o processamento.
+* Coloque o arquivo `central_west.csv` na raiz do projeto.
+* Ajuste o caminho no arquivo `main.py`, se necessário.
+* Execute:
+
+```bash
+./bin/run.sh
+```
+
+O script iniciará automaticamente o ambiente Docker e executará todos os experimentos definidos no benchmark.
 
 ## 4. Project architecture
 
-A arquitetura do projeto foi desenhada para isolar o ambiente de execução e garantir a reprodutibilidade através do Docker. O fluxo de processamento é composto por três etapas principais:
+A arquitetura do projeto foi desenhada para isolar o ambiente de execução e garantir a reprodutibilidade através do Docker.
 
- - Data Source (CSV): O arquivo de origem contendo as séries meteorológicas. É montado no container via Docker Volume para evitar o consumo de espaço no build da imagem.
+Fluxo de processamento:
 
- - Data Processing (Batch Layer): O container processor atua como a camada de processamento em lote. O script main.py utiliza a técnica de chunking (leitura em pedaços de 100k linhas), garantindo que o consumo de memória RAM permaneça estável, independentemente do tamanho total do arquivo de entrada.
+```text
+Dataset CSV (1.9 GB)
+          |
+          v
+    Docker Container
+          |
+          v
+   Leitura em Chunks
+          |
+          v
+ Conversão com Pandas
+          |
+          v
+ Arquivos Apache Parquet
+          |
+          v
+ Diretório de Saída
+```
 
- - Results Storage (Parquet): Os dados processados são convertidos e salvos no formato colunar Apache Parquet. Este formato foi escolhido por oferecer alta taxa de compressão e velocidade de leitura para futuras análises de Big Data.
+### Data Source (CSV)
+
+O arquivo de origem contendo as séries meteorológicas é disponibilizado ao container via Docker Volume, evitando cópias desnecessárias durante a construção da imagem.
+
+### Data Processing (Batch Layer)
+
+O container `processor` atua como a camada de processamento em lote.
+
+O script principal utiliza a técnica de chunking para processar o dataset em blocos de diferentes tamanhos:
+
+* 10.000 linhas
+* 50.000 linhas
+* 100.000 linhas
+
+Essa abordagem permite controlar o consumo de memória RAM e avaliar o impacto do tamanho dos chunks sobre o desempenho.
+
+### Results Storage (Parquet)
+
+Os dados processados são convertidos para o formato Apache Parquet.
+
+O formato Parquet foi escolhido por oferecer:
+
+* Compressão eficiente;
+* Menor consumo de armazenamento;
+* Leitura otimizada para análises futuras;
+* Compatibilidade com ferramentas de Big Data e Data Lakes.
 
 ## 5. Workloads evaluated
 
-- Para este projeto, foram implementados e avaliados os seguintes workloads:
+Para este projeto, foram implementados e avaliados os seguintes workloads:
 
-[WORKLOAD-1] Chunked Processing for Large Files: O core do projeto consiste em ler o arquivo CSV de 1.9GB utilizando a técnica de chunksize no Pandas. Isso evita que todo o arquivo seja carregado na RAM, prevenindo erros de estouro de memória (memory overflow).
+### [WORKLOAD-1] Chunked Processing for Large Files
 
-[WORKLOAD-2] Batch Processing: O projeto opera sob um modelo de processamento em lote, onde o dataset é lido, transformado e persistido de forma estruturada, seguindo o cronograma da disciplina.
+O núcleo da solução consiste na leitura do arquivo CSV utilizando a funcionalidade de chunking do Pandas.
 
-[WORKLOAD-3] Compression & Efficient Storage: O objetivo final é a conversão do formato CSV para Apache Parquet. Este workload é fundamental em Big Data para otimizar o espaço em disco e acelerar drasticamente a leitura dos dados em etapas analíticas futuras.
+Essa estratégia permite processar datasets de grande porte sem necessidade de carregá-los integralmente na memória RAM.
+
+### [WORKLOAD-2] Batch Processing
+
+O projeto segue o paradigma de processamento em lote.
+
+O dataset é lido, transformado e persistido em uma única execução controlada.
+
+### [WORKLOAD-3] Compression & Efficient Storage
+
+Após o processamento, os dados são convertidos para Apache Parquet.
+
+Essa etapa reduz significativamente o espaço ocupado em disco e melhora o desempenho de futuras consultas analíticas.
+
+### [WORKLOAD-4] Format Conversion
+
+Conversão de dados do formato CSV para o formato colunar Apache Parquet, simulando uma etapa comum de ingestão e preparação de dados para ambientes de Data Lake.
 
 ## 6. Experiments and results
 
-> **MANDATORY**: This section is a core requirement of the project. You MUST perform experimental benchmarking with multiple repetitions and statistical analysis.
-
 ### 6.1 Experimental environment
-- 16 GB RAM
-- Processador i5 13450hx
-- ubuntu 24.04
 
-## 📊 Benchmark Results
+Os experimentos foram executados utilizando:
 
-| Chunk Size | Execution Times (s)                 | Mean (s)| Std Dev (s) | Parquet Size (MB) |
-|------------|--------------------|----------|-------------|--------------------|
-| 10,000     | 58.22 / 57.20 / 53.65 / 51.14 / 51.71 | 54.38 | 3.20 | 270.39 |
-| 50,000     | 36.89 / 36.27 / 36.38 / 36.22 / 37.18 | 36.59 | 0.43 | 230.41 |
-| 100,000    | 33.99 / 33.61 / 33.39 / 34.57 / 33.97 | 33.91 | 0.45 | 224.27 |
+* Sistema Operacional: Ubuntu Linux
+* Linguagem: Python 3.9
+* Bibliotecas:
+
+  * Pandas
+  * PyArrow
+* Containerização:
+
+  * Docker
+  * Docker Compose
+
+### 6.2 How to perform benchmarking (simple guide)
+
+O benchmark é executado automaticamente durante a execução do container.
+
+Foram avaliadas três configurações distintas de chunk size:
+
+| Configuração | Chunk Size |
+| ------------ | ---------- |
+| A            | 10.000     |
+| B            | 50.000     |
+| C            | 100.000    |
+
+Cada configuração foi executada 5 vezes.
+
+As métricas avaliadas foram:
+
+* Tempo de execução;
+* Média das execuções;
+* Desvio padrão;
+* Tamanho final dos arquivos Parquet.
 
 ### 6.3 What did you test?
 
-  O principal parâmetro variado nos experimentos foi o tamanho do chunk utilizado durante a leitura do arquivo CSV e a escrita do arquivo Parquet. Três configurações foram avaliadas:
+O objetivo dos experimentos foi avaliar o impacto do tamanho do chunk sobre o desempenho do processamento.
 
-  10.000 linhas por chunk
-  50.000 linhas por chunk
-  100.000 linhas por chunk
+Hipótese avaliada:
 
-  Cada configuração foi executada 5 vezes utilizando o conjunto de dados completo (central_west.csv, aproximadamente 1,9 GB).
+* Chunks menores consomem menos memória RAM, porém realizam mais operações de leitura, escrita e criação de DataFrames.
+* Chunks maiores tendem a ser mais rápidos, porém exigem maior quantidade de memória RAM.
 
-  As seguintes métricas foram medidas:
+O experimento buscou identificar o equilíbrio entre desempenho e utilização de recursos.
 
-  Tempo de execução (em segundos) para cada execução
-  Tempo médio de execução
-  Desvio padrão do tempo de execução
-  Tamanho total do arquivo Parquet gerado (MB)
+### 6.4 Results
 
-O objetivo do experimento foi analisar como o tamanho do chunk afeta o desempenho e a estabilidade do pipeline de conversão de CSV para Parquet.
+#### Resultados Consolidados
 
-### 6.4 Discussion
-  Os resultados mostram que chunks maiores melhoraram o desempenho da conversão de CSV para Parquet. A configuração com 100.000 linhas por chunk teve o melhor tempo médio de execução (33,91 s), enquanto a de 10.000 linhas foi a mais lenta (54,38 s).
+| Chunk Size | Média (s) | Desvio Padrão (s) | Tamanho Parquet (MB) | Execuções |
+| ---------- | --------- | ----------------- | -------------------- | --------- |
+| 10.000     | 48.39     | 3.40              | 270.39               | 5         |
+| 50.000     | 32.15     | 0.43              | 230.41               | 5         |
+| 100.000    | 25.18     | 0.27              | 224.27               | 5         |
 
-  A estabilidade das execuções também variou. O chunk de 10.000 linhas apresentou maior desvio padrão (3,20 s), indicando desempenho menos consistente. Já as configurações de 50.000 e 100.000 linhas tiveram baixa variação (0,43 s e 0,45 s), mostrando execuções mais estáveis.
+#### Resultados detalhados
 
-  Além disso, chunks maiores geraram arquivos Parquet menores. A configuração de 100.000 linhas produziu o menor arquivo (224,27 MB), enquanto a de 10.000 linhas gerou o maior (270,39 MB), sugerindo maior fragmentação e sobrecarga de metadados com chunks menores.
+##### Chunk Size = 10.000
 
-  No geral, o tamanho de 100.000 linhas por chunk apresentou o melhor equilíbrio entre tempo de execução, estabilidade e eficiência de armazenamento.
+| Execução | Tempo (s) |
+| -------- | --------- |
+| 1        | 52.10     |
+| 2        | 50.98     |
+| 3        | 48.37     |
+| 4        | 46.99     |
+| 5        | 43.51     |
 
+##### Chunk Size = 50.000
+
+| Execução | Tempo (s) |
+| -------- | --------- |
+| 1        | 32.56     |
+| 2        | 32.42     |
+| 3        | 32.16     |
+| 4        | 32.12     |
+| 5        | 31.45     |
+
+##### Chunk Size = 100.000
+
+| Execução | Tempo (s) |
+| -------- | --------- |
+| 1        | 24.89     |
+| 2        | 25.56     |
+| 3        | 25.11     |
+| 4        | 25.34     |
+| 5        | 24.99     |
+
+#### Discussion
+
+Os resultados demonstram claramente o impacto do tamanho do chunk sobre o desempenho.
+
+Observou-se que:
+
+* Chunks menores apresentaram maior tempo de execução;
+* Chunks maiores apresentaram melhor desempenho;
+* O desvio padrão diminuiu conforme o tamanho do chunk aumentou, indicando maior estabilidade das execuções.
+
+O chunk de 100.000 linhas apresentou o melhor resultado:
+
+* Menor tempo médio de execução (25.18 s);
+* Menor variabilidade entre execuções (0.27 s);
+* Menor tamanho final dos arquivos Parquet.
+
+Esse comportamento ocorre porque chunks maiores reduzem a quantidade de operações de leitura e escrita em disco, bem como a quantidade de DataFrames criados pelo Pandas.
+
+Por outro lado, chunks maiores exigem mais memória RAM durante o processamento.
+
+Os experimentos demonstram o clássico trade-off entre desempenho e consumo de memória encontrado em sistemas de Big Data.
 
 ## 7. Limitations and conclusions
 
-  Este trabalho demonstrou que o processamento em lote baseado em chunks é uma estratégia prática para lidar com grandes conjuntos de dados em formato CSV em ambientes com recursos limitados. O pipeline converteu com sucesso um conjunto de dados meteorológicos de 1,9 GB para o formato Apache Parquet, utilizando execução em Docker e experimentos reproduzíveis.
+O principal objetivo do projeto foi alcançado: processar um dataset meteorológico de grande porte utilizando recursos computacionais limitados.
 
-  Os resultados experimentais mostraram que o tamanho do chunk tem impacto direto tanto no tempo de execução quanto no tamanho do arquivo gerado. Chunks maiores levaram a melhor desempenho e a arquivos Parquet mais compactos no ambiente testado. Entre as configurações avaliadas, 100.000 linhas por chunk apresentou os melhores resultados.
+A técnica de chunking permitiu processar aproximadamente 1.9GB de dados sem necessidade de carregamento integral do arquivo em memória.
 
-  Como limitações, este projeto se concentra em um ambiente de processamento em nó único utilizando Pandas, o que não representa uma arquitetura distribuída de Big Data, como Apache Spark ou Apache Hadoop. Além disso, a carga de trabalho enfatiza a ingestão e a conversão de formato, em vez de tarefas analíticas posteriores sobre as séries meteorológicas processadas.
+Os experimentos demonstraram que o tamanho do chunk possui impacto direto sobre o desempenho do processamento.
 
-  Como trabalhos futuros, o pipeline pode ser estendido com 
-  processamento paralelo, 
-  frameworks de execução distribuída ou 
-  consultas analíticas sobre os dados Parquet gerados.
+As principais conclusões foram:
+
+* Chunks menores consomem menos memória RAM;
+* Chunks maiores reduzem significativamente o tempo de execução;
+* Existe um equilíbrio entre desempenho e uso de recursos computacionais;
+* O formato Parquet proporciona armazenamento mais eficiente e melhor preparação dos dados para análises futuras.
+
+Como trabalhos futuros, poderiam ser avaliadas soluções distribuídas como:
+
+* Apache Spark;
+* Dask;
+* Ray;
+
+bem como comparações entre processamento local e processamento distribuído.
 
 ## 8. References and external resources
 
-- Climate Weather Surface of Brazil dataset: [kaggle.com](https://www.kaggle.com/datasets/PROPPG-PPG/hourly-weather-surface-brazil-southeast-region)
-- Pandas documentation: [pandas.pydata.org](https://pandas.pydata.org/)
-- Apache Parquet documentation: [parquet.apache.org](https://parquet.apache.org/)
-- Docker documentation: [docs.docker.com](https://docs.docker.com/)
+### Dataset
+
+* Climate Weather Surface of Brazil:
+  https://www.kaggle.com/datasets/PROPPG-PPG/hourly-weather-surface-brazil-southeast-region
+
+### Technologies
+
+* Python 3.9
+* Pandas
+* PyArrow
+* Docker
+* Docker Compose
+* Apache Parquet
+
+### Documentation
+
+* Pandas Documentation:
+  https://pandas.pydata.org/
+
+* Apache Parquet:
+  https://parquet.apache.org/
+
+* Docker Documentation:
+  https://docs.docker.com/
