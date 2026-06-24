@@ -1,0 +1,88 @@
+services:
+
+  # ── Step 1: download parquet files from NYC TLC and convert to CSV ─────────
+  downloader:
+    build: .
+    container_name: taxi-downloader
+    profiles: ["setup"]
+    volumes:
+      - ../src:/app/src          # live-reload during development
+      - ./datasets:/datasets     # CSV files written here
+    environment:
+      - DATASETS_DIR=/datasets
+      - TARGET_1GB=taxi_1gb.csv
+      - TARGET_5GB=taxi_5gb.csv
+      - TARGET_10GB=taxi_10gb.csv
+      - SKIP_5GB=false    # set to "true" to skip
+      - SKIP_10GB=false   # set to "true" to skip
+    command: python /app/src/downloader.py
+
+  # ── Step 2: run the parallelism benchmark ──────────────────────────────────
+  benchmark:
+    build: .
+    container_name: taxi-benchmark
+    # No 'cpus' limit — the container sees all 16 logical cores of the host.
+    # This is intentional: we want n_workers=16 to actually run in parallel.
+    volumes:
+      - ../src:/app/src
+      - ./datasets:/datasets
+      - ./results:/results
+    environment:
+      - DATASET_PATH=/datasets/taxi_1gb.csv   # swap to taxi_5gb.csv for the large run
+      - WORKERS_LIST=1,2,4,8,16
+      - N_REPS=3
+      - CHUNK_SIZE=500000
+      - RESULTS_PATH=/results/metrics_1gb.csv
+      - CPU_INFO=AMD Ryzen 7 8700G
+      - HOST_CORES=16
+    command: python /app/src/benchmark.py
+
+  # ── Step 3a: relatório apenas do dataset de 1 GB ──────────────────────────
+  report:
+    build: .
+    container_name: taxi-report
+    profiles: ["report"]
+    volumes:
+      - ../src:/app/src
+      - ./results:/results
+    environment:
+      - METRICS_PATH=/results/metrics_1gb.csv
+      - OUTPUT_PATH=/results/report.html
+      - CPU_INFO=AMD Ryzen 7 8700G
+      - HOST_CORES=16
+    command: python /app/src/report_generator.py
+
+  # ── Step 3b: relatório combinado — 1 GB + 5 GB + 10 GB ────────────────────
+  report-all:
+    build: .
+    container_name: taxi-report-all
+    profiles: ["report"]
+    volumes:
+      - ../src:/app/src
+      - ./results:/results
+    environment:
+      - METRICS_PATH=/results/metrics_1gb.csv,/results/metrics_5gb.csv,/results/metrics_10gb.csv
+      - SPARK_METRICS_PATH=/results/metrics_spark_1gb.csv,/results/metrics_spark_5gb.csv,/results/metrics_spark_10gb.csv
+      - OUTPUT_PATH=/results/report_all.html
+      - CPU_INFO=AMD Ryzen 7 8700G
+      - HOST_CORES=16
+    command: python /app/src/report_generator.py
+
+  # ── Step 4 (Spark): benchmark do mesmo perfilamento com PySpark ────────────
+  spark-benchmark:
+    build: ./spark
+    container_name: taxi-spark-benchmark
+    profiles: ["spark"]
+    ports:
+      - "4040:4040"   # Spark UI — acesse http://localhost:4040 enquanto o job roda
+    volumes:
+      - ../src/spark:/app/src
+      - ./datasets:/datasets
+      - ./results:/results
+    environment:
+      - DATASET_PATH=/datasets/taxi_1gb.csv   # trocar para taxi_5gb.csv ou taxi_10gb.csv
+      - CORES_LIST=1,2,4,8,16
+      - N_REPS=3
+      - RESULTS_PATH=/results/metrics_spark_1gb.csv
+      - DRIVER_MEM=4g
+    command: python /app/src/spark_benchmark.py

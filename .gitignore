@@ -1,5 +1,71 @@
-vmaccess/ovpns/*.ovpn
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
 .ipynb_checkpoints/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+*.venv/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.ropeproject/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs e temporários
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.orig
+*.pid
+
+# Build / packaging
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+sdist/
+wheels/
+*.manifest
+*.spec
+
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+nosetests.xml
+*.cover
+.cache
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Projeto específico
+vmaccess/ovpns/*.ovpn
+
 
 hostdir/data/*
 !hostdir/data/100words.txt.gz
