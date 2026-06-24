@@ -27,7 +27,7 @@ RUN mkdir -p /tmp/ivy-cache \
 COPY requirements.txt .
 RUN python3.9 -m pip install --no-cache-dir -r requirements.txt
 
-COPY main.py sqlite_store.py /app/
+COPY main.py sqlite_store.py classifier.py /app/
 
 ENV SQLITE_DB_PATH=/data/analytics.sqlite3
 RUN mkdir -p /data
