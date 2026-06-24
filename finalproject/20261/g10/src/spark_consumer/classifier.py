@@ -21,6 +21,8 @@ Model selection (MODEL_NAME in .env)
                                    requires "query: " prefix (handled automatically)
   all-MiniLM-L6-v2               — English-only; 3x faster; good for benchmarks
 """
+from __future__ import annotations
+
 import json
 import os
 
