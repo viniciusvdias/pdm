@@ -91,7 +91,9 @@ def _get_worker_state() -> tuple[SentenceTransformer, torch.Tensor, list[str]]:
 
 
 # ── Spark Pandas UDF ────────────────────────────────────────────────────────────
-
+# Teoricamente usar um retorno estruturado faria mais sentido, mas o overhead de serializar stringsr
+# é bem menos custoso do que usar um estruturado;
+# (Isso em teoria, vale a pena testar se houver tempo, mas não é prioridade);
 @pandas_udf(StringType())
 def classify_udf(texts: pd.Series) -> pd.Series:
     """Classify a micro-batch of article titles into taxonomy categories.
