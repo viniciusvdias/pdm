@@ -1,107 +1,116 @@
 import sys
-import time
 import os
-import csv
 from datetime import datetime
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 
 def main():
-    start_time = time.time()
+    # Generate a timestamp to uniquely identify the output folder
     start_datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
+    # Validate command line arguments for input and output paths
     if len(sys.argv) != 3:
-        print("Usage: spark-submit etl_pipeline.py <input_s3_path> <output_local_dir>")
+        print("Usage: spark-submit etl_pipeline.py <input_path> <output_path>")
         sys.exit(1)
-        
+
     input_path = sys.argv[1]
     output_dir = sys.argv[2]
-    
-    print(f"--- Starting ETL Pipeline ---")
-    print(f"Input Path: {input_path}")
-    print(f"Output Directory: {output_dir}")
-    
+
+    # Initialize the SparkSession with MinIO integration
     spark = SparkSession.builder \
         .appName("Subgraph Optimization Log ETL") \
-        .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
+        .config("spark.hadoop.fs.s3a.endpoint", "http://localhost:9000") \
         .config("spark.hadoop.fs.s3a.access.key", "pdm_minio") \
         .config("spark.hadoop.fs.s3a.secret.key", "pdm_minio") \
         .config("spark.hadoop.fs.s3a.path.style.access", "true") \
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
+        .config("spark.sql.adaptive.enabled", "true") \
+        .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
+        .config("spark.sql.adaptive.skewJoin.enabled", "true") \
         .getOrCreate()
-        
-    spark.sparkContext.setLogLevel("ERROR")
-    active_cores = spark.sparkContext.defaultParallelism
 
-    # --- PHASE 1: Data Ingestion & Optimization ---
-    # FIX: We MUST capture the file_name BEFORE we repartition, otherwise Spark loses the file lineage!
+    spark.sparkContext.setLogLevel("ERROR")
+
+    # Set the number of shuffle partitions based on the available cores to optimize memory allocation
+    active_cores = spark.sparkContext.defaultParallelism
+    max_shuffle_partitions = max(active_cores * 30, 200)
+    spark.conf.set("spark.sql.shuffle.partitions", str(max_shuffle_partitions))
+
+    # Read raw text logs from object storage and attach the source filename to preserve data lineage
+    repetition_regex = r"-(\d+)\.txt(?:\.gz)?$"
     df_raw = spark.read.text(input_path) \
         .withColumn("file_path", F.input_file_name()) \
-        .repartition(active_cores)
+        .withColumn("repetition", F.regexp_extract("file_path", repetition_regex, 1).cast("int"))
 
-    # --- PHASE 2: Regex Extraction ---
-    repetition_regex = r"-(\d+)\.txt(?:\.gz)?$"
+    # Filter and parse the initialization lines to extract graph parameters and execution configurations
     args_regex = r"args is set to '.*?/([^/ ]+)\s+(\d+)\s+(\d+)\s+(?:-?\d+)\s+(\d+)\s+([a-zA-Z0-9_]+)\s+([a-zA-Z0-9_]+)"
     threads_regex = r"--executor-cores\s+(\d+)"
-    time_regex = r"ElapsedTimeMs=(\d+)"
-    cost_regex = r"BestSubgraph=.*cost=([0-9.]+)"
-    v_regex = r"BestSubgraph=.*nvertices=(\d+)"
-    e_regex = r"BestSubgraph=.*nedges=(\d+)"
-    run_regex = r"SubgraphOptimization\s+(\d+)"
-    timestamp_regex = r"^(\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})"
-    inter_regex = r"^\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\s+\S+\s+\d+\s+(\d+)\s+(\d+).*\s([0-9.]+)$"
 
-    df_extracted = df_raw.select(
-        "file_path", "value",
-        F.regexp_extract("file_path", repetition_regex, 1).cast("int").alias("repetition"),
+    df_args = df_raw.filter(F.col("value").like("%args is set to '%")).select(
+        "file_path", "repetition",
         F.regexp_extract("value", args_regex, 1).alias("graph_name"),
         F.regexp_extract("value", args_regex, 6).alias("metaheuristic"),
         F.regexp_extract("value", args_regex, 2).cast("int").alias("initial_vertices"),
         F.regexp_extract("value", args_regex, 3).cast("int").alias("num_initial_solutions"),
         F.regexp_extract("value", args_regex, 4).cast("int").alias("timeout_ms"),
-        F.regexp_extract("value", args_regex, 5).alias("objective_function"),
-        F.regexp_extract("value", threads_regex, 1).cast("int").alias("num_threads"),
+        F.regexp_extract("value", args_regex, 5).alias("objective_function")
+    )
+
+    # Filter and parse the lines containing the number of allocated executor cores
+    df_threads = df_raw.filter(F.col("value").like("%--executor-cores%")).select(
+        "file_path",
+        F.regexp_extract("value", threads_regex, 1).cast("int").alias("num_threads")
+    )
+
+    # Extract lines representing the final best subgraph solutions found during the run
+    time_regex = r"ElapsedTimeMs=(\d+)"
+    cost_regex = r"BestSubgraph=.*cost=([0-9.]+)"
+    v_regex = r"BestSubgraph=.*nvertices=(\d+)"
+    e_regex = r"BestSubgraph=.*nedges=(\d+)"
+    run_regex = r"SubgraphOptimization\s+(\d+)"
+
+    df_best_raw = df_raw.filter(F.col("value").like("%BestSubgraph=%")).select(
+        "file_path",
         F.regexp_extract("value", time_regex, 1).cast("int").alias("total_time_ms"),
         F.regexp_extract("value", cost_regex, 1).cast("double").alias("cost_best_solution"),
         F.regexp_extract("value", v_regex, 1).cast("int").alias("vertices_best_solution"),
         F.regexp_extract("value", e_regex, 1).cast("int").alias("edges_best_solution"),
         F.regexp_extract("value", run_regex, 1).cast("int").alias("run_number"),
-        F.to_timestamp(F.regexp_extract("value", timestamp_regex, 1), "yy/MM/dd HH:mm:ss").alias("log_timestamp"),
-        F.regexp_extract("value", inter_regex, 1).cast("int").alias("inter_v"),
-        F.regexp_extract("value", inter_regex, 2).cast("int").alias("inter_e"),
-        F.regexp_extract("value", inter_regex, 3).cast("double").alias("inter_cost"),
-        
-        # NEW: Extract the raw line if it contains the BestSubgraph string
-        F.when(F.col("value").like("%BestSubgraph=%"), F.col("value")).otherwise(F.lit(None)).alias("best_solution_raw")
+        F.col("value").alias("best_solution")
     )
 
-    df_extracted.cache()
-    total_lines = df_extracted.count()
-
-    # --- PHASE 3: Aggregation ---
-    df_final_parameters = df_extracted.groupBy("file_path", "repetition").agg(
-        F.max("graph_name").alias("graph_name"),
-        F.max("metaheuristic").alias("metaheuristic"),
-        F.max("initial_vertices").alias("initial_vertices"),
-        F.max("num_initial_solutions").alias("num_initial_solutions"),
-        F.max("timeout_ms").alias("timeout_ms"),
-        F.max("objective_function").alias("objective_function"),
-        F.max("num_threads").alias("num_threads"),
+    # Aggregate the best solution data by file to find the ultimate cost and total runs
+    df_best = df_best_raw.groupBy("file_path").agg(
         F.max("total_time_ms").alias("total_time_ms"),
         F.max("cost_best_solution").alias("cost_best_solution"),
         F.max("vertices_best_solution").alias("vertices_best_solution"),
         F.max("edges_best_solution").alias("edges_best_solution"),
-        F.max("best_solution_raw").alias("best_solution"), # NEW: Grab the best raw string
-        (F.max("run_number") + 1).alias("effective_runs"),
-        F.min("log_timestamp").alias("start_timestamp")
+        F.max("best_solution").alias("best_solution"),
+        (F.max("run_number") + 1).alias("effective_runs")
     )
 
-    # --- PHASE 4: The Temporal Join ---
-    df_timeline = df_extracted.filter(F.col("inter_cost").isNotNull()).select(
-        "file_path", "log_timestamp", "inter_v", "inter_e", "inter_cost"
-    )
+    # Filter lines containing temporal intermediate costs to build the execution timeline
+    timestamp_regex = r"^(\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})"
+    inter_regex = r"^\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\s+\S+\s+\d+\s+(\d+)\s+(\d+).*\s([0-9.]+)$"
 
+    df_timeline = df_raw.filter(F.col("value").rlike(r"^\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}")).select(
+        "file_path",
+        F.to_timestamp(F.regexp_extract("value", timestamp_regex, 1), "yy/MM/dd HH:mm:ss").alias("log_timestamp"),
+        F.regexp_extract("value", inter_regex, 1).cast("int").alias("inter_v"),
+        F.regexp_extract("value", inter_regex, 2).cast("int").alias("inter_e"),
+        F.regexp_extract("value", inter_regex, 3).cast("double").alias("inter_cost")
+    ).filter(F.col("inter_cost").isNotNull())
+
+
+    # Broadcast and join the small parameter dataframes to prevent expensive network shuffles
+    df_params = df_args.join(F.broadcast(df_threads), on="file_path", how="left")
+    df_final_parameters = df_params.join(F.broadcast(df_best), on="file_path", how="left")
+
+    # Identify the exact starting timestamp for each specific log file
+    df_start_time = df_timeline.groupBy("file_path").agg(F.min("log_timestamp").alias("start_timestamp"))
+    df_final_parameters = df_final_parameters.join(F.broadcast(df_start_time), on="file_path", how="left")
+
+    # Match the intermediate timeline states against the known best solution to locate its exact completion timestamp
     df_join = df_timeline.join(F.broadcast(df_final_parameters), on="file_path", how="inner")
 
     df_matched = df_join.filter(
@@ -116,50 +125,26 @@ def main():
 
     df_final_table = df_final_parameters.join(df_best_time, on="file_path", how="left")
 
+    # Calculate the time the algorithm spent to reach its best solution
     df_final_table = df_final_table.withColumn(
         "time_to_best_solution_ms",
         (F.unix_timestamp("best_solution_timestamp") - F.unix_timestamp("start_timestamp")) * 1000
     )
-    
-    # FORMATTING: Order the columns exactly as requested in the Google Sheets snippet
+
+    # Reorder the dataframe columns
     expected_columns = [
         "graph_name", "metaheuristic", "initial_vertices", "num_initial_solutions",
-        "timeout_ms", "objective_function", "num_threads", "repetition", 
-        "total_time_ms", "time_to_best_solution_ms", "effective_runs", 
-        "cost_best_solution", "vertices_best_solution", "edges_best_solution", 
+        "timeout_ms", "objective_function", "num_threads", "repetition",
+        "total_time_ms", "time_to_best_solution_ms", "effective_runs",
+        "cost_best_solution", "vertices_best_solution", "edges_best_solution",
         "best_solution"
     ]
     df_final_table = df_final_table.select(*expected_columns)
 
-    # --- PHASE 5: Save Output as dynamically named CSV (Zero Dependencies) ---
-    csv_filename = os.path.join(output_dir, f"fractal_metrics_{start_datetime_str}.csv")
-    final_rows = df_final_table.collect()
-    
-    if final_rows:
-        with open(csv_filename, mode='w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(df_final_table.columns)
-            for row in final_rows:
-                writer.writerow(row)
-                
-    print(f"Results successfully saved to {csv_filename}")
+    # Write the final dataframe as a CSV
+    csv_foldername = os.path.join(output_dir, f"fractal_metrics_{start_datetime_str}")
+    df_final_table.write.csv(csv_foldername, header=True, mode="overwrite")
 
-    # --- PHASE 6: Benchmark & Telemetry ---
-    end_time = time.time()
-    execution_time = end_time - start_time
-    throughput = total_lines / execution_time if execution_time > 0 else 0
-
-    benchmark_file = os.path.join(output_dir, "benchmarks.csv")
-    file_exists = os.path.isfile(benchmark_file)
-
-    with open(benchmark_file, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        if not file_exists:
-            writer.writerow(["Timestamp", "Total_Files_Processed", "Total_Lines", "Active_Spark_Cores", "Execution_Time_Sec", "Throughput_Lines_Per_Sec"])
-        # Update: We use len(final_rows) to accurately count the number of files processed
-        writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), len(final_rows), total_lines, active_cores, round(execution_time, 2), round(throughput, 2)])
-
-    print(f"--- Benchmark Logged: {round(execution_time, 2)}s | {round(throughput, 2)} lines/sec ---")
     spark.stop()
 
 if __name__ == "__main__":
