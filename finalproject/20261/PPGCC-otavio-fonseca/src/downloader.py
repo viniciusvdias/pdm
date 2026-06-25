@@ -98,6 +98,7 @@ def build_target(csv_files: list[Path], target_path: Path, target_gb: float):
         print(f"  [pular] {target_path.name} já existe ({actual_gb:.2f} GB)")
         return
 
+    # Calcula o tamanho-alvo em bytes
     target_bytes = target_gb * 1024 * 1024 * 1024
     written = 0
     header_written = False

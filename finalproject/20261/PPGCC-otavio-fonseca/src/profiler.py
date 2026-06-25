@@ -23,9 +23,6 @@ import pandas as pd
 SENSITIVE_PATTERNS = [r"login", r"cpf", r"cnpj"]
 _COMPILED_PATTERN = re.compile("|".join(SENSITIVE_PATTERNS), re.IGNORECASE)
 
-MAX_UNIQUE_SET_SIZE = 200  # limite máximo para união de conjuntos em colunas de alta cardinalidade
-
-
 def _filter_sensitive(df: pd.DataFrame) -> pd.DataFrame:
     # Remove colunas cujos nomes correspondem a padrões sensíveis
     safe = [c for c in df.columns if not _COMPILED_PATTERN.search(c)]
