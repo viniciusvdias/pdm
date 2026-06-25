@@ -19,11 +19,6 @@ def main():
     # Initialize the SparkSession with MinIO integration
     spark = SparkSession.builder \
         .appName("Subgraph Optimization Log ETL") \
-        .config("spark.hadoop.fs.s3a.endpoint", "http://localhost:9000") \
-        .config("spark.hadoop.fs.s3a.access.key", "pdm_minio") \
-        .config("spark.hadoop.fs.s3a.secret.key", "pdm_minio") \
-        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
-        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
         .config("spark.sql.adaptive.enabled", "true") \
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
         .config("spark.sql.adaptive.skewJoin.enabled", "true") \

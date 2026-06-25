@@ -47,9 +47,14 @@ services:
   spark-worker:
     image: apache/spark:3.5.1-python3
     container_name: pdm-spark-worker
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077 --cores 2 --memory 2G
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
     depends_on:
       - spark-master
+    volumes:
+      - ./results:/opt/spark/work-dir/results
 
   # Interactive Jupyter Environment (Development Engine)
   jupyter:
