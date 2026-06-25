@@ -32,7 +32,6 @@ for (( CORES=$MIN_CORES; CORES<=$MAX_CORES; CORES++ )); do
 
     # Execute multiple passes of the same configuration
     for (( REP=1; REP<=$REPETITIONS; REP++ )); do
-        echo "XXXXXXX------> RUN 1 <------XXXXXXX"
         # Capture the start time to calculate wall clock execution duration
         START_TIME=$SECONDS
 
@@ -57,4 +56,4 @@ for (( CORES=$MIN_CORES; CORES<=$MAX_CORES; CORES++ )); do
     done
 done
 
-echo "Experiments completed successfully"
+echo "Experiments completed"

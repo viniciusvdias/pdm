@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "-------> Running run-etl.sh <--------"
+
 # Get the number of CPU cores and RAM allocation parameters
 CORES=${1:-"2"}
 MEMORY=${2:-"2g"}
@@ -39,6 +39,5 @@ docker exec -i pdm-spark-master bash -c "/opt/spark/bin/spark-submit \
 EXIT_CODE=$?
 
 echo "Spark exit code: $EXIT_CODE"
-echo "-------> Finished run-etl.sh <--------"
 
 exit $EXIT_CODE
