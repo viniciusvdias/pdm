@@ -456,7 +456,7 @@ Each configuration was executed five times, varying the number of allocated CPU 
 #### Core Scalability Plots
 
 <p align="center">
-  <img src="results/plots/core_scalability.png" width="700">
+  <img src="misc/plots/core_scalability.png" width="700">
 </p>
 
 **Figure 1.** Strong scalability of the ETL pipeline. The dashed line represents the ideal linear speedup, while the error bars correspond to the 95% confidence interval.
@@ -493,7 +493,7 @@ Each dataset size was processed five times.
 ##### Volume Scaling Plots 
 
 <p align="center">
-  <img src="results/plots/data_volume_scaling.png" width="700">
+  <img src="misc/plots/data_volume_scaling.png" width="700">
 </p>
 
 **Figure 2.** Throughput as a function of input data size. Error bars represent the 95% confidence interval obtained from five independent executions.
