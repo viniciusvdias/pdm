@@ -15,8 +15,8 @@ const latencyW2 = new Trend("latency_workload2_ms", true);
 const latencyW3 = new Trend("latency_workload3_ms", true);
 const errorRate = new Rate("error_rate");
 
-// IDs de usuarios presentes no datasample (1..150)
-const USER_IDS = Array.from({ length: 150 }, (_, i) => i + 1);
+// IDs de usuarios do dataset completo genome_2021 (1..162000)
+const USER_IDS = Array.from({ length: 162000 }, (_, i) => i + 1);
 
 function randomUserId() {
   return USER_IDS[Math.floor(Math.random() * USER_IDS.length)];

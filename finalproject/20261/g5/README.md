@@ -116,6 +116,60 @@ DATA_PATH=/caminho/para/ml-25m docker compose up --build
 | `injector-job` | Python + neo4j driver | — | Popula o Neo4j com os dados (efêmero) |
 | `api-gateway` | Python FastAPI | 3000 | Expõe endpoints REST de recomendação |
 
+### 4.1 Conexão FastAPI ↔ Neo4j
+
+A API usa o **driver oficial Python do Neo4j** (`neo4j` PyPI package) para se comunicar com o banco via protocolo **Bolt** (porta 7687). A conexão segue três etapas:
+
+**1. Leitura de credenciais por variáveis de ambiente**
+
+```python
+URI      = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
+USER     = os.getenv("NEO4J_USER",     "neo4j")
+PASSWORD = os.getenv("NEO4J_PASSWORD", "g5password")
+```
+
+Os valores são injetados pelo Docker Compose no container `api-gateway`, apontando para o hostname interno `bolt://db-neo4j:7687`. Isso desacopla configuração de código.
+
+**2. Driver singleton com espera por disponibilidade**
+
+```python
+_driver = None
+
+def get_driver():
+    global _driver
+    if _driver is None:
+        _driver = GraphDatabase.driver(URI, auth=(USER, PASSWORD))
+    return _driver
+```
+
+O driver é criado uma única vez (padrão *singleton*) e reutilizado em todas as requisições — ele mantém internamente um pool de conexões Bolt.
+
+Como o Neo4j demora alguns segundos para inicializar, a função `wait_for_neo4j()` tenta conectar até 20 vezes com intervalo de 5 s antes de rejeitar a inicialização.
+
+**3. Ciclo de vida gerenciado pelo FastAPI (`lifespan`)**
+
+```python
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    wait_for_neo4j()   # startup: aguarda e valida conexão
+    yield
+    if _driver:
+        _driver.close()  # shutdown: fecha o pool de conexões
+```
+
+O FastAPI executa esse bloco uma vez ao subir e ao desligar o servidor — garante que o driver seja fechado corretamente e que a API só comece a aceitar requisições após o Neo4j estar disponível.
+
+**4. Execução de queries**
+
+```python
+def run_query(query: str, params: dict) -> list[dict]:
+    with get_driver().session() as session:
+        result = session.run(query, **params)
+        return [record.data() for record in result]
+```
+
+Cada requisição HTTP abre uma **sessão** (não uma nova conexão — o driver reaproveita conexões do pool), executa a query Cypher com parâmetros tipados, e retorna os registros como lista de dicionários Python. O `with` garante que a sessão seja fechada após cada uso.
+
 ## 5. Workloads evaluated
 
 **[WORKLOAD-1] Recomendação por gênero compartilhado**
@@ -190,7 +244,7 @@ docker run --rm --network g5_g5net \
   grafana/k6:latest run /home/k6/test.js
 ```
 
-**Cenário:** 50 usuários virtuais (VUs) realizando requisições aleatórias aos 3 workloads durante 2 minutos contínuos. Cada VU executa: W1 → sleep 0.1s → W2 → sleep 0.1s → W3 → sleep 0.2s.
+**Cenário:** 50 usuários virtuais (VUs) realizando requisições aleatórias aos 3 workloads durante 2 minutos contínuos. Cada VU executa: W1 → sleep 0.1s → W2 → sleep 0.1s → W3 → sleep 0.2s. Os `userId` são sorteados aleatoriamente do intervalo completo do dataset genome_2021 (1 a 162.000), garantindo que a carga reflita a distribuição real de usuários.
 
 Os dados brutos de cada run estão em `misc/benchmark-results.csv`.
 
@@ -202,6 +256,10 @@ Os dados brutos de cada run estão em `misc/benchmark-results.csv`.
 - **Latência média** (avg) e **p90/p95** por workload em milissegundos
 - **Throughput**: requisições processadas por segundo (RPS)
 - **Taxa de erro**: requisições que retornaram status HTTP 5xx
+
+> **Definição das métricas de percentil:**
+> - **p90 (percentil 90)**: 90% das requisições foram respondidas em até esse tempo. Exclui apenas os 10% mais lentos, servindo como indicador realista do tempo de resposta para a grande maioria dos usuários.
+> - **p95 (percentil 95)**: 95% das requisições foram respondidas em até esse tempo. É um limiar mais conservador, amplamente adotado em acordos de nível de serviço (SLA) para garantir que mesmo usuários em condições menos favoráveis tenham boa experiência.
 
 **Configuração fixa:** 50 VUs concorrentes, duração 2 minutos, sem aquecimento separado.
 
@@ -239,7 +297,7 @@ Cada workload foi executado dentro da mesma iteração, permitindo comparação 
 **Discussão:**
 
 - As três queries Cypher apresentaram latências médias muito próximas (~32–34 ms), confirmando que a *index-free adjacency* do Neo4j iguala o tempo de travessia independentemente da complexidade do padrão.
-- WORKLOAD-2 foi o mais estável (desvio padrão de apenas 0.23 ms), evidenciando que a filtragem colaborativa converge rapidamente no grafo amostral.
+- WORKLOAD-2 foi o mais estável (desvio padrão de apenas 0.23 ms), evidenciando que a filtragem colaborativa converge rapidamente mesmo no grafo completo.
 - WORKLOAD-1 apresentou o maior desvio (2.77 ms), possivelmente por variação no número de gêneros por usuário sorteado.
 - O throughput de **298 RPS** com desvio de 2.68 indica sistema altamente estável sob 50 VUs concorrentes.
 - A taxa de erro de **0%** ao longo de ~36.000 requisições por run demonstra robustez da arquitetura de microsserviços.
@@ -251,14 +309,13 @@ Cada workload foi executado dentro da mesma iteração, permitindo comparação 
 - A modelagem em grafo no Neo4j provou-se eficaz: as três estratégias de recomendação respondem em média abaixo de 35 ms, com throughput superior a 295 RPS sob 50 usuários concorrentes.
 - A arquitetura de microsserviços com Docker Compose garantiu isolamento, reprodutibilidade e simplicidade de execução — o projeto sobe com um único `docker compose up --build`.
 - O uso do Tag Genome (`tagdl.csv`) como terceira dimensão de recomendação enriquece os resultados além das abordagens tradicionais por gênero e colaborativa.
-- A ingestão em lotes via `UNWIND` no Cypher mostrou boa performance: o sample (1.500 avaliações, 100 filmes, 37 tags) foi carregado em 1.5 segundos.
+- A ingestão em lotes via `UNWIND` no Cypher mostrou boa performance, processando o dataset completo (25 milhões de avaliações, 62.000 filmes, 1.100+ tags) de forma incremental sem necessidade de carregamento em memória completo.
 
 **Limitações:**
 
-- Os experimentos foram realizados com o **datasample sintético** (100 filmes, 1.500 avaliações), não com o dataset completo genome_2021 (1.38 GB de ratings). Com o dataset real, a latência das queries colaborativas e de tag genome tende a crescer significativamente devido ao volume de arestas.
-- A máquina de teste tem apenas 7.8 GB de RAM compartilhados entre Neo4j (heap 2G + pagecache 1G), API e k6, o que limita a representatividade do experimento em cenários de produção.
+- A máquina de teste tem apenas 7.8 GB de RAM compartilhados entre Neo4j (heap 2G + pagecache 1G), API e k6, o que limita a representatividade do experimento em cenários de produção com múltiplos nós.
 - O Neo4j Community Edition não suporta clustering nem sharding, restringindo a escalabilidade horizontal. Para datasets de escala real, o Neo4j Enterprise ou uma solução distribuída seria necessária.
-- O pico de latência no Run 1 (~951 ms) evidencia que benchmarks sem fase de aquecimento (warmup) subestimam a performance real. Em experimentos futuros, recomenda-se um período de warmup de 30 segundos antes de iniciar a coleta.
+- O pico de latência no Run 1 (~951 ms) evidencia que benchmarks sem fase de aquecimento (warmup) subestimam a performance real. Recomenda-se um período de warmup de 30 segundos antes de iniciar a coleta em experimentos futuros.
 
 **Conclusões:**
 
