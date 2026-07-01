@@ -35,8 +35,7 @@ bigdata-preprocessing/
 │   ├── downloader.py           ← baixa parquet do NYC TLC e converte para CSV
 │   ├── profiler.py             ← perfilamento por chunk (lógica do DataSetSummary)
 │   ├── aggregator.py           ← merge dos resultados parciais dos chunks
-│   ├── benchmark.py            ← harness de experimentos (mede tempo e vazão)
-│   └── report_generator.py     ← gera relatório HTML com gráficos e análise
+│   └── benchmark.py            ← harness de experimentos (mede tempo e vazão)
 │
 ├── spark/
 │   ├── Dockerfile              ← imagem com Python + Java 17 (para PySpark)
@@ -57,9 +56,12 @@ bigdata-preprocessing/
     ├── metrics_10gb.csv        ← tempos do multiprocessing (10 GB)
     ├── metrics_spark_1gb.csv   ← tempos do Spark (1 GB)
     ├── metrics_spark_5gb.csv   ← tempos do Spark (5 GB)
-    ├── metrics_spark_10gb.csv  ← tempos do Spark (10 GB)
-    └── report_all.html         ← relatório final completo
+    └── metrics_spark_10gb.csv  ← tempos do Spark (10 GB)
 ```
+
+> A análise estatística (média ± desvio-padrão, speedup, comparação
+> Spark × multiprocessing) é feita sobre esses CSVs com o snippet
+> pandas/numpy descrito no README principal (seção 6.2).
 
 ---
 
@@ -218,33 +220,23 @@ docker compose --profile spark run --rm -p 4040:4040 `
 
 ---
 
-## Passo 4 — Gerar o Relatório HTML
+## Passo 4 — Análise estatística dos resultados
 
-Gera `results/report_all.html` com:
-- Análise automática (I/O-bound vs CPU-bound)
-- Gráficos de speedup, eficiência, vazão e tempo com desvio padrão
-- Comparação Spark vs multiprocessing (se os CSVs do Spark existirem)
-- Respostas a todas as perguntas do enunciado do trabalho
+Cada execução dos passos 2 e 3 grava um CSV de métricas em `results/`
+(`metrics_*.csv` e `metrics_spark_*.csv`). A partir desses CSVs calcule
+média e desvio-padrão por configuração:
 
-```powershell
-docker compose --profile report up report-all
+```python
+import pandas as pd, numpy as np
+df = pd.read_csv("results/metrics_1gb.csv")
+stats = df.groupby("n_workers")["time_seconds"].agg(
+    avg=np.mean, std=lambda x: np.std(x, ddof=1)
+)
+print(stats)
 ```
 
-Abrir o relatório:
-```powershell
-# Windows — abre no browser padrão
-Start-Process ".\results\report_all.html"
-```
-
-### Relatório só de um dataset específico
-
-```powershell
-# Apenas 1 GB
-docker compose --profile report run --rm `
-  -e METRICS_PATH=/results/metrics_1gb.csv `
-  -e OUTPUT_PATH=/results/report_1gb.html `
-  report
-```
+As tabelas consolidadas (média ± desvio, speedup e comparação
+Spark × multiprocessing) estão na seção 6 do README principal.
 
 ---
 
@@ -276,11 +268,8 @@ docker compose --profile spark run --rm -p 4040:4040 -e DATASET_PATH=/datasets/t
 # 7. Spark — 10 GB
 docker compose --profile spark run --rm -p 4040:4040 -e DATASET_PATH=/datasets/taxi_10gb.csv -e RESULTS_PATH=/results/metrics_spark_10gb.csv spark-benchmark
 
-# 8. Relatório final
-docker compose --profile report up report-all
-
-# 9. Abrir no browser
-Start-Process ".\results\report_all.html"
+# 8. Análise estatística — calcule média ± desvio a partir dos CSVs em results/
+#    (veja o snippet pandas/numpy no Passo 4)
 ```
 
 ---
@@ -347,5 +336,5 @@ dataset_size_mb,n_workers,rep,time_seconds,throughput_mb_s
 | pyarrow | 16.0.0 | Leitura de arquivos Parquet |
 | PySpark | 3.5.1 | Benchmark Apache Spark |
 | Java (OpenJDK) | 17 | JVM para o Spark |
-| matplotlib | 3.9.0 | Geração dos gráficos no relatório |
+| matplotlib | 3.9.0 | Geração opcional de gráficos a partir das métricas |
 | Docker / Compose | — | Containerização e reprodutibilidade |

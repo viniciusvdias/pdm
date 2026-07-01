@@ -37,38 +37,7 @@ services:
       - HOST_CORES=16
     command: python /app/src/benchmark.py
 
-  # ── Step 3a: relatório apenas do dataset de 1 GB ──────────────────────────
-  report:
-    build: .
-    container_name: taxi-report
-    profiles: ["report"]
-    volumes:
-      - ../src:/app/src
-      - ./results:/results
-    environment:
-      - METRICS_PATH=/results/metrics_1gb.csv
-      - OUTPUT_PATH=/results/report.html
-      - CPU_INFO=AMD Ryzen 7 8700G
-      - HOST_CORES=16
-    command: python /app/src/report_generator.py
-
-  # ── Step 3b: relatório combinado — 1 GB + 5 GB + 10 GB ────────────────────
-  report-all:
-    build: .
-    container_name: taxi-report-all
-    profiles: ["report"]
-    volumes:
-      - ../src:/app/src
-      - ./results:/results
-    environment:
-      - METRICS_PATH=/results/metrics_1gb.csv,/results/metrics_5gb.csv,/results/metrics_10gb.csv
-      - SPARK_METRICS_PATH=/results/metrics_spark_1gb.csv,/results/metrics_spark_5gb.csv,/results/metrics_spark_10gb.csv
-      - OUTPUT_PATH=/results/report_all.html
-      - CPU_INFO=AMD Ryzen 7 8700G
-      - HOST_CORES=16
-    command: python /app/src/report_generator.py
-
-  # ── Step 4 (Spark): benchmark do mesmo perfilamento com PySpark ────────────
+  # ── Step 3 (Spark): benchmark do mesmo perfilamento com PySpark ────────────
   spark-benchmark:
     build: ./spark
     container_name: taxi-spark-benchmark

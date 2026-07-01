@@ -3,7 +3,7 @@
 **Disciplina:** Big Data / Processamento de Dados Massivos (PDM)  
 **Universidade:** Universidade Federal de Lavras (UFLA) — PPGCC  
 **Semestre:** 2026/1  
-**Código-fonte:** [`src/`](src/) · **Pipeline Docker:** [`bigdata-preprocessing/`](bigdata-preprocessing/)
+**Código-fonte:** [`src/`](src/) · **Scripts:** [`bin/`](bin/) · **Pipeline Docker:** [`bigdata-preprocessing/`](bigdata-preprocessing/)
 
 ---
 
@@ -110,6 +110,15 @@ Os arquivos são gravados em `bigdata-preprocessing/datasets/`:
 
 ### 3.1 Quick start (usando a amostra em `datasample/`)
 
+**Forma mais simples — via script (a partir da raiz do grupo):**
+
+```bash
+./bin/run.sh sample   # benchmark Multiprocessing com a amostra
+./bin/run.sh spark    # benchmark Spark com a amostra
+```
+
+**Ou manualmente com Docker Compose:**
+
 ```bash
 cd bigdata-preprocessing
 
@@ -130,13 +139,11 @@ docker compose --profile spark run --rm -p 4040:4040 \
   -e DATASET_PATH=/datasample/taxi_sample.csv \
   -e RESULTS_PATH=/results/metrics_spark_sample.csv \
   spark-benchmark
-
-# 4. Gerar o relatório HTML
-docker compose --profile report run --rm \
-  -e METRICS_PATH=/results/metrics_sample.csv \
-  -e OUTPUT_PATH=/results/report_sample.html \
-  report
 ```
+
+Cada benchmark grava um CSV de métricas em `results/`. As estatísticas
+(média ± desvio-padrão) são calculadas a partir desse CSV com o snippet
+pandas/numpy mostrado na seção [6.2](#62-how-to-perform-benchmarking-simple-guide).
 
 ### 3.2 How to run with the full dataset
 
@@ -159,10 +166,11 @@ docker compose run --rm -e DATASET_PATH=/datasets/taxi_10gb.csv -e RESULTS_PATH=
 docker compose --profile spark run --rm -p 4040:4040 -e DATASET_PATH=/datasets/taxi_1gb.csv  -e RESULTS_PATH=/results/metrics_spark_1gb.csv  spark-benchmark
 docker compose --profile spark run --rm -p 4040:4040 -e DATASET_PATH=/datasets/taxi_5gb.csv  -e RESULTS_PATH=/results/metrics_spark_5gb.csv  spark-benchmark
 docker compose --profile spark run --rm -p 4040:4040 -e DATASET_PATH=/datasets/taxi_10gb.csv -e RESULTS_PATH=/results/metrics_spark_10gb.csv spark-benchmark
-
-# Passo 4: Relatório final combinado
-docker compose --profile report up report-all
 ```
+
+Ao final, cada configuração gera um CSV em `results/` (`metrics_*.csv` e
+`metrics_spark_*.csv`). A análise estatística (média e desvio-padrão) é feita
+com o snippet pandas/numpy da seção [6.2](#62-how-to-perform-benchmarking-simple-guide).
 
 **Parâmetros configuráveis via variáveis de ambiente:**
 
@@ -200,16 +208,14 @@ docker compose --profile report up report-all
     [results/metrics_*.csv]              │           [results/metrics_spark_*.csv]
               └──────────────────────────┼──────────────────────────┘
                                          ▼
-                               [report_generator.py]
-                               ─ gráficos matplotlib
-                               ─ análise Amdahl
-                               ─ comparação das abordagens
-                                         │
-                                         ▼
-                               [results/report_all.html]
+                          [análise pandas/numpy — seção 6.2]
+                          ─ média ± desvio-padrão por configuração
+                          ─ speedup e análise de Amdahl
+                          ─ comparação das duas abordagens
 ```
 
 **Organização do código:**
+- **`bin/`** — scripts auxiliares que rodam o pipeline via Docker (`run.sh`)
 - **`src/`** — código-fonte Python na raiz do grupo (montado como `../src:/app/src` pelo docker-compose)
 - **`bigdata-preprocessing/`** — Dockerfiles, docker-compose.yml e volumes de datasets/results
 
@@ -220,12 +226,11 @@ docker compose --profile report up report-all
 | `downloader` | `./Dockerfile` (Python 3.11) | Baixa Parquet do NYC TLC, converte e concatena CSVs |
 | `benchmark` | `./Dockerfile` (Python 3.11) | Roda `ProcessPoolExecutor` com 1/2/4/8/16 workers |
 | `spark-benchmark` | `./spark/Dockerfile` (Python 3.11 + Java 17) | Roda PySpark `local[N]` com 1/2/4/8/16 núcleos |
-| `report-all` | `./Dockerfile` (Python 3.11) | Gera relatório HTML com gráficos e análise |
 
 **Fluxo de dados:**
 1. `downloader` → grava CSVs em `datasets/` (volume compartilhado)
-2. `benchmark` / `spark-benchmark` → leem de `datasets/`, gravam em `results/`
-3. `report-all` → lê de `results/`, gera HTML em `results/`
+2. `benchmark` / `spark-benchmark` → leem de `datasets/`, gravam métricas em `results/`
+3. Análise estatística (média ± desvio, speedup) → snippet pandas/numpy da seção 6.2 sobre os CSVs de `results/`
 
 ---
 
@@ -233,7 +238,7 @@ docker compose --profile report up report-all
 
 ### [WORKLOAD-A] PROF-MP — Perfilamento com Python Multiprocessing
 
-Implementado em [`benchmark.py`](bigdata-preprocessing/src/benchmark.py) + [`profiler.py`](bigdata-preprocessing/src/profiler.py) + [`aggregator.py`](bigdata-preprocessing/src/aggregator.py).
+Implementado em [`benchmark.py`](src/benchmark.py) + [`profiler.py`](src/profiler.py) + [`aggregator.py`](src/aggregator.py).
 
 **Processo:**
 1. O processo principal lê o CSV em chunks de 500.000 linhas (`pd.read_csv(..., chunksize=500_000)`)
@@ -246,7 +251,7 @@ Implementado em [`benchmark.py`](bigdata-preprocessing/src/benchmark.py) + [`pro
 
 ### [WORKLOAD-B] PROF-SPARK — Perfilamento com Apache Spark
 
-Implementado em [`spark_benchmark.py`](bigdata-preprocessing/spark/src/spark_benchmark.py).
+Implementado em [`spark_benchmark.py`](src/spark/spark_benchmark.py).
 
 **Processo:**
 1. `SparkSession` criada em modo `local[N]` — N threads Java no mesmo processo

@@ -77,7 +77,11 @@ Desktop.ini
 
 # Diretórios de datasets
 bigdata-preprocessing/datasets/
-datasample/
+
+# Amostra de dados obrigatória (template) — DEVE ir no repositório
+!datasample/
+!datasample/**
+!datasample/taxi_sample.csv
 
 # Resultados gerados (relatórios HTML, métricas CSV)
 results/
