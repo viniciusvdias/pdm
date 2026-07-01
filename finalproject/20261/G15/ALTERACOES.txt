@@ -1,0 +1,161 @@
+================================================================================
+ PROJETO FINAL - PDM 2026/1 - GRUPO G15
+ Documento de alteracoes: adaptacao do projeto ao formato exigido pelo professor
+================================================================================
+
+CONTEXTO
+--------
+O projeto foi desenvolvido como um conjunto de notebooks Jupyter (rodando dentro de
+um contêiner Docker com GPU). Para a entrega, ele foi reorganizado na estrutura de
+pastas exigida pelo template (gX/: bin, src, misc, datasample, presentation, README)
+e adaptado para rodar "out of the box" apenas com Docker, sem intervencao manual.
+
+Tema do projeto: provar, com evidencia estatistica, que o "Small File Problem"
+(ler milhares de .jpg isolados) causa GPU Starvation num pipeline de ML, e que
+converter as imagens para blocos .parquet via Spark (ETL) resolve o gargalo,
+aumentando o throughput de ingestao (imagens/segundo).
+
+
+================================================================================
+ NOVA ESTRUTURA (formato do template)
+================================================================================
+
+G15/
+|
++-- bin/                          Scripts executaveis (rodam tudo via Docker)
+|   +-- run.sh                    Smoke test: pipeline completo sobre o datasample (1 comando)
+|   +-- run_full.sh               Dataset completo: reproduz os resultados do relatorio
+|   +-- download_data.sh          Baixa/descompacta o Dogs vs. Cats (Kaggle)
+|
++-- src/                          Codigo-fonte (Python puro, headless)
+|   +-- bench_common.py           Modulo compartilhado: config, monitor de recursos, modelo
+|   +-- 01_download.py            Preparo do dataset (move labels + duplica ate a meta de GB)
+|   +-- 02_baseline_jpg.py        Pipeline A (baseline): ingestao de .jpg soltos + benchmark
+|   +-- 03_spark_etl.py           ETL PySpark: converte .jpg -> .parquet (uint8 224x224x3)
+|   +-- 04_optimized_parquet.py   Pipeline B (otimizado): ingestao do .parquet + comparacao
+|   +-- run_all.py                Orquestrador: roda 02 -> 03 -> 04 em processos separados
+|
++-- misc/                         Arquivos necessarios para rodar (build do ambiente)
+|   +-- Dockerfile                Imagem base NGC (TF+CUDA p/ RTX 50) + Java 17 + PySpark
+|   +-- docker-compose.yml        Servico com limite de 2 vCPU + acesso a GPU + volumes
+|   +-- requirements.txt          PySpark, pandas, psutil, nvidia-ml-py, matplotlib
+|
++-- datasample/                   Amostra pequena para teste rapido (<1MB)
+|   +-- sample_images/            40 imagens .jpg (20 gatos + 20 caes), ~862 KB
+|
++-- presentation/                 Material de apresentacao
+|   +-- notebooks/                Os 4 notebooks originais (.ipynb) como material de apoio
+|   +-- results/                  Resultados de referencia (CSVs + graficos do dataset completo)
+|
++-- README.md                     Relatorio (segue o README-report-template.md)   [PENDENTE]
++-- README-report-template.md     Template de relatorio fornecido pelo professor
++-- .gitignore                    Ignora output/ (gerado) e arquivos de contexto pessoal
++-- ALTERACOES.txt                Este documento
+
+
+================================================================================
+ MAPEAMENTO: projeto original -> entrega
+================================================================================
+
+Projeto original                          ->  Destino na entrega (G15/)
+------------------------------------------    ----------------------------------------
+scripts/01_download.ipynb                 ->  src/01_download.py + presentation/notebooks/
+scripts/02_baseline_jpg.ipynb             ->  src/02_baseline_jpg.py + presentation/notebooks/
+scripts/03_spark_etl.ipynb                ->  src/03_spark_etl.py + presentation/notebooks/
+scripts/04_optimized_parquet.ipynb        ->  src/04_optimized_parquet.py + presentation/notebooks/
+Dockerfile                                ->  misc/Dockerfile (paths ajustados)
+docker-compose.yml                        ->  misc/docker-compose.yml (volumes/paths ajustados)
+requirements.txt                          ->  misc/requirements.txt (identico)
+data/results/ (CSVs e PNGs)               ->  presentation/results/
+data/raw_jpg/ (amostra de 40 imgs)        ->  datasample/sample_images/
+(novo)                                    ->  src/bench_common.py, src/run_all.py
+(novo)                                    ->  bin/run.sh, bin/run_full.sh, bin/download_data.sh
+
+NAO enviados (uso interno, ficam so na maquina local, via .gitignore):
+  CLAUDE.md, .claude/, agent_docs/  ->  contexto/documentacao interna do desenvolvimento
+  data/raw_jpg completo (~2 GB), data/optimized (~9,4 GB)  ->  dados pesados, nao versionados
+
+
+================================================================================
+ AJUSTES E MELHORIAS APLICADOS
+================================================================================
+
+1. NOTEBOOKS -> SCRIPTS PYTHON HEADLESS (src/)
+   - Os 4 notebooks foram convertidos em .py que rodam sem Jupyter/intervencao.
+   - Removidos os elementos que so funcionam no notebook: comandos de shell (!),
+     "magics" (%), e auto-display de DataFrames na ultima linha da celula.
+   - Graficos: trocado plt.show() por plt.savefig() + backend "Agg" (headless),
+     salvando cada figura em arquivo .png separado.
+
+2. CODIGO COMPARTILHADO EXTRAIDO (src/bench_common.py)
+   - Os notebooks 02 e 04 duplicavam ~200 linhas identicas (monitor de recursos,
+     leitura de limites via cgroup, construcao do modelo). Isso foi centralizado
+     em bench_common.py, deixando cada benchmark so com o que e proprio dele.
+
+3. PARAMETRIZACAO POR VARIAVEIS DE AMBIENTE
+   - Caminhos e parametros do experimento (RAW_DIR, PARQUET_DIR, RESULTS_DIR,
+     N_ROUNDS, BATCH_SIZE, N_PASSES, TARGET_GB...) agora vem de env vars, com
+     defaults sensatos. Assim o MESMO codigo serve para o smoke test (datasample)
+     e para o dataset completo, sem editar nada - so mudam as variaveis nos scripts bin/.
+
+4. ORQUESTRACAO EM PROCESSOS SEPARADOS (src/run_all.py)
+   - Roda 02 -> 03 -> 04 na ordem correta, cada etapa num processo novo. Isso
+     evita que o cache de disco / estado do TensorFlow de uma etapa contamine a
+     medicao da outra (benchmark mais justo).
+
+5. EXECUCAO "OUT OF THE BOX" COM DOCKER (bin/)
+   - bin/run.sh: build + pipeline completo sobre o datasample, com UM comando.
+   - bin/run_full.sh: mesmo fluxo com o dataset completo (inclui a duplicacao).
+   - bin/download_data.sh: obtencao/descompactacao do dataset.
+   - Todos usam "docker compose -f misc/docker-compose.yml ...".
+
+6. DOCKER ADAPTADO (misc/)
+   - Volumes e contexto de build reorganizados para a nova estrutura de pastas.
+   - Saidas geradas vao para ./output/ (montado no host, visivel; ignorado no git).
+   - Mantido o limite de 2 vCPU (que e justamente o que forca o gargalo estudado)
+     e o acesso a GPU.
+
+7. AMOSTRA DE DADOS (datasample/)
+   - 40 imagens (~862 KB), abaixo do limite de 1 MB do template.
+   - Serve para provar que o projeto RODA. Aviso importante: com poucas imagens o
+     dataset cabe na memoria/cache e o Small File Problem NAO aparece - por isso os
+     numeros do smoke test sao inconclusivos de proposito. Os resultados validos do
+     relatorio vem do dataset completo (bin/run_full.sh).
+
+8. HIGIENE DE REPOSITORIO (.gitignore)
+   - Ignora output/ (resultados gerados em runtime) e os arquivos de contexto
+     pessoal do desenvolvimento (CLAUDE.md, .claude/, agent_docs/).
+
+
+================================================================================
+ COMO RODAR
+================================================================================
+
+Pre-requisito: Docker + Docker Compose, com suporte a GPU NVIDIA (nvidia-container-toolkit).
+
+A) SMOKE TEST (rapido, prova que roda - numeros inconclusivos):
+     ./bin/run.sh
+   Resultados em: ./output/results/
+
+B) DATASET COMPLETO (reproduz os resultados do relatorio):
+     1. Baixe o "train.zip" de https://www.kaggle.com/c/dogs-vs-cats/data
+        e coloque em ./output/data/raw_jpg/train.zip
+     2. ./bin/download_data.sh    (descompacta)
+     3. ./bin/run_full.sh         (preparo + duplicacao + benchmarks)
+   Resultados em: ./output/results/
+
+C) MODO INTERATIVO (inspecionar os notebooks):
+     docker compose -f misc/docker-compose.yml up
+   Depois abrir o JupyterLab em http://localhost:8888
+
+
+================================================================================
+ PENDENCIAS
+================================================================================
+
+- README.md: ainda e o stub do template; precisa ser escrito seguindo o
+  README-report-template.md (secoes 1 a 8: contexto, dados, execucao,
+  arquitetura, workloads, experimentos/resultados, conclusoes, referencias).
+- presentation/: contem os notebooks como material; nao ha PDF de slides.
+
+================================================================================
