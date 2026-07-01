@@ -757,9 +757,9 @@
       <div>
         <h3>Como o Spark reexpressa o perfilamento</h3>
         <ol style="padding-left:18px; margin-top:4px">
-          <li style="font-size:.84em; line-height:1.7"><code>SparkSession</code> em <code>local[N]</code> — N threads Java no mesmo processo, <strong>sem GIL</strong></li>
+          <li style="font-size:.84em; line-height:1.7"><code>SparkSession</code> em <code>local[N]</code> — N threads Java no mesmo processo, <strong>sem GIL</strong> <em style="color:#777">(GIL = trava do CPython que impede threads Python de rodarem em paralelo real; a JVM não tem essa restrição)</em></li>
           <li style="font-size:.84em; line-height:1.7">Leitura CSV paralela com inferência de schema</li>
-          <li style="font-size:.84em; line-height:1.7">Catalyst <span class="cite">[Zaharia et al. 2016]</span> funde min/max/mean/stddev + <code>approx_count_distinct</code> em <strong>um único job (scan único)</strong></li>
+          <li style="font-size:.84em; line-height:1.7"><strong>Catalyst</strong> <em style="color:#777">(otimizador de consultas do Spark: analisa todas as operações e as funde em um único plano físico)</em> <span class="cite">[Zaharia et al. 2016]</span> — funde min/max/mean/stddev + <code>approx_count_distinct</code> em <strong>um único job (scan único)</strong></li>
           <li style="font-size:.84em; line-height:1.7"><strong>HyperLogLog</strong> (rsd=0,05) para cardinalidade aproximada — ~10× mais rápido que <code>nunique</code> exato</li>
         </ol>
         <div class="arch" style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:9px 13px;font-family:Consolas,monospace;font-size:.7em;line-height:1.55;margin-top:9px">

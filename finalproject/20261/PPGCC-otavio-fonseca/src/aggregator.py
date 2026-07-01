@@ -42,6 +42,8 @@ def aggregate_chunks(partial_results: list) -> dict:
             null_counts[col] = null_counts.get(col, 0) + int(cnt)
 
     # ── Agregação de colunas numéricas ─────────────────────────────────────────
+    # Para cada coluna numérica, calcula min/max, soma, soma dos quadrados,
+    # contagem e número aproximado de valores únicos.    
     numeric_agg = {}
     for r in partial_results:
         for col, stats in r["numeric_stats"].items():
