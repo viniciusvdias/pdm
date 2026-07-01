@@ -1,0 +1,2 @@
+pipeline,n_rounds,batch_size,n_images_round,throughput_mean_img_s,throughput_std_img_s,cpu_ceiling_img_s,cpu_ceiling_std_img_s,gpu_ceiling_img_s,gpu_ceiling_std_img_s,gpu_waste_pct,round_time_mean_s,cpu_mean_pct,gpu_util_mean_pct,cont_mem_peak_gb,gpu_mem_peak_gb
+parquet_uint8_forward,3,256,70433,3301.5439620895118,58.937253402356696,6330.842059201913,79.67576766098972,3656.149737751184,9.403527199832071,9.698885469602846,21.33786177635193,85.6169191919192,92.37518037518038,15.998786926269531,4.013427734375
