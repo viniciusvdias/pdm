@@ -1,0 +1,25 @@
+# Runs the SSSP benchmark in a single container.
+#
+#   docker compose up --build          # quick start on the bundled datasample
+#
+# To run on the full RMSP graph, point DATA_DIR at a folder that contains
+# vertices.parquet + edges.parquet (see README section 3.2), e.g.:
+#
+#   DATA_DIR=./data/rmsp_graph ORIGINS=64 docker compose up --build
+#
+services:
+  experiment:
+    build:
+      context: .
+      dockerfile: misc/Dockerfile
+    image: pdm-pos-sssp
+    environment:
+      GRAPH_DIR: /data
+      OUTPUT_DIR: /output
+      ORIGINS: ${ORIGINS:-8}
+      REPETITIONS: ${REPETITIONS:-3}
+      WORKERS: ${WORKERS:-1,2,4}
+    volumes:
+      # Defaults to the bundled sample; override with DATA_DIR for the full graph.
+      - ${DATA_DIR:-./datasample}:/data:ro
+      - ./output:/output
