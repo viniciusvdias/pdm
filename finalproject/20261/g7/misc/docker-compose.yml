@@ -13,11 +13,9 @@ services:
 
   spark-worker:
     image: apache/spark:3.5.0
-    container_name: spark-worker
     user: root
     depends_on:
       - spark-master
-    # O SEGREDO ESTÁ AQUI: O Worker também precisa enxergar os arquivos!
     volumes:
       - ../src:/app/src
       - ${DATA_PATH:-../datasample}:/app/data
@@ -30,18 +28,30 @@ services:
     image: apache/spark:3.5.0
     container_name: spark-job
     user: root
+    environment:
+      N_WORKERS: ${N_WORKERS:-1}
+      RUNS: ${RUNS:-1}
+      WORKLOADS: ${WORKLOADS:-1,2,3}
+      REPEAT_COUNT: ${REPEAT_COUNT:-100}
     volumes:
       - ../src:/app/src
       - ${DATA_PATH:-../datasample}:/app/data
       - ./output:/app/output
     depends_on:
       - spark-worker
-    command: >
-      /opt/spark/bin/spark-submit
-      --master spark://spark-master:7077
-      /app/src/main.py
-      /app/data/${DATA_FILE:-esea_sample.csv}
-      /app/output
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /opt/spark/bin/spark-submit \
+        --master spark://spark-master:7077 \
+        /app/src/main.py \
+        /app/data \
+        /app/output \
+        --workers "${N_WORKERS:-1}" \
+        --runs "${RUNS:-1}" \
+        --workloads "${WORKLOADS:-1,2,3}" \
+        --repeat-count "${REPEAT_COUNT:-100}"
     networks:
       - spark-net
 

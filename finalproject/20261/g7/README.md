@@ -37,7 +37,9 @@ Each row is one damage event from a CS:GO match demo. The dataset has 24 columns
 
 ### 2.2 How to obtain the data
 
-A sample of ~5,000 rows (< 1 MB) is included in `datasample/esea_sample.csv` for quick testing.
+A sample dataset is included in the project under `datasample/` for quick testing. The current workflow is designed to work with that folder directly: if it contains one CSV or several CSV files, the job will read all of them automatically.
+
+You can also add more `.csv` files to `datasample/` and the pipeline will process them as part of the same input set.
 
 For the full dataset, download from Kaggle:
 
@@ -63,40 +65,33 @@ Or download manually from: https://www.kaggle.com/datasets/skihikingkevin/csgo-m
 ./bin/run.sh 2
 ```
 
-This runs `spark-submit` inside Docker against the ~5,000-row sample. Results are written to `misc/output/`.
+This runs `spark-submit` inside Docker against all CSV files found in `datasample/` at the project root. No manual datapath or filename selection is required. Each workload is executed 100 times asynchronously by default to make the timing more meaningful for lightweight queries. Results are written to `misc/output/`.
 
-### 3.2 How to run with the full dataset
+### 3.2 Running with your own data folder
 
-Download the dataset from [Kaggle](https://www.kaggle.com/datasets/skihikingkevin/csgo-matchmaking-damage) and place it in a local directory. Then set `DATA_PATH` to the **absolute path** of that directory and `DATA_FILE` to the CSV filename:
+If you want to use a different folder, set `DATA_PATH` to the **absolute path** of that directory. The pipeline will read every `.csv` file inside it automatically. You can also override the default 100 asynchronous repetitions with `REPEAT_COUNT`:
 
 ```bash
-DATA_PATH=/absolute/path/to/folder \
-  DATA_FILE=esea_master_dmg_demos.part1.csv \
-  ./bin/run.sh 4
+DATA_PATH=/absolute/path/to/folder REPEAT_COUNT=100 ./bin/run.sh 4
 ```
 
-Example (if the file is inside the `data/` folder of this project):
+Example:
 
 ```bash
-DATA_PATH=$(pwd)/data \
-  DATA_FILE=esea_master_dmg_demos.part1.csv \
-  ./bin/run.sh 4
+DATA_PATH=$(pwd)/data ./bin/run.sh 4
 ```
 
 ### 3.3 Full benchmark (all worker configurations)
 
 ```bash
 # 1 worker, 5 repetitions
-DATA_PATH=$(pwd)/data DATA_FILE=esea_master_dmg_demos.part1.csv \
-  ./bin/benchmark.sh 1 5
+DATA_PATH=$(pwd)/data ./bin/benchmark.sh 1 5
 
 # 2 workers, 5 repetitions
-DATA_PATH=$(pwd)/data DATA_FILE=esea_master_dmg_demos.part1.csv \
-  ./bin/benchmark.sh 2 5
+DATA_PATH=$(pwd)/data ./bin/benchmark.sh 2 5
 
 # 4 workers, 5 repetitions
-DATA_PATH=$(pwd)/data DATA_FILE=esea_master_dmg_demos.part1.csv \
-  ./bin/benchmark.sh 4 5
+DATA_PATH=$(pwd)/data ./bin/benchmark.sh 4 5
 ```
 
 > **Note:** `DATA_PATH` must be an absolute path — Docker volume mounts do not accept relative paths.
@@ -122,7 +117,7 @@ DATA_PATH=$(pwd)/data DATA_FILE=esea_master_dmg_demos.part1.csv \
 
 - **spark-master**: Bitnami Spark 3.5 in master mode; Spark UI available at port 8080.
 - **spark-worker**: One or more worker instances (controlled by `N_WORKERS` env var). Each worker gets 4 cores and 4 GB RAM.
-- **spark-job**: Runs `spark-submit` against `src/main.py`, reads CSV from the mounted data volume, writes results to `misc/output/`.
+- **spark-job**: Runs `spark-submit` against `src/main.py`, reads every CSV found in the mounted data directory, and writes results to `misc/output/`.
 - The number of workers is controlled at runtime — no changes to the compose file are needed for benchmarking.
 
 ## 5. Workloads evaluated
