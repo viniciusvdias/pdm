@@ -88,68 +88,75 @@ As 3 V's clássicas aparecem: **Volume** (acumulação contínua), **Velocidade*
 
 ## Como rodar (Docker Compose)
 
-A aplicação inteira está dockerizada. Pré-requisito: Docker + Docker Compose.
+A aplicação inteira está dockerizada. Pré-requisito: Docker e Docker Compose instalados na máquina.
 
+### Serviços do Compose
+- `kafka` — broker (KRaft, sem ZooKeeper). Acessível em `localhost:9092` (host) e `kafka:29092` (containers).
+- `collector` — coletor da Binance (Python nativo).
+- `processor` — processador analítico (Spark Structured Streaming).
+- `jupyter` — ambiente SciPy isolado para análise de dados e geração de gráficos.
+
+Para uma execução livre (fora da bateria de testes), basta rodar:
 ```bash
-# Sobe Kafka + Coletor + Processador. Os candles e métricas saem em ./metrics
 docker compose up --build
 ```
-
-Na primeira execução o Spark baixa o conector Kafka (alguns minutos). Os candles OHLCV
-e indicadores aparecem no log do serviço `processor` e os CSVs em `metrics/`.
-
-Para parar: `Ctrl+C` e depois `docker compose down`.
-
-### Serviços
-- `kafka` — broker (KRaft, sem ZooKeeper). Acessível em `localhost:9092` (host) e `kafka:29092` (containers).
-- `collector` — coletor da Binance.
-- `processor` — processador Spark.
 
 ---
 
 ## Experimentos e análise de desempenho
 
-Os experimentos variam o **número de partições do Kafka** (1, 2, 4) e o **tamanho da janela**,
-com **múltiplas repetições por configuração** (mínimo 3) para reportar **média ± desvio-padrão**.
+Os experimentos avaliam a escalabilidade horizontal e o trade-off entre retenção e latência, variando a seguinte grade:
+- **Tamanho da janela:** 15, 30 e 60 segundos.
+- **Partições do Kafka:** 1, 5 e 10 partições.
+- **Duração por rodada:** 16 minutos (960 segundos) para acumular histórico suficiente para os indicadores (mínimo de 14 candles para o RSI).
+- **Repetições:** 3 rodadas completas (intercaladas para capturar a diferença de volatilidade temporal do mercado).
+
+> ⚠️ **Atenção:** Devido à combinação de 9 configurações × 3 repetições × 16 minutos, a execução completa da bateria leva aproximadamente 7,2 horas ininterruptas.
+
+### Executando a coleta
 
 ```bash
-# Sobe só o Kafka...
-docker compose up -d kafka
+# 1. Garanta que não há nenhum container rodando e bloqueando o tópico
+docker compose down
 
-# ...e roda a bateria de experimentos (host driver, mesmo código do processor.py)
-./experiment.sh                      # todas as configs, 3 repetições, 120s cada
-REPS=3 EXPERIMENTS="1_10 2_10 4_10" ./experiment.sh   # só a varredura de partições
+# 2. Inicie o script orquestrador (ele subirá o Kafka automaticamente)
+./bin/experiment.sh
 ```
 
-Cada rodada gera `metrics/performance_p<P>_w<W>_r<R>.csv`. Em seguida:
+O script salvará o estado de cada execução gerando os arquivos `metrics/performance_p<P>_w<W>_r<R>.csv` e os respectivos candles. O horário exato do teste é registrado nos CSVs para correlacionar a vazão (throughput) com a agitação do mercado financeiro naquele momento.
+
+### Analisando os Resultados (Jupyter)
+
+Toda a análise estatística (média ± desvio-padrão) e a plotagem dos gráficos com barras de erro também são feitas via container.
+
+> **⚠️ Permissões:** Como os arquivos CSV e a pasta de métricas são gerados pelo container do Spark (que processa os dados como `root`), o container do Jupyter (que roda com usuário restrito) pode apresentar erro ao tentar salvar os gráficos finais. Para liberar o acesso de escrita, execute este comando na raiz do projeto antes de abrir o notebook:
+> ```bash
+> docker run --rm -v "$(pwd)/metrics:/app/metrics" python:3.12-slim chmod -R 777 /app/metrics
+> ```
 
 ```bash
-.venv/bin/jupyter notebook analysis.ipynb   # gera tabelas e gráficos
+# Suba o ambiente analítico em segundo plano
+docker compose up jupyter
 ```
 
-O notebook produz:
-- **Tabela** com vazão e latência em **média ± desvio-padrão** por configuração.
-- **Gráficos com barras de erro**: vazão e latência p95 por nº de partições.
-- Candlestick com EMA/RSI e timeline de latência.
-
-> Nota: os experimentos são orquestrados a partir do host (`.venv`) por conveniência de
-> medição (controle de tempo e variáveis por rodada), mas executam **o mesmo `processor.py`**
-> que roda no Docker Compose.
-
----
+No final do log, copie a URL gerada (ex: `http://127.0.0.1:8888/lab?token=...`) e abra no seu navegador. Navegue até o arquivo `analysis.ipynb` e execute as células. As tabelas resumo serão impressas e os gráficos `.png` aparecerão automaticamente na sua pasta `metrics/` local.
 
 ## Estrutura do repositório
 
-```
-binance.py        # Coletor (producer Kafka)
-processor.py      # Processador Spark (OHLCV + EMA/RSI + métricas)
-consumer.py       # Consumidor simples (validação manual do tópico)
-config.py         # Configuração central (lida do .env)
-docker-compose.yml# Kafka + collector + processor
-Dockerfile        # Imagem da aplicação Python (coletor/processador)
-experiment.sh     # Bateria de experimentos com repetições
-analysis.ipynb    # Análise estatística e gráficos
-metrics/          # CSVs e gráficos gerados (não versionado)
+```text
+/
+├── bin/
+│   └── experiment.sh           # Script orquestrador da bateria de experimentos
+├── metrics/                    # CSVs, gráficos e métricas geradas
+├── src/
+│   ├── analysis.ipynb          # Análise estatística e visualização dos resultados
+│   ├── binance.py              # Coletor/producer Kafka a partir da Binance
+│   ├── config.py               # Configuração central da aplicação
+│   └── processor.py            # Processador Spark (OHLCV + EMA/RSI + métricas)
+├── docker-compose.yml          # Definição dos serviços Kafka, collector e processor
+├── Dockerfile                  # Imagem da aplicação Python+Spark
+├── README.md                   # Documentação do projeto
+└── requirements.txt            # Dependências Python
 ```
 
 ## Resultados

@@ -1,37 +1,19 @@
 #!/usr/bin/env bash
 #
-# Experimentos de desempenho com REPETIÇÕES (requisito: >= 3 rodadas por config).
-#
-# Para cada configuração (partições_janela) roda REPS vezes. Cada rodada gera um
-# CSV próprio rotulado com o número da repetição, ex: performance_p2_w10_r3.csv.
-# O analysis.ipynb agrega essas rodadas em média ± desvio-padrão.
-#
-# As rodadas usam o MESMO código do processor.py que roda no docker compose;
-# aqui ele é executado a partir do host (.venv) contra o Kafka em container,
-# por conveniência de medição (controle de tempo e variáveis por rodada).
-#
-# Uso:
-#   ./experiment.sh                       # todas as configs, 3 repetições, 120s cada
-#   REPS=5 DURATION=60 ./experiment.sh    # 5 repetições de 60s
-#   EXPERIMENTS="1_10 2_10 4_10" ./experiment.sh   # só a varredura de partições
 #
 set -euo pipefail
-cd "$(dirname "$0")/.."   # raiz do repositório (o script vive em bin/)
+cd "$(dirname "$0")/.."   # raiz do repositório
 
-PY=".venv/bin/python"
 BOOTSTRAP="localhost:9092"
 TOPIC="trades"
-DURATION="${DURATION:-120}"   # segundos por rodada
-REPS="${REPS:-3}"             # repetições por configuração (mínimo do enunciado: 3)
+DURATION="${DURATION:-960}"   # segundos por rodada
+REPS="${REPS:-3}"             # repetições por configuração
 
-# Configurações: "PARTICOES_JANELA". A varredura de partições é o experimento central.
-ALL_EXPERIMENTS="1_10 2_10 4_10 1_5 1_30"
+ALL_EXPERIMENTS="1_15 1_30 1_60 5_15 5_30 5_60 10_15 10_30 10_60"
 EXPERIMENTS="${EXPERIMENTS:-$ALL_EXPERIMENTS}"
 
-[ -x "$PY" ] || { echo "venv não encontrado. Rode: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"; exit 1; }
-docker exec kafka true 2>/dev/null || { echo "container 'kafka' não está no ar. Rode: docker compose up -d kafka"; exit 1; }
-
-mkdir -p metrics
+# Garante que os containers órfãos sejam limpos se apertar Ctrl+C no meio do experimento
+trap 'echo "Interrompido! Limpando containers..."; sudo docker stop exp_processor >/dev/null 2>&1 || true; sudo docker rm exp_processor >/dev/null 2>&1 || true; sudo docker compose stop collector >/dev/null 2>&1 || true; exit 1' SIGINT SIGTERM
 
 echo "============================================================"
 echo "  EXPERIMENTOS DE DESEMPENHO"
@@ -39,51 +21,84 @@ echo "  Repetições por config: $REPS | Duração por rodada: ${DURATION}s"
 echo "  Configurações: $EXPERIMENTS"
 echo "============================================================"
 
-for exp in $EXPERIMENTS; do
-    PARTITIONS=$(echo "$exp" | cut -d_ -f1)
-    WINDOW_SIZE=$(echo "$exp" | cut -d_ -f2)
+# Prepara o terreno: derruba tudo e sobe apenas o Kafka
+sudo docker compose down
+echo "Iniciando Kafka..."
+sudo docker compose up -d kafka
+sleep 10 # Aguarda o Kafka e o KRaft inicializarem corretamente
 
-    for r in $(seq 1 "$REPS"); do
+mkdir -p metrics
+
+# Fase de Warmup (Aquecimento)
+# O Spark precisa baixar os pacotes do Kafka na primeira vez.
+echo ">>> Executando Warmup do Spark (baixando dependências no container)..."
+sudo docker compose run -d --name exp_warmup processor >/dev/null 2>&1
+sleep 30
+sudo docker stop exp_warmup >/dev/null 2>&1 || true
+sudo docker rm exp_warmup >/dev/null 2>&1 || true
+echo ">>> Warmup concluído."
+
+for r in $(seq 1 "$REPS"); do
+    echo ""
+    echo "============================================================"
+    echo ">>> INICIANDO RODADA GERAL $r DE $REPS"
+    echo "============================================================"
+
+    for exp in $EXPERIMENTS; do
+        PARTITIONS=$(echo "$exp" | cut -d_ -f1)
+        WINDOW_SIZE=$(echo "$exp" | cut -d_ -f2)
+
         LABEL="p${PARTITIONS}_w${WINDOW_SIZE}_r${r}"
+
+        # Captura o horário exato do início desta rodada
+        TEST_TIME=$(date '+%Y-%m-%d %H:%M:%S')
 
         echo ""
         echo ">>> $LABEL  (partições=$PARTITIONS, janela=${WINDOW_SIZE}s, rodada $r/$REPS)"
+        echo "    Horário de Início: $TEST_TIME"
         echo "------------------------------------------------------------"
 
-        # 1. Recria o tópico com o número de partições da config (estado limpo por rodada)
-        docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$BOOTSTRAP" \
+        # Recria o tópico dentro do container do Kafka
+        sudo docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$BOOTSTRAP" \
             --delete --topic "$TOPIC" 2>/dev/null || true
         sleep 3
-        docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$BOOTSTRAP" \
+        sudo docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$BOOTSTRAP" \
             --create --topic "$TOPIC" --partitions "$PARTITIONS" --replication-factor 1
         sleep 2
 
-        # 2. Remove CSVs anteriores desta rodada (re-execução limpa)
-        rm -f "metrics/performance_${LABEL}.csv" "metrics/candles_${LABEL}.csv"
+        # Remove CSVs anteriores desta rodada
+        sudo docker run --rm -v "$(pwd)/metrics:/app/metrics" python:3.12-slim \
+            rm -f "/app/metrics/performance_${LABEL}.csv" "/app/metrics/candles_${LABEL}.csv"
 
-        # 3. Coletor em background
-        $PY -u src/binance.py &
-        COLETOR_PID=$!
+        # Inicia o coletor em background usando o serviço do compose
+        sudo docker compose up -d collector
         sleep 3
 
-        # 4. Processador por DURATION segundos, com as variáveis da rodada
-        WINDOW_SIZE_SECONDS="$WINDOW_SIZE" \
-        WATERMARK_SECONDS="$WINDOW_SIZE" \
-        EXPERIMENT_LABEL="$LABEL" \
-        PARTITIONS="$PARTITIONS" \
-        timeout "$DURATION" $PY -u src/processor.py || true
+        # Inicia o processador via 'sudo docker compose run' (injeta as variáveis de ambiente)
+        sudo docker compose run -d --name exp_processor \
+            -e WINDOW_SIZE_SECONDS="$WINDOW_SIZE" \
+            -e WATERMARK_SECONDS="$WINDOW_SIZE" \
+            -e EXPERIMENT_LABEL="$LABEL" \
+            -e PARTITIONS="$PARTITIONS" \
+            -e TEST_TIME="$TEST_TIME" \
+            processor >/dev/null
 
-        # 5. Encerra o coletor
-        kill "$COLETOR_PID" 2>/dev/null || true
-        wait "$COLETOR_PID" 2>/dev/null || true
+        # Aguarda a duração do experimento
+        echo "    Coletando e processando dados por ${DURATION}s..."
+        sleep "$DURATION"
 
-        echo "    -> metrics/performance_${LABEL}.csv"
-        sleep 4  # deixa o Kafka estabilizar entre rodadas
+        # Encerra e remove o processador temporário, e para o coletor
+        sudo docker stop exp_processor >/dev/null 2>&1 || true
+        sudo docker rm exp_processor >/dev/null 2>&1 || true
+        sudo docker compose stop collector >/dev/null 2>&1 || true
+
+        echo "    -> Salvo em metrics/performance_${LABEL}.csv"
+        sleep 4  # Deixa o broker Kafka estabilizar entre as rodadas
     done
 done
 
 echo ""
 echo "============================================================"
-echo "  CONCLUÍDO. Resultados em metrics/ (1 CSV por rodada)."
-echo "  Abra analysis.ipynb para a estatística (média ± desvio)."
+echo "  CONCLUÍDO. Todos os experimentos finalizaram com sucesso!"
+echo "  Abra o Jupyter (via sudo Docker ou local) para analisar os CSVs."
 echo "============================================================"

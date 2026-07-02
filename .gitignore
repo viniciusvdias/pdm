@@ -4,3 +4,4 @@ venv/
 __pycache__/
 *.pyc
 metrics/
+src/.ipynb_checkpoints

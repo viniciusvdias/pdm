@@ -39,7 +39,7 @@ if not PERF_CSV.exists():
             "batch_id", "timestamp", "num_trades",
             "latency_mean_ms", "latency_p50_ms", "latency_p95_ms", "latency_p99_ms",
             "throughput_trades_per_sec", "trade_id_gaps",
-            "window_size_s", "partitions", "experiment_label"
+            "window_size_s", "partitions", "experiment_label", "test_time"
         ])
 
 if not CANDLES_CSV.exists():
@@ -128,6 +128,7 @@ def processar_indicadores(df_spark, batch_id):
             config.WINDOW_SIZE_SECONDS,
             os.getenv("PARTITIONS", "1"),
             config.EXPERIMENT_LABEL,
+            os.getenv("TEST_TIME", "N/A")
         ])
 
     # --- 4. INDICADORES TÉCNICOS (PANDAS) ---

@@ -35,7 +35,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       BINANCE_SYMBOLS: BTCUSDT
-    command: python -u binance.py
+    command: python -u src/binance.py
     restart: on-failure
 
   processor:
@@ -51,11 +51,25 @@ services:
       TRIGGER_SECONDS: 5
       EXPERIMENT_LABEL: default
       PARTITIONS: 1
-    command: python -u processor.py
+    command: python -u src/processor.py
     volumes:
       - ./metrics:/app/metrics      # candles e métricas ficam visíveis no host
       - ivy_cache:/root/.ivy2       # cache do jar spark-sql-kafka (evita rebaixar a cada start)
     restart: on-failure
+
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    container_name: jupyter_analysis
+    ports:
+      - "8888:8888"
+    volumes:
+      # Mapeia a pasta raiz do projeto para dentro do container
+      - ./:/home/jovyan/work
+    working_dir: /home/jovyan/work
+    # Roda como root para evitar problemas de permissão ao salvar os gráficos PNG na pasta metrics
+    user: root
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
 
 volumes:
   kafka_data:
