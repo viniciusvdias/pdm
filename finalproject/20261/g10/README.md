@@ -161,9 +161,10 @@ Os eventos classificados são agrupados por categoria e por janela temporal de 5
 
 A bateria foi planejada para a seguinte máquina local:
 
-- Ryzen 7 7000 Mobile
-- RTX 4050 Mobile
+- AMD Ryzen 7 7735HS
+- GeForce RTX 4050 Laptop GPU
 - 16 GB de RAM
+- 6 GB VRAM
 - Linux com Docker e Docker Compose
 
 Se a GPU não estiver disponível no ambiente Docker, o sistema continua funcionando em CPU. Nesse caso, os testes ainda são válidos, mas o tempo de processamento tende a aumentar.
