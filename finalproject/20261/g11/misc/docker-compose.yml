@@ -1,0 +1,176 @@
+# =========================================================================== #
+# Infraestrutura (Docker Compose)
+# Topologia: Kafka (KRaft, sem Zookeeper) + Spark Master + Spark Workers escalaveis
+#
+# Subir com N workers:
+#     docker compose up -d --scale spark-worker=3
+# Reescalar (Cenario B do benchmark):
+#     docker compose up -d --scale spark-worker=1   # depois 2, depois 3
+# =========================================================================== #
+
+networks:
+  pipeline-net:
+    driver: bridge
+
+services:
+  # ----------------------------------------------------------------------- #
+  # Kafka broker em modo KRaft (combina roles broker + controller, 1 no).
+  # ----------------------------------------------------------------------- #
+  kafka:
+    image: ${KAFKA_IMAGE:-apache/kafka:3.9.0}
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "29092:29092"          # listener externo (producer rodando no host)
+    environment:
+      KAFKA_NODE_ID: 1
+      # CLUSTER_ID fixo: a imagem apache/kafka EXIGE esta variavel em modo KRaft
+      # (ensure CLUSTER_ID no entrypoint). Mantemos um valor literal estavel para
+      # ser deterministico e reusar o volume kafka-data entre `down -v`/`up`.
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-6hDDbsLnSTen3HTYifOUNA}
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      # 3 listeners: INTERNAL (containers), EXTERNAL (host), CONTROLLER (KRaft).
+      # CONTROLLER faz bind no hostname `kafka` (rotavel), NAO em 0.0.0.0: em modo
+      # combinado broker+controller, o StorageTool valida o endpoint do CONTROLLER
+      # e aborta com "advertised.listeners cannot use 0.0.0.0" se ele for 0.0.0.0.
+      # EXTERNAL pode bindar 0.0.0.0 pois e anunciado como localhost (rotavel), e
+      # a porta publicada 29092:29092 alcanca esse bind.
+      KAFKA_LISTENERS: "INTERNAL://kafka:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://kafka:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:9092,EXTERNAL://localhost:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      # Single broker => replication factor 1.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Throughput: aceita mensagens grandes e cria topico sob demanda.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS:-12}
+      KAFKA_MESSAGE_MAX_BYTES: 2097152
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - pipeline-net
+    healthcheck:
+      # bind e no hostname `kafka`, entao a checagem aponta para kafka:9092.
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  # ----------------------------------------------------------------------- #
+  # Init container: cria o topico com o numero de particoes desejado e sai.
+  # (auto-create tambem funciona, mas isto fixa as particoes deterministicamente)
+  # ----------------------------------------------------------------------- #
+  kafka-init:
+    image: ${KAFKA_IMAGE:-apache/kafka:3.9.0}
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - pipeline-net
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
+          --create --if-not-exists \
+          --topic ${KAFKA_TOPIC:-taxi_trips_stream} \
+          --partitions ${KAFKA_TOPIC_PARTITIONS:-12} \
+          --replication-factor 1
+        echo "Topicos existentes:"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
+    restart: "no"
+
+  # ----------------------------------------------------------------------- #
+  # Spark Master
+  # ----------------------------------------------------------------------- #
+  spark-master:
+    image: ${SPARK_IMAGE:-bitnamilegacy/spark:3.5.4}
+    hostname: spark-master
+    container_name: spark-master
+    environment:
+      SPARK_MODE: master
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+      # Cache ivy dos --packages num diretorio GRAVAVEL (o /output e bind rw). O
+      # HOME default da imagem bitnami nao e gravavel; sem isto o spark-submit
+      # falha ao criar /ivy. Baixa os jars do Kafka 1x e reusa entre runs.
+      SPARK_IVY_DIR: /output/.ivy
+    ports:
+      - "7077:7077"            # porta do cluster (spark://...)
+      - "8080:8080"            # UI do master
+    volumes:
+      # Paths relativos a este arquivo (g11/misc/). A amostra vem de
+      # ../datasample; para o dataset completo, aponte DATA_DIR_HOST p/ ../data.
+      - ${DATA_DIR_HOST:-../datasample}:/data:ro   # dados de entrada (read-only)
+      - ../src/spark:/app:ro                        # codigo PySpark + spark-submit.sh
+      - ./zones:/zones:ro                           # taxi_zone_lookup.csv (join)
+      - ../output:/output:rw                        # resultados (saida)
+      - ../checkpoints:/checkpoints:rw              # checkpoints do streaming
+    networks:
+      - pipeline-net
+    healthcheck:
+      # A imagem bitnamilegacy/spark NAO traz curl/wget/nc; usamos o /dev/tcp do
+      # bash para sondar a UI do master na 8080.
+      test: ["CMD-SHELL", "timeout 2 bash -c 'echo > /dev/tcp/localhost/8080' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ----------------------------------------------------------------------- #
+  # Spark Worker(s) — escalavel via --scale spark-worker=N
+  # IMPORTANTE: sem `container_name` aqui, senao --scale falha por nome duplicado.
+  # ----------------------------------------------------------------------- #
+  spark-worker:
+    image: ${SPARK_IMAGE:-bitnamilegacy/spark:3.5.4}
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: "spark://spark-master:7077"
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-4}
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-4G}
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+    volumes:
+      - ${DATA_DIR_HOST:-../datasample}:/data:ro
+      - ../src/spark:/app:ro
+      - ./zones:/zones:ro
+      - ../output:/output:rw
+      - ../checkpoints:/checkpoints:rw
+    networks:
+      - pipeline-net
+
+  # ----------------------------------------------------------------------- #
+  # Producer (Kafka firehose) — ingestao 100% Docker (sem venv no host).
+  # Sob o profile `ingest` para NAO subir junto da infra; dispare com:
+  #     docker compose --profile ingest run --rm producer --interleave
+  # (o bin/run.sh cuida disso). Le KAFKA_BOOTSTRAP/DATA_DIR de env.
+  # ----------------------------------------------------------------------- #
+  producer:
+    build: ../src/producer
+    image: g11-producer:local
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP: "kafka:9092"        # listener INTERNAL (rede do compose)
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-taxi_trips_stream}
+      DATA_DIR: "/data"
+    volumes:
+      - ${DATA_DIR_HOST:-../datasample}:/data:ro
+    networks:
+      - pipeline-net
+    profiles: ["ingest"]
+
+volumes:
+  kafka-data:

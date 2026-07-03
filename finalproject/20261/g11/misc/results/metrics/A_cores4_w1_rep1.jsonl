@@ -1,0 +1,4 @@
+{"query": "daily_peaks", "batchId": 0, "timestamp": "2026-06-25T22:29:01.801Z", "numInputRows": 100000, "inputRowsPerSecond": 0.0, "processedRowsPerSecond": 10383.137784238397, "triggerExecutionMs": 9629, "batchDurationMs": 9629, "addBatchMs": 8259}
+{"query": "avg_duration_by_zone", "batchId": 0, "timestamp": "2026-06-25T22:29:02.056Z", "numInputRows": 100000, "inputRowsPerSecond": 0.0, "processedRowsPerSecond": 10135.819987837016, "triggerExecutionMs": 9866, "batchDurationMs": 9866, "addBatchMs": 8647}
+{"query": "daily_peaks", "batchId": 1, "timestamp": "2026-06-25T22:29:11.476Z", "numInputRows": 0, "inputRowsPerSecond": 0.0, "processedRowsPerSecond": 0.0, "triggerExecutionMs": 1612, "batchDurationMs": 1612, "addBatchMs": 1281}
+{"query": "avg_duration_by_zone", "batchId": 1, "timestamp": "2026-06-25T22:29:11.926Z", "numInputRows": 0, "inputRowsPerSecond": 0.0, "processedRowsPerSecond": 0.0, "triggerExecutionMs": 2283, "batchDurationMs": 2283, "addBatchMs": 1935}

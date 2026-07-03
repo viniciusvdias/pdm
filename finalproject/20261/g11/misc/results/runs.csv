@@ -1,0 +1,5 @@
+run_id,scenario,param,value,workers,rep,throughput_rps,avg_latency_ms,total_input_rows,n_nonempty_batches,sum_trigger_ms_nonempty
+A_cores1_w1_rep1,A,cores,1,1,1,6170.4,16206.5,200000,2,32413.0
+A_cores1_w1_rep1,A,cores,1,1,1,5523.3,18105.0,200000,2,36210.0
+A_cores2_w1_rep1,A,cores,2,1,1,8095.2,12353.0,200000,2,24706.0
+A_cores4_w1_rep1,A,cores,4,1,1,10259.0,9747.5,200000,2,19495.0

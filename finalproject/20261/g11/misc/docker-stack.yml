@@ -1,0 +1,195 @@
+# =========================================================================== #
+# Stack Docker Swarm multi-host, AWS (derivado do docker-compose.yml)
+#
+# Diferencas em relacao ao docker-compose.yml (host unico):
+#   - Rede: bridge -> OVERLAY attachable (containers se enxergam entre VMs).
+#   - Placement por label do no (role=infra / role=worker):
+#       kafka, kafka-init, spark-master -> node.labels.role==infra
+#       spark-worker -> replicated, max_replicas_per_node=1, role==worker
+#         (cada replica cai numa VM worker distinta => escala horizontal real).
+#   - `container_name`, `depends_on` e `healthcheck.condition` NAO sao suportados
+#     pelo `docker stack deploy` (sao ignorados) — removidos/adaptados.
+#   - Volumes bind-mount: no multi-host cada VM tem disco proprio. So o
+#     node-infra recebe os arquivos (spark/, zones/, output/, checkpoints/,
+#     data_subset/) via distribute_files.sh; os spark-workers NAO montam nada
+#     (leem do Kafka; o driver no infra distribui as tasks; o conector Kafka vem
+#     via --packages no spark-submit).
+#
+# Deploy (no node-infra):
+#     docker stack deploy -c docker-stack.yml taxi
+# Reescalar workers (Cenario B):
+#     docker service scale taxi_spark-worker=1   # depois 2, depois 3
+# =========================================================================== #
+
+networks:
+  pipeline-net:
+    driver: overlay
+    attachable: true
+
+services:
+  # ----------------------------------------------------------------------- #
+  # Kafka broker (KRaft) — fixado no node-infra.
+  # ----------------------------------------------------------------------- #
+  kafka:
+    image: ${KAFKA_IMAGE:-apache/kafka:3.9.0}
+    hostname: kafka
+    ports:
+      # Publica a porta EXTERNAL para o producer, que roda no HOST do node-infra
+      # (localhost:29092). Em Swarm a porta e publicada no ingress mesh, mas o
+      # producer bate em localhost do proprio node-infra, onde a task roda.
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-6hDDbsLnSTen3HTYifOUNA}
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      # 3 listeners: INTERNAL (overlay, entre VMs), EXTERNAL (host/producer),
+      # CONTROLLER (KRaft). Na overlay do Swarm o nome de servico `kafka` resolve
+      # (DNS interno -> VIP do servico), entao INTERNAL://kafka:9092 e alcancavel
+      # pelos spark-workers em OUTRAS VMs. Se a resolucao falhar (validar de
+      # dentro de um container worker com `getent hosts kafka`), trocar o
+      # advertised INTERNAL para o IP privado do node-infra: INTERNAL://172.31.8.90:9092.
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://kafka:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:9092,EXTERNAL://localhost:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS:-12}
+      KAFKA_MESSAGE_MAX_BYTES: 2097152
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - pipeline-net
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.role==infra
+      restart_policy:
+        condition: on-failure
+
+  # ----------------------------------------------------------------------- #
+  # kafka-init: cria o topico com as particoes desejadas e sai. Roda no infra.
+  # `depends_on` nao existe no Swarm; o restart_policy on-failure faz o init
+  # ser reexecutado ate o broker estar pronto (idempotente: --if-not-exists).
+  # ----------------------------------------------------------------------- #
+  kafka-init:
+    image: ${KAFKA_IMAGE:-apache/kafka:3.9.0}
+    networks:
+      - pipeline-net
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
+          --create --if-not-exists \
+          --topic ${KAFKA_TOPIC:-taxi_trips_stream} \
+          --partitions ${KAFKA_TOPIC_PARTITIONS:-12} \
+          --replication-factor 1
+        echo "Topicos existentes:"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.role==infra
+      # `restart-on-failure` (nao `no`): tenta ate o broker responder, depois o
+      # comando sai 0 e o servico fica completo. Como e um job unico, aceitamos
+      # que fique "1/1" apos sucesso.
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 20
+
+  # ----------------------------------------------------------------------- #
+  # Spark Master — fixado no node-infra (onde o driver/spark-submit roda).
+  # ----------------------------------------------------------------------- #
+  spark-master:
+    image: ${SPARK_IMAGE:-bitnamilegacy/spark:3.5.4}
+    hostname: spark-master
+    environment:
+      SPARK_MODE: master
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    volumes:
+      # Bind-mounts ficam SO no node-infra (arquivos copiados por
+      # distribute_files.sh). O driver le o codigo (/app), o csv de zonas
+      # (/zones) e escreve output/checkpoints aqui.
+      - /home/ubuntu/taxi/spark:/app:ro
+      - /home/ubuntu/taxi/zones:/zones:ro
+      - /home/ubuntu/taxi/output:/output:rw
+      - /home/ubuntu/taxi/checkpoints:/checkpoints:rw
+      # Cache ivy dos --packages (Kafka connector): baixa 1x, reusa entre runs.
+      # Fora de output/checkpoints (que o benchmark limpa a cada run).
+      - /home/ubuntu/taxi/ivy:/ivy:rw
+    networks:
+      - pipeline-net
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 2 bash -c 'echo > /dev/tcp/localhost/8080' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.role==infra
+      restart_policy:
+        condition: on-failure
+
+  # ----------------------------------------------------------------------- #
+  # Spark Worker(s) — 1 replica por VM worker (max_replicas_per_node: 1).
+  # Escalar com: docker service scale taxi_spark-worker=N  (N in {1,2,3}).
+  # NAO monta volumes: workers nao leem parquet (leem do Kafka via o job) nem
+  # precisam do codigo do job (o driver no master distribui as tasks). O jar do
+  # conector Kafka chega via --packages no spark-submit (baixado por cada
+  # executor do Maven Central; requer rede de saida nas VMs worker).
+  # ----------------------------------------------------------------------- #
+  spark-worker:
+    image: ${SPARK_IMAGE:-bitnamilegacy/spark:3.5.4}
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: "spark://spark-master:7077"
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-2}
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-3G}
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+    volumes:
+      # Structured Streaming: o STATE STORE e o output em Parquet sao escritos
+      # pelos EXECUTORS (nestas VMs worker), nao so pelo driver. Como usamos
+      # paths file:// (/output, /checkpoints), TODA VM precisa ver os mesmos
+      # diretorios. /home/ubuntu/taxi/{output,checkpoints} sao um export NFS do
+      # node-infra montado em cada worker no MESMO path (fstab), entao estes
+      # bind-mounts dao aos executors o storage compartilhado que o job exige.
+      - /home/ubuntu/taxi/output:/output:rw
+      - /home/ubuntu/taxi/checkpoints:/checkpoints:rw
+    networks:
+      - pipeline-net
+    deploy:
+      mode: replicated
+      replicas: 3
+      placement:
+        max_replicas_per_node: 1
+        constraints:
+          - node.labels.role==worker
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  kafka-data:
