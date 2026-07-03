@@ -1,4 +1,5 @@
 import os
+import time
 import pandas as pd
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
@@ -23,6 +24,20 @@ CHECKPOINT_LOCATION = os.environ.get('CHECKPOINT_LOCATION', '/checkpoint')
 
 # Persistência SQLite
 SQLITE_DB_PATH = os.environ.get('SQLITE_DB_PATH', DEFAULT_DB_PATH)
+
+
+def run_batch_with_metrics(batch_name, batch_df, batch_id, handler):
+    started_at = time.perf_counter()
+    row_count = batch_df.count()
+    print(f"[batch:{batch_name}] batch_id={batch_id} rows_in_batch={row_count}", flush=True)
+    handler(batch_df, batch_id)
+    elapsed_ms = (time.perf_counter() - started_at) * 1000.0
+    throughput = (row_count / (elapsed_ms / 1000.0)) if elapsed_ms > 0 else 0.0
+    print(
+        f"[batch:{batch_name}] batch_id={batch_id} duration_ms={elapsed_ms:.2f} "
+        f"throughput_eps={throughput:.2f}",
+        flush=True,
+    )
 
 # Mostra e persiste apenas a janela mais recente de cada micro-batch.
 def show_latest_window(batch_df, batch_id):
@@ -164,14 +179,24 @@ query = df_result \
     .writeStream \
     .outputMode("update") \
     .option("checkpointLocation", CHECKPOINT_LOCATION) \
-    .foreachBatch(show_latest_window) \
+    .foreachBatch(lambda batch_df, batch_id: run_batch_with_metrics(
+        "windows",
+        batch_df,
+        batch_id,
+        show_latest_window,
+    )) \
     .start()
 
 events_query = df_inference \
     .writeStream \
     .outputMode("append") \
     .option("checkpointLocation", CHECKPOINT_LOCATION + "/events") \
-    .foreachBatch(write_events_sample) \
+    .foreachBatch(lambda batch_df, batch_id: run_batch_with_metrics(
+        "events",
+        batch_df,
+        batch_id,
+        write_events_sample,
+    )) \
     .start()
 
 spark.streams.awaitAnyTermination()

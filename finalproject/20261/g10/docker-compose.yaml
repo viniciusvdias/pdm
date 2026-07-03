@@ -40,6 +40,8 @@ services:
       - WINDOW_SLIDE_DURATION=${WINDOW_SLIDE_DURATION_NUMERIC} ${WINDOW_SLIDE_DURATION_UNIT}
       - MODEL_NAME=${MODEL_NAME}
       - SQLITE_DB_PATH=/data/analytics.sqlite3
+    ports:
+      - "4040:4040"
     volumes:
       - ./misc:/misc
       - spark_checkpoint:/checkpoint
@@ -87,6 +89,11 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - KAFKA_TOPIC=${KAFKA_TOPIC}
       - WIKIMEDIA_URL=${WIKIMEDIA_URL}
+      - PRODUCER_SOURCE=${PRODUCER_SOURCE:-live}
+      - WIKIMEDIA_SAMPLE_PATH=/sample/wikimedia-recentchange-sample.txt
+      - PRODUCER_SAMPLE_DELAY_SECONDS=${PRODUCER_SAMPLE_DELAY_SECONDS:-0}
+    volumes:
+      - ./datasample:/sample:ro
 
   dashboard:
     build: ./src/dashboard
