@@ -25,6 +25,18 @@ services:
       timeout: 5s
       retries: 10
 
+  kafka-ui:
+    image: kafbat/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "local-cluster"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:29092"
+
   spark-consumer:
     build: ./src/spark_consumer
     image: g10-spark-consumer:3.5.1

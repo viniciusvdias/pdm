@@ -216,7 +216,6 @@ A bateria local compara três configurações de paralelismo e duas origens de d
 | T2    | `local[2]`               | Medir ganho de paralelismo com duas threads    |
 | T3    | `local[*]`               | Medir uso total das threads lógicas da máquina |
 | T4    | `PRODUCER_SOURCE=live`   | Executar com o stream real da Wikimedia        |
-| T5    | `PRODUCER_SOURCE=sample` | Executar com replay local da amostra           |
 
 ### 6.4 Resultados
 
