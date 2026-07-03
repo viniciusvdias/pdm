@@ -1,0 +1,532 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "b26851b2-2717-4379-a15c-2927e5bda4cf"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 13,
+        "x": 0,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 45,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "b26851b2-2717-4379-a15c-2927e5bda4cf"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  sensor_id,\n  CASE \n    WHEN status_ia_borda = 'ALERTA_INCENDIO' THEN 1\n    ELSE 0 \n  END AS status_ia_num\nFROM\n  historico_sensores\nLIMIT\n  50;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [
+                  {
+                    "name": "sensor_id",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              },
+              {
+                "parameters": [
+                  {
+                    "name": "status_ia_borda",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          },
+          "table": "historico_sensores"
+        }
+      ],
+      "title": "Panel de Alertas",
+      "transparent": true,
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "b26851b2-2717-4379-a15c-2927e5bda4cf"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 13,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "b26851b2-2717-4379-a15c-2927e5bda4cf"
+          },
+          "editorMode": "builder",
+          "format": "table",
+          "rawSql": "SELECT MAX(temperatura), MIN(temperatura) FROM historico_sensores LIMIT 50 ",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "name": "MAX",
+                "parameters": [
+                  {
+                    "name": "temperatura",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              },
+              {
+                "name": "MIN",
+                "parameters": [
+                  {
+                    "name": "temperatura",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          },
+          "table": "historico_sensores"
+        }
+      ],
+      "title": "Máximos e Minimos da Temperatura",
+      "transparent": true,
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "b26851b2-2717-4379-a15c-2927e5bda4cf"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 1,
+      "options": {
+        "barRadius": 0.05,
+        "barWidth": 0.5,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "normal",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 45,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "b26851b2-2717-4379-a15c-2927e5bda4cf"
+          },
+          "editorMode": "builder",
+          "format": "table",
+          "key": "Q-4416e4f6-390b-4e55-aaa6-638bfca685ea-0",
+          "rawSql": "SELECT sensor_id, temperatura, umidade FROM historico_sensores LIMIT 50 ",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [
+                  {
+                    "name": "sensor_id",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              },
+              {
+                "parameters": [
+                  {
+                    "name": "temperatura",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              },
+              {
+                "parameters": [
+                  {
+                    "name": "umidade",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          },
+          "table": "historico_sensores"
+        }
+      ],
+      "title": "Painel Temperatura e Umidade",
+      "transparent": true,
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "b26851b2-2717-4379-a15c-2927e5bda4cf"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "index": 0,
+                  "text": "Normal"
+                },
+                "1": {
+                  "index": 1,
+                  "text": "Alerta"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "m"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 11,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "timezone": [
+          "America/Sao_Paulo"
+        ],
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "b26851b2-2717-4379-a15c-2927e5bda4cf"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT \n  date_trunc('second', timestamp) AS time,\n  sensor_id AS metric,\n  MAX(CASE WHEN status_ia_borda = 'ALERTA_INCENDIO' THEN 1 ELSE 0 END) AS value\nFROM historico_sensores\nWHERE timestamp >= NOW() - INTERVAL '5 minutes'\nGROUP BY time, sensor_id\nORDER BY time;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Panel de Alertas",
+      "transparent": true,
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "New dashboard",
+  "version": 1,
+  "weekStart": ""
+}

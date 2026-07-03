@@ -1,0 +1,50 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOO_HEAP_OPTS: "-Xmx512m -Xms256m"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx1G -Xms512m"
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin_password
+      POSTGRES_DB: incendios_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+volumes:
+  postgres_data:
