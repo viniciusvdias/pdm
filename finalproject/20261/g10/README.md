@@ -169,38 +169,28 @@ A bateria foi planejada para a seguinte máquina local:
 
 Se a GPU não estiver disponível no ambiente Docker, o sistema continua funcionando em CPU. Nesse caso, os testes ainda são válidos, mas o tempo de processamento tende a aumentar.
 
-### 6.2 Como realizar a bateria de testes
+### 6.2 Descrição dos testes realizados
 
 A bateria foi desenhada para comparar o comportamento do sistema com diferentes níveis de paralelismo local:
 
 - `local[1]`
-- `local[2]`
 - `local[*]`, onde `*` corresponde ao número de threads lógicas disponíveis na máquina
 
-#### O que medir
+#### O que medimos
 
-As métricas abaixo devem ser coletadas em todas as execuções:
+Os testes foram realizados por 10 minutos, 5 vezes para cada um dos 3 níveis de paralelismo local.
 
-| Métrica                  | Unidade         | O que mostra                                        |
+| Métrica                  | Unidade         | Resultado                                           |
 | ------------------------ | --------------- | --------------------------------------------------- |
-| Eventos recebidos        | eventos/segundo | Vazão de entrada no Kafka e no Spark                |
+| Eventos emitidos         | eventos/segundo | Eventos recebinos no Kafka                          |
+| Eventos recebidos        | eventos/segundo | Entrada no Spark                                    |
 | Eventos processados      | eventos/segundo | Vazão efetiva do Spark após limpeza e classificação |
-| Eventos persistidos      | linhas/segundo  | O que foi gravado em SQLite                         |
 | Latência por micro-batch | ms              | Tempo gasto por lote processado                     |
-| Uso de CPU               | %               | Carga do host/contêiner                             |
-| Uso de memória           | MB              | Consumo de RAM do pipeline                          |
+| Uso de CPU               | %               | Carga do host                                       |
+| Uso de GPU               | %               | Carga na GPU do host                                |
+| Uso de memória           | GB              | Consumo de RAM pelo pipeline                        |
+| Uso de memória (GPU)     | GB              | Consumo de RAM da GPU pelo pipeline                 |
 | Linhas por janela        | contagem        | Total de eventos agregados na janela tumbling       |
-| Duplicatas               | contagem        | Verificação de consistência no SQLite               |
-
-#### Como interpretar
-
-O sistema está cumprindo seu papel quando:
-
-- os eventos entram no Kafka e aparecem no Spark sem atraso crescente;
-- o número de eventos processados acompanha o número de eventos recebidos;
-- as linhas persistidas no SQLite batem com os eventos agregados por janela;
-- o Spark UI mostra estágios ativos com duração compatível com a configuração de threads;
-- não há crescimento anormal de filas ou duplicatas entre execuções.
 
 #### Janela usada nos testes
 
@@ -208,43 +198,46 @@ A janela padrão da bateria é **tumbling** de 5 minutos. O slide é igual à du
 
 ### 6.3 O que foi testado?
 
-A bateria local compara três configurações de paralelismo e duas origens de dados:
+A bateria local compara duas configurações de paralelismo e origem real dos dados:
 
-| Teste | Configuração             | Objetivo                                       |
-| ----- | ------------------------ | ---------------------------------------------- |
-| T1    | `local[1]`               | Medir o comportamento mínimo do pipeline       |
-| T2    | `local[2]`               | Medir ganho de paralelismo com duas threads    |
-| T3    | `local[*]`               | Medir uso total das threads lógicas da máquina |
-| T4    | `PRODUCER_SOURCE=live`   | Executar com o stream real da Wikimedia        |
+| Teste | Configuração | Objetivo                                       |
+| ----- | ------------ | ---------------------------------------------- |
+| T1    | `local[1]`   | Medir o comportamento mínimo do pipeline       |
+| T2    | `local[*]`   | Medir uso total das threads lógicas da máquina |
 
 ### 6.4 Resultados
 
-Os resultados devem ser registrados localmente após cada execução. O projeto já expõe sinais úteis para isso:
+#### T1 - `local[1]`
 
-- logs do produtor, com o número de mensagens enviadas;
-- logs do consumidor Spark, com tamanho e duração de cada micro-batch;
-- Spark UI, com Jobs, Stages e tempo por estágio;
-- SQLite, com as tabelas `events` e `window_metrics`.
+Foram gerados 2 Structured Streaming Queries (Valores apresentados são para média de ambas)
 
-#### Exemplo de critérios mínimos de aprovação
+| Métrica                  | Unidade         | Resultado        |
+| ------------------------ | --------------- | ---------------- |
+| Eventos emitidos         | eventos/segundo | 58,926           |
+| Eventos recebidos        | eventos/segundo | 56,905           |
+| Eventos processados      | eventos/segundo | 55,560           |
+| Latência por micro-batch | ms              | 449.50           |
+| Uso de CPU               | %               | Entre 30 e 50    |
+| Uso de GPU               | %               | Picos de 0 a 100 |
+| Uso de memória           | GB              | 11,2             |
+| Uso de memória (GPU)     | GB              | 3,53             |
+| Linhas por janela        | contagem        | 20               |
 
-| Critério                        | Esperado |
-| ------------------------------- | -------- |
-| Kafka recebe eventos            | Sim      |
-| Spark consome eventos           | Sim      |
-| Spark processa janela tumbling  | Sim      |
-| SQLite persiste os resultados   | Sim      |
-| Dashboard exibe os dados        | Sim      |
-| Spark UI mostra estágios ativos | Sim      |
+#### T2 - `local[*]`
 
-### 6.5 Observabilidade do teste
+Foram gerados 2 Structured Streaming Queries (Valores apresentados são para média de ambas)
 
-Durante a execução, consulte:
-
-- [http://localhost:4040](http://localhost:4040) para ver Jobs, Stages, SQL e tempo de execução;
-- `docker logs -f spark_consumer` para acompanhar a vazão dos micro-batches;
-- `docker logs -f wikimedia_producer` para conferir quantos eventos estão sendo enviados;
-- o dashboard em [http://localhost:8501](http://localhost:8501) para validar se os dados transformados estão aparecendo corretamente.
+| Métrica                  | Unidade         | Resultado |
+| ------------------------ | --------------- | --------- |
+| Eventos emitidos         | eventos/segundo | X         |
+| Eventos recebidos        | eventos/segundo | X         |
+| Eventos processados      | eventos/segundo | X         |
+| Latência por micro-batch | ms              | X         |
+| Uso de CPU               | %               | X         |
+| Uso de GPU               | %               | X         |
+| Uso de memória           | GB              | X         |
+| Uso de memória (GPU)     | GB              | X         |
+| Linhas por janela        | contagem        | X         |
 
 ## 7. Limitações e conclusões
 
