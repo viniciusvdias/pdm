@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Perfilamento Paralelo de Grandes Datasets CSV — VisFlow-MM | PDM UFLA 2026</title>
+<style>
+  /* ── Base ── */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #11162a; }
+
+  /* ── Slide = A4 landscape ── */
+  .slide {
+    width: 297mm;
+    height: 210mm;
+    background: white;
+    margin: 0 auto 10px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    page-break-after: always;
+  }
+
+  /* ── Header ── */
+  .slide-header {
+    background: linear-gradient(135deg, #14263f 0%, #2e5c99 60%, #4472C4 100%);
+    color: white;
+    padding: 13px 40px 11px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-bottom: 3px solid #ED7D31;
+  }
+  .slide-header h2 { font-size: 1.24em; font-weight: 700; letter-spacing: .01em; }
+  .slide-header .kicker { font-size: .62em; font-weight: 600; opacity: .8; text-transform: uppercase; letter-spacing: .15em; display:block; margin-bottom:2px; }
+  .slide-num { font-size: .8em; opacity: .7; white-space: nowrap; }
+
+  /* ── Body — VERTICALLY CENTERED ── */
+  .slide-body {
+    flex: 1;
+    padding: 22px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;   /* << conteúdo centralizado verticalmente */
+    gap: 13px;
+    min-height: 0;
+  }
+
+  /* ── Title slide ── */
+  .title-slide {
+    background: radial-gradient(circle at 30% 20%, #2e5c99 0%, #14263f 55%, #0d1628 100%);
+    color: white;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 0;
+    padding: 0;
+    position: relative;
+  }
+  .title-slide .title-body {
+    padding: 40px 60px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    z-index: 2;
+  }
+  .title-slide h1 { font-size: 2.15em; font-weight: 800; line-height: 1.18; }
+  .title-slide .subtitle { font-size: 1.12em; opacity: .9; line-height: 1.5; }
+  .title-slide .meta { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+  .title-slide .meta-chip {
+    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25);
+    border-radius: 20px; padding: 7px 18px; font-size: .82em;
+  }
+  .title-slide .bottom-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,.35); padding: 12px 40px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: .82em; opacity: .9; z-index: 2;
+  }
+  .accent-line { width: 70px; height: 4px; background: #ED7D31; border-radius: 2px; }
+
+  /* ── Typography ── */
+  h3 { font-size: 1.02em; color: #14263f; margin-bottom: 5px; }
+  h4 { font-size: .9em; color: #2e5c99; margin-bottom: 3px; }
+  p  { font-size: .85em; color: #333; line-height: 1.55; }
+  ul, ol { padding-left: 20px; }
+  li { font-size: .85em; color: #333; line-height: 1.6; }
+  strong { color: #14263f; }
+  em { color: #2e5c99; font-style: italic; }
+  code { background: #eef3ff; border: 1px solid #c8d4f0; border-radius: 3px;
+         padding: 1px 5px; font-size: .82em; font-family: Consolas, monospace; color:#1a3a5c; }
+
+  /* ── Citations ── */
+  .cite { color: #2e5c99; font-size: .82em; font-weight: 600; white-space: nowrap; }
+  sup.cite { font-size: .62em; vertical-align: super; }
+
+  /* ── Cards ── */
+  .box { background: #f7faff; border-radius: 8px; padding: 11px 15px; border-left: 4px solid #4472C4; }
+  .box-green  { border-left-color: #217346; background: #f0faf4; }
+  .box-orange { border-left-color: #ED7D31; background: #fff8f0; }
+  .box-red    { border-left-color: #C00000; background: #fff0f0; }
+  .box-purple { border-left-color: #8250df; background: #f7f2ff; }
+  .box h4:first-child, .box strong:first-child { display:block; }
+
+  /* ── Grids ── */
+  .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .cols3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 13px; }
+  .cols2-wide { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
+  .cols2-narrow { display: grid; grid-template-columns: 1fr 1.4fr; gap: 18px; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: .8em; }
+  thead th { background: #14263f; color: white; padding: 6px 9px; text-align: left; font-weight:600; }
+  tbody td { padding: 5px 9px; border-bottom: 1px solid #e0e8f0; }
+  tbody tr:nth-child(even) td { background: #f4f8ff; }
+  .td-best { color: #217346; font-weight: 700; }
+  .td-warn { color: #C00000; font-weight: 700; }
+  table caption { caption-side: top; font-size: .82em; color:#555; text-align:left; margin-bottom:4px; font-style:italic; }
+
+  /* ── Result big stats ── */
+  .big-stat { text-align: center; padding: 4px; }
+  .big-stat .num { font-size: 2.1em; font-weight: 800; color: #4472C4; line-height: 1; }
+  .big-stat .lbl { font-size: .72em; color: #666; margin-top: 5px; line-height:1.35; }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: #e0e8f0; margin: 2px 0; }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; border-radius: 10px; padding: 2px 10px; font-size: .72em; font-weight: 700; }
+  .badge-blue { background: #4472C4; color: white; }
+  .badge-green { background: #217346; color: white; }
+  .badge-orange { background: #ED7D31; color: white; }
+  .badge-purple { background: #8250df; color: white; }
+
+  /* ── Speedup bars ── */
+  .spd-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .spd-label { font-size: .76em; color: #333; width: 78px; flex-shrink: 0; font-family: monospace; }
+  .spd-bar-bg { flex: 1; background: #e8ecf0; border-radius: 4px; height: 17px; }
+  .spd-bar-fill { height: 17px; border-radius: 4px; display: flex; align-items: center;
+                  padding-left: 7px; font-size: .7em; font-weight: 700; color: white; }
+  .spd-val { font-size: .76em; color: #333; width: 46px; flex-shrink: 0; text-align: right; font-weight:600; }
+
+  /* ── Footer ── */
+  .slide-footer {
+    background: #f0f4fb; border-top: 1px solid #d8e0f0;
+    padding: 5px 40px; font-size: .7em; color: #777;
+    display: flex; justify-content: space-between; flex-shrink: 0;
+  }
+
+  /* ── Formula block ── */
+  .formula { background: #f7faff; border: 1px solid #d8e4fb; border-radius: 8px;
+             padding: 12px 18px; text-align: center; font-size: 1.05em; color:#14263f; }
+  .formula .eqlabel { float:right; color:#999; font-size:.7em; }
+
+  /* ── SVG flow diagrams ── */
+  .flow { width: 100%; height: auto; display: block; }
+  .flow text { font-family: 'Segoe UI', Arial, sans-serif; }
+
+  /* ── References ── */
+  .refs { columns: 2; column-gap: 32px; font-size: .76em; line-height: 1.5; }
+  .refs .ref { break-inside: avoid; margin-bottom: 7px; color:#333; padding-left:18px; text-indent:-18px; }
+  .refs .ref b { color:#14263f; }
+
+  /* ── Print ── */
+  @media print {
+    body { background: white; }
+    .slide { margin: 0; width: 100%; height: 100vh; }
+    .no-print { display: none; }
+    @page { size: A4 landscape; margin: 0; }
+  }
+  @media screen { body { padding: 22px; } }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════ SLIDE 1 — TÍTULO ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-body title-slide">
+    <div class="title-body">
+      <div style="font-size:.8em; opacity:.75; letter-spacing:.18em; text-transform:uppercase">Big Data · Processamento de Dados Massivos (PDM)</div>
+      <div class="accent-line"></div>
+      <h1>Perfilamento Paralelo de<br>Grandes Datasets CSV</h1>
+      <div class="subtitle">
+        Escalando o módulo <code style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">DataSetSummary</code> do framework <strong style="color:#fff">VisFlow-MM</strong><br>
+        Python <code style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">ProcessPoolExecutor</code> vs. Apache Spark <code style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">local[N]</code> · NYC Yellow Taxi (1 · 5 · 10 GB)
+      </div>
+      <div class="meta">
+        <div class="meta-chip">PPGCC — UFLA</div>
+        <div class="meta-chip">2026/1</div>
+        <div class="meta-chip">AMD Ryzen 7 8700G · 16 núcleos lógicos</div>
+      </div>
+    </div>
+    <div class="bottom-bar">
+      <span>Otávio Fonseca · Universidade Federal de Lavras</span>
+      <span>Prof. Vinícius Dias</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE AGENDA — ROTEIRO ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Roteiro da apresentação</span><h2>Agenda</h2></div>
+    <span class="slide-num">2 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2">
+      <div>
+        <div class="box box-purple" style="margin-bottom:9px"><strong>1 · Contexto científico</strong><br><span style="font-size:.85em">NL2Vis, o framework VisFlow-MM e o papel do pré-processamento determinístico</span></div>
+        <div class="box" style="margin-bottom:9px"><strong>2 · O módulo <code>DataSetSummary</code></strong><br><span style="font-size:.85em">As 7 etapas determinísticas e o gargalo de escala (<code>MemoryError</code>)</span></div>
+        <div class="box box-red" style="margin-bottom:9px"><strong>3 · Problema &amp; perguntas de pesquisa</strong><br><span style="font-size:.85em">RQ1 · RQ2 · RQ3 — escalar sem perder exatidão nem romper a interface</span></div>
+        <div class="box box-green"><strong>4 · Solução — pipeline paralelo</strong><br><span style="font-size:.85em">Multiprocessing Python <em>vs.</em> Apache Spark · chunks · agregação exata</span></div>
+      </div>
+      <div>
+        <div class="box box-orange" style="margin-bottom:9px"><strong>5 · Experimentos</strong><br><span style="font-size:.85em">NYC Yellow Taxi (1 · 5 · 10 GB) · ambiente · protocolo de benchmark</span></div>
+        <div class="box" style="margin-bottom:9px"><strong>6 · Resultados</strong><br><span style="font-size:.85em">Multiprocessing não escala · Spark atinge 5,35× com 16 núcleos</span></div>
+        <div class="box box-purple" style="margin-bottom:9px"><strong>7 · Análise — Lei de Amdahl</strong><br><span style="font-size:.85em">Por que um escala e o outro não · recomendações para produção</span></div>
+        <div class="box box-green"><strong>8 · Conclusões &amp; trabalhos futuros</strong></div>
+        <p style="font-size:.78em;color:#888;margin-top:10px;text-align:center"><em>Apresentação · ~30 min + perguntas · PPGCC/UFLA 2026</em></p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 2</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 2 — CONTEXTO NL2Vis ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Contexto científico</span><h2>NL2Vis e o Framework VisFlow-MM</h2></div>
+    <span class="slide-num">3 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2-wide">
+      <div>
+        <h3>De linguagem natural à visualização (NL2Vis)</h3>
+        <p>LLMs impulsionaram sistemas que geram gráficos a partir de consultas em linguagem natural, eliminando a necessidade de conhecer gramáticas de visualização — Chat2Vis <span class="cite">[Maddigan & Susnjak 2023]</span>, LIDA <span class="cite">[Dibia 2023]</span>, NVAgent <span class="cite">[Ouyang et al. 2025]</span> e DeepVIS <span class="cite">[Shuai et al. 2026]</span>.</p>
+        <div class="box box-purple" style="margin-top:10px">
+          <strong>VisFlow-MM</strong> <span class="cite">[Fonseca 2026b]</span> — sistema NL2Vis híbrido: pré-processamento determinístico → geração de código Python via LLM (KIMI-K2.5) → validação por agentes → condicionamento multimodal por imagem de referência.
+        </div>
+        <div class="box" style="margin-top:10px">
+          <strong>Tese central:</strong> em sistemas NL2Vis o LLM <em>nunca</em> acessa os dados brutos — recebe uma <strong>representação intermediária</strong> construída por um módulo determinístico. A qualidade e a escalabilidade desse pré-processamento determinam o <em>teto de desempenho de todo o pipeline</em>.
+        </div>
+      </div>
+      <div>
+        <h3>Por que perfilamento determinístico?</h3>
+        <ul style="margin-top:6px">
+          <li>CSVs reais <strong>excedem a janela de contexto</strong> dos modelos</li>
+          <li>Carregam ruído (tipos heterogêneos, datas variadas) que degrada a geração de código <span class="cite">[Wu et al. 2024]</span></li>
+          <li>LLMs têm <strong>dificuldade em calcular estatísticas precisas</strong> sobre dados brutos <span class="cite">[Zhu et al. 2024]</span></li>
+        </ul>
+        <div class="box box-green" style="margin-top:12px">
+          <strong>Consequência:</strong> o módulo de perfilamento (<code>DataSetSummary</code>) não é mera infraestrutura — é um <em>objeto de pesquisa de primeira ordem</em>.
+        </div>
+        <div class="big-stat" style="margin-top:14px">
+          <div class="num" style="color:#8250df">4</div>
+          <div class="lbl">estágios do pipeline VisFlow-MM<br>(detalhados no próximo slide)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 3</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 3 — PIPELINE VisFlow-MM (FLOWCHART) ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Arquitetura do sistema · Figura 1 do artigo</span><h2>Pipeline do VisFlow-MM em 4 Estágios</h2></div>
+    <span class="slide-num">4 / 19</span>
+  </div>
+  <div class="slide-body">
+    <svg class="flow" viewBox="0 0 1180 360" role="img" aria-label="Pipeline VisFlow-MM">
+      <defs>
+        <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#4472C4"/>
+        </marker>
+        <marker id="arrO" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#ED7D31"/>
+        </marker>
+        <linearGradient id="gBlue" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#5b86c9"/><stop offset="1" stop-color="#3a5fa8"/>
+        </linearGradient>
+        <linearGradient id="gPurple" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#9a6bea"/><stop offset="1" stop-color="#7340d4"/>
+        </linearGradient>
+        <linearGradient id="gGreen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2f9c63"/><stop offset="1" stop-color="#1c7a49"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Stage 1 -->
+      <rect x="20" y="90" width="200" height="170" rx="12" fill="url(#gBlue)"/>
+      <text x="120" y="118" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">1 · Entrada do usuário</text>
+      <text x="120" y="150" text-anchor="middle" fill="#eaf0fb" font-size="13">📄 Arquivo CSV</text>
+      <text x="120" y="178" text-anchor="middle" fill="#eaf0fb" font-size="13">💬 Consulta em</text>
+      <text x="120" y="196" text-anchor="middle" fill="#eaf0fb" font-size="13">linguagem natural</text>
+      <text x="120" y="224" text-anchor="middle" fill="#eaf0fb" font-size="13">🖼 Imagem de</text>
+      <text x="120" y="242" text-anchor="middle" fill="#eaf0fb" font-size="13">referência (opcional)</text>
+
+      <!-- Stage 2 -->
+      <rect x="270" y="60" width="250" height="230" rx="12" fill="url(#gBlue)"/>
+      <text x="395" y="88" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">2 · Pré-processamento</text>
+      <text x="395" y="106" text-anchor="middle" fill="#cfe0fb" font-size="12" font-style="italic">determinístico</text>
+      <rect x="288" y="122" width="214" height="46" rx="7" fill="rgba(255,255,255,.16)"/>
+      <text x="395" y="142" text-anchor="middle" fill="#fff" font-size="12">Normalização + tokenização</text>
+      <text x="395" y="158" text-anchor="middle" fill="#fff" font-size="12">da consulta</text>
+      <rect x="288" y="176" width="214" height="42" rx="7" fill="rgba(255,255,255,.16)"/>
+      <text x="395" y="202" text-anchor="middle" fill="#fff" font-size="12">Chart-type selection</text>
+      <rect x="288" y="226" width="214" height="48" rx="7" fill="#f9e2af"/>
+      <text x="395" y="247" text-anchor="middle" fill="#5a4a10" font-size="12" font-weight="700">DataSetSummary</text>
+      <text x="395" y="264" text-anchor="middle" fill="#5a4a10" font-size="11">(módulo escalado neste trabalho)</text>
+
+      <!-- Stage 3a -->
+      <rect x="570" y="90" width="210" height="170" rx="12" fill="url(#gPurple)"/>
+      <text x="675" y="118" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">3 · Geração de código</text>
+      <text x="675" y="150" text-anchor="middle" fill="#eee5fb" font-size="12">LLM (KIMI-K2.5) recebe:</text>
+      <text x="675" y="172" text-anchor="middle" fill="#eee5fb" font-size="12">sumário + tipo de gráfico</text>
+      <text x="675" y="190" text-anchor="middle" fill="#eee5fb" font-size="12">+ exemplos few-shot</text>
+      <text x="675" y="212" text-anchor="middle" fill="#eee5fb" font-size="12">→ gera script Python</text>
+      <text x="675" y="240" text-anchor="middle" fill="#fff" font-size="12" font-style="italic">(modo texto ou multimodal)</text>
+
+      <!-- Stage 3b validation -->
+      <rect x="830" y="90" width="180" height="170" rx="12" fill="url(#gPurple)"/>
+      <text x="920" y="118" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">3 · Agente validador</text>
+      <text x="920" y="150" text-anchor="middle" fill="#eee5fb" font-size="12">Executa o código</text>
+      <text x="920" y="172" text-anchor="middle" fill="#eee5fb" font-size="12">e aplica correções</text>
+      <text x="920" y="194" text-anchor="middle" fill="#eee5fb" font-size="12">localizadas</text>
+      <rect x="852" y="210" width="136" height="34" rx="16" fill="#f38ba8"/>
+      <text x="920" y="232" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">loop ≤ 3 tentativas ↺</text>
+
+      <!-- Stage 4 output -->
+      <rect x="1060" y="110" width="100" height="130" rx="12" fill="url(#gGreen)"/>
+      <text x="1110" y="138" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">4 · Saída</text>
+      <text x="1110" y="172" text-anchor="middle" fill="#fff" font-size="30">📊</text>
+      <text x="1110" y="206" text-anchor="middle" fill="#eafaf0" font-size="12">Gráfico PNG</text>
+      <text x="1110" y="224" text-anchor="middle" fill="#eafaf0" font-size="11">+ código reutilizável</text>
+
+      <!-- arrows -->
+      <line x1="222" y1="175" x2="266" y2="175" stroke="#4472C4" stroke-width="3" marker-end="url(#arr)"/>
+      <line x1="522" y1="175" x2="566" y2="175" stroke="#4472C4" stroke-width="3" marker-end="url(#arr)"/>
+      <line x1="782" y1="175" x2="826" y2="175" stroke="#4472C4" stroke-width="3" marker-end="url(#arr)"/>
+      <line x1="1012" y1="175" x2="1056" y2="175" stroke="#4472C4" stroke-width="3" marker-end="url(#arr)"/>
+    </svg>
+    <div class="box box-orange" style="margin-top:4px">
+      <strong>Foco deste trabalho:</strong> o gargalo está no estágio 2 — a sumarização via <code>DataSetSummary</code>. Escalá-la para datasets de escala Big Data, <em>sem perder exatidão estatística</em> e <em>sem romper a interface</em> esperada pelo pipeline, é o desafio endereçado.
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 4</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 4 — VisEval BENCHMARK ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Desempenho do framework hospedeiro</span><h2>VisFlow-MM no Benchmark VisEval</h2></div>
+    <span class="slide-num">5 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2">
+      <div>
+        <h3>Resultados no VisEval <span class="cite">[Chen et al. 2025]</span></h3>
+        <p style="margin-bottom:8px">Benchmark que mede taxa de código <em>inválido</em>, saída <em>ilegal</em> e taxa de <em>aprovação</em> (pass rate). Valores em <strong>verde</strong> = melhor por métrica.</p>
+        <table>
+          <thead><tr><th>Método</th><th>Inválido %</th><th>Ilegal %</th><th>Pass %</th></tr></thead>
+          <tbody>
+            <tr><td>VisFlow-MM (text-only)</td><td>20,40</td><td>18,50</td><td>61,20</td></tr>
+            <tr><td><strong>VisFlow-MM (multimodal)</strong></td><td class="td-best">0,13</td><td>19,69</td><td class="td-best">80,18</td></tr>
+            <tr><td>LIDA <span class="cite">[Dibia 2023]</span></td><td>1,13</td><td>21,20</td><td>77,66</td></tr>
+            <tr><td>Chat2Vis <span class="cite">[Maddigan&nbsp;&amp;&nbsp;Susnjak&nbsp;2023]</span></td><td>0,86</td><td>21,37</td><td>77,75</td></tr>
+            <tr><td>NVAgent <span class="cite">[Ouyang et al. 2025]</span></td><td>0,72</td><td class="td-best">13,63</td><td>85,63</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Leitura dos resultados</h3>
+        <div class="box box-green" style="margin-bottom:10px">
+          O <strong>condicionamento multimodal</strong> derrubou a taxa de código inválido de <strong>20,40% → 0,13%</strong> e elevou a aprovação de <strong>61,20% → 80,18%</strong>.
+        </div>
+        <div class="box">
+          VisFlow-MM <strong>supera LIDA e Chat2Vis</strong> em pass rate e fica competitivo com o NVAgent — que usa arquitetura multi-agente mais complexa.
+        </div>
+        <div class="box box-orange" style="margin-top:10px">
+          <strong>Conexão com este trabalho:</strong> esse desempenho depende de um sumário de qualidade. Se o perfilamento falha (<code>MemoryError</code> em datasets grandes), <em>todo o pipeline cai</em> — daí a urgência de escalá-lo.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 5</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 5 — DataSetSummary FLOWCHART ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">O módulo · Figura 2 do artigo</span><h2>DataSetSummary — As Etapas Determinísticas</h2></div>
+    <span class="slide-num">6 / 19</span>
+  </div>
+  <div class="slide-body">
+    <svg class="flow" viewBox="0 0 1180 350" role="img" aria-label="Etapas do DataSetSummary">
+      <defs>
+        <marker id="arr2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#555"/>
+        </marker>
+        <linearGradient id="gStep" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fbfdff"/><stop offset="1" stop-color="#eaf1fc"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Raw -->
+      <rect x="15" y="130" width="120" height="90" rx="10" fill="#14263f"/>
+      <text x="75" y="165" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">CSV bruto</text>
+      <text x="75" y="188" text-anchor="middle" fill="#cdd6f4" font-size="26">🗂</text>
+
+      <!-- four steps grid 2x2 -->
+      <!-- step 1 -->
+      <rect x="175" y="40" width="285" height="120" rx="10" fill="url(#gStep)" stroke="#4472C4" stroke-width="1.5"/>
+      <rect x="175" y="40" width="285" height="26" rx="10" fill="#4472C4"/>
+      <text x="190" y="58" fill="#fff" font-size="13" font-weight="700">1 · Filtragem de colunas (PII)</text>
+      <text x="190" y="86" fill="#333" font-size="12">Descarta colunas cujo nome casa com</text>
+      <text x="190" y="104" fill="#333" font-size="12">padrões de PII: <tspan font-family="Consolas,monospace" fill="#1a3a5c">login · cpf · cnpj</tspan></text>
+      <text x="190" y="124" fill="#333" font-size="12">Opera sobre nomes, não sobre conteúdo.</text>
+      <text x="190" y="144" fill="#777" font-size="11" font-style="italic">Fallback: mantém tudo se todas casariam.</text>
+
+      <!-- step 2 -->
+      <rect x="490" y="40" width="285" height="120" rx="10" fill="url(#gStep)" stroke="#4472C4" stroke-width="1.5"/>
+      <rect x="490" y="40" width="285" height="26" rx="10" fill="#4472C4"/>
+      <text x="505" y="58" fill="#fff" font-size="13" font-weight="700">2 · Extração de esquema</text>
+      <text x="505" y="86" fill="#333" font-size="12">Dimensões (linhas × colunas), nomes,</text>
+      <text x="505" y="104" fill="#333" font-size="12">tipos (<tspan font-family="Consolas,monospace" fill="#1a3a5c">df.dtypes</tspan>), nulos por coluna.</text>
+      <text x="505" y="124" fill="#333" font-size="12">2 linhas de exemplo (1º + último registro)</text>
+      <text x="505" y="144" fill="#777" font-size="11" font-style="italic">não aleatório → reprodutível.</text>
+
+      <!-- step 3 -->
+      <rect x="175" y="180" width="285" height="135" rx="10" fill="url(#gStep)" stroke="#ED7D31" stroke-width="1.5"/>
+      <rect x="175" y="180" width="285" height="26" rx="10" fill="#ED7D31"/>
+      <text x="190" y="198" fill="#fff" font-size="13" font-weight="700">3 · Perfilamento de cardinalidade</text>
+      <text x="190" y="224" fill="#333" font-size="11.5">Categórica discreta (≤10): valores + frequências</text>
+      <text x="190" y="244" fill="#333" font-size="11.5">Semi-contínua (11–100): min/max/μ/σ + amostra</text>
+      <text x="190" y="264" fill="#333" font-size="11.5">Contínua (&gt;100): só estatísticas descritivas</text>
+      <text x="190" y="290" fill="#555" font-size="11" font-style="italic">Define se vira barra, histograma ou eixo —</text>
+      <text x="190" y="306" fill="#555" font-size="11" font-style="italic">escolha semanticamente correta [Zacks &amp; Tversky 1999]</text>
+
+      <!-- step 4 -->
+      <rect x="490" y="180" width="285" height="135" rx="10" fill="url(#gStep)" stroke="#ED7D31" stroke-width="1.5"/>
+      <rect x="490" y="180" width="285" height="26" rx="10" fill="#ED7D31"/>
+      <text x="505" y="198" fill="#fff" font-size="13" font-weight="700">4 · Detecção temporal</text>
+      <text x="505" y="224" fill="#333" font-size="12">Coluna de texto marcada como data se a</text>
+      <text x="505" y="244" fill="#333" font-size="12">amostra tem separadores <tspan font-family="Consolas,monospace" fill="#1a3a5c">/ -</tspan> + dígitos</text>
+      <text x="505" y="264" fill="#333" font-size="12">e passa por date-parse nos 1ºs registros.</text>
+      <text x="505" y="290" fill="#555" font-size="11" font-style="italic">Confirmada → grava o formato exato e instrui</text>
+      <text x="505" y="306" fill="#555" font-size="11" font-style="italic">o gerador a preservá-lo (sem reformatar).</text>
+
+      <!-- Compact summary -->
+      <rect x="815" y="115" width="135" height="120" rx="10" fill="url(#gGreen)"/>
+      <text x="882" y="142" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Sumário</text>
+      <text x="882" y="160" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">compacto</text>
+      <text x="882" y="186" text-anchor="middle" fill="#eafaf0" font-size="11">estrutura · cardinalidade</text>
+      <text x="882" y="202" text-anchor="middle" fill="#eafaf0" font-size="11">faixas · amostras</text>
+      <text x="882" y="224" text-anchor="middle" fill="#d5f3e2" font-size="11" font-style="italic">→ contexto do LLM</text>
+
+      <!-- arrows -->
+      <line x1="137" y1="160" x2="171" y2="100" stroke="#555" stroke-width="2.2" marker-end="url(#arr2)"/>
+      <line x1="137" y1="185" x2="171" y2="240" stroke="#555" stroke-width="2.2" marker-end="url(#arr2)"/>
+      <line x1="462" y1="100" x2="486" y2="100" stroke="#555" stroke-width="2.2" marker-end="url(#arr2)"/>
+      <line x1="462" y1="245" x2="486" y2="245" stroke="#555" stroke-width="2.2" marker-end="url(#arr2)"/>
+      <line x1="777" y1="100" x2="855" y2="150" stroke="#217346" stroke-width="2.2" marker-end="url(#arr2)"/>
+      <line x1="777" y1="245" x2="855" y2="195" stroke="#217346" stroke-width="2.2" marker-end="url(#arr2)"/>
+    </svg>
+    <p style="text-align:center; color:#666; font-size:.8em; margin-top:2px"><strong>Determinístico:</strong> a mesma entrada gera sempre o mesmo sumário — garantia de reprodutibilidade exigida pelo pipeline. <span style="color:#aaa">(7 sub-etapas no total, agrupadas em 4 estágios)</span></p>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 6</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 6 — PROBLEMA + RQs ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Problema &amp; perguntas de pesquisa</span><h2>O Gargalo de Escala e as RQs</h2></div>
+    <span class="slide-num">7 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2">
+      <div>
+        <h3>O problema de escala</h3>
+        <div class="box box-red">
+          <strong>MemoryError:</strong> o <code>DataSetSummary</code> original executa <code>pd.read_csv(path)</code> <em>sem</em> <code>chunksize</code> — carrega o arquivo inteiro na RAM. Um CSV de 10&nbsp;GB exige ≥10&nbsp;GB só para o DataFrame, mais as estruturas de profiling.
+        </div>
+        <p style="margin-top:10px">Datasets de dezenas de gigabytes são comuns em <strong>transporte urbano, IoT, logs de sistema, saúde e financeiro</strong>. A premissa de "tudo cabe na RAM" torna-se inviável em máquinas com 16–32&nbsp;GB e outros processos ativos.</p>
+        <div class="box box-green" style="margin-top:10px">
+          <strong>Restrições do desafio:</strong> escalar <em>sem perder exatidão estatística</em> e <em>sem romper a interface</em> esperada pelo VisFlow-MM <span class="cite">[Fonseca 2026b]</span>.
+        </div>
+      </div>
+      <div>
+        <h3>Perguntas de pesquisa</h3>
+        <div class="box" style="margin-bottom:9px"><strong>RQ1.</strong> Adicionar <em>workers</em> Python (<code>ProcessPoolExecutor</code>) reduz o tempo de perfilamento de CSVs grandes?</div>
+        <div class="box" style="margin-bottom:9px"><strong>RQ2.</strong> O Apache Spark <span class="cite">[Zaharia et al. 2016]</span> apresenta melhor escalabilidade — e <em>por quê</em>?</div>
+        <div class="box" style="margin-bottom:9px"><strong>RQ3.</strong> Qual abordagem é mais adequada para integração com o VisFlow-MM em produção?</div>
+        <div class="box box-orange">
+          <strong>Resultado-síntese (spoiler):</strong> comportamento contra-intuitivo — o multiprocessing Python <em>não escala</em> (gargalo de I/O), enquanto o Spark atinge <strong>5,35× com 16 núcleos</strong>.
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="cols3">
+      <div class="big-stat"><div class="num">~94 M</div><div class="lbl">linhas no maior dataset<br>(10 GB em CSV)</div></div>
+      <div class="big-stat"><div class="num" style="color:#C00000">MemError</div><div class="lbl">abordagem original<br>(pd.read_csv sem chunks)</div></div>
+      <div class="big-stat"><div class="num" style="color:#217346">2</div><div class="lbl">paradigmas de paralelismo<br>implementados e comparados</div></div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 7</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 7 — DATASET ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Material experimental</span><h2>Dataset — NYC Yellow Taxi Trip Records</h2></div>
+    <span class="slide-num">8 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2">
+      <div>
+        <h3>Por que este dataset?</h3>
+        <ul>
+          <li><strong>Volume:</strong> &gt;10 GB em CSV, ~94 M linhas (Jan/2022–Jun/2024)</li>
+          <li><strong>Variedade:</strong> numéricas (tarifas, distância), categóricas (pagamento), temporais (embarque/desembarque) — exercita as 7 etapas</li>
+          <li><strong>Público e reprodutível:</strong> sem conta nem licença <span class="cite">[NYC TLC 2024]</span></li>
+          <li><strong>Controlável:</strong> concatenando meses construímos 1, 5 e 10 GB exatos</li>
+        </ul>
+        <div class="box" style="margin-top:10px">
+          <strong>Formato original:</strong> Parquet (Snappy, ~47 MB/mês). <strong>Expansão ~8×</strong> ao converter para CSV → ~380 MB CSV/mês.
+        </div>
+        <table style="margin-top:10px">
+          <thead><tr><th>Arquivo</th><th>Meses</th><th>Linhas</th><th>Tamanho</th></tr></thead>
+          <tbody>
+            <tr><td><code>taxi_1gb.csv</code></td><td>~3</td><td>~8 M</td><td><strong>1.069 MB</strong></td></tr>
+            <tr><td><code>taxi_5gb.csv</code></td><td>~14</td><td>~49 M</td><td><strong>4.585 MB</strong></td></tr>
+            <tr><td><code>taxi_10gb.csv</code></td><td>~27</td><td>~94 M</td><td><strong>8.910 MB</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Colunas representativas (19 no total)</h3>
+        <table>
+          <thead><tr><th>Coluna</th><th>Tipo</th><th>Tratamento no profiler</th></tr></thead>
+          <tbody>
+            <tr><td><code>trip_distance</code></td><td>float</td><td>Contínua (&gt;100 únicos) → histograma</td></tr>
+            <tr><td><code>fare_amount</code></td><td>float</td><td>Contínua → estatísticas descritivas</td></tr>
+            <tr><td><code>passenger_count</code></td><td>float</td><td>Semi-contínua (1–8) → bins</td></tr>
+            <tr><td><code>payment_type</code></td><td>int</td><td>Discreta (≤10) → barras</td></tr>
+            <tr><td><code>store_and_fwd_flag</code></td><td>string</td><td>value_counts (Y/N)</td></tr>
+            <tr><td><code>tpep_pickup_datetime</code></td><td>string</td><td>Detecção temporal</td></tr>
+          </tbody>
+        </table>
+        <div class="box box-purple" style="margin-top:12px; font-size:.84em">
+          <strong>Exemplo de decisão semântica:</strong> sem a classificação de cardinalidade, o LLM trataria <code>payment_type</code> (6 valores inteiros) como contínua e geraria um histograma, onde um <em>gráfico de barras</em> é o correto <span class="cite">[Zacks &amp; Tversky 1999]</span>.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 8</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 8 — ARQUITETURA PARALELA (FLOWCHART) ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Solução · pipeline reprodutível via Docker</span><h2>Arquitetura do Pipeline Paralelo</h2></div>
+    <span class="slide-num">9 / 19</span>
+  </div>
+  <div class="slide-body">
+    <svg class="flow" viewBox="0 0 1180 350" role="img" aria-label="Arquitetura do pipeline">
+      <defs>
+        <marker id="arr3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#666"/>
+        </marker>
+        <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b86c9"/><stop offset="1" stop-color="#3a5fa8"/></linearGradient>
+        <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0935a"/><stop offset="1" stop-color="#d96e22"/></linearGradient>
+      </defs>
+
+      <!-- source -->
+      <rect x="20" y="150" width="130" height="58" rx="9" fill="url(#gGreen)"/>
+      <text x="85" y="175" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">NYC TLC CDN</text>
+      <text x="85" y="194" text-anchor="middle" fill="#eafaf0" font-size="11">Parquet ~47 MB/mês</text>
+
+      <!-- downloader -->
+      <rect x="180" y="150" width="150" height="58" rx="9" fill="url(#gA)"/>
+      <text x="255" y="172" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">downloader.py</text>
+      <text x="255" y="191" text-anchor="middle" fill="#dbe6fb" font-size="10.5">Parquet→CSV + concat</text>
+
+      <!-- datasets -->
+      <rect x="360" y="148" width="150" height="62" rx="9" fill="#14263f"/>
+      <text x="435" y="170" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">datasets/</text>
+      <text x="435" y="188" text-anchor="middle" fill="#cdd6f4" font-size="11">taxi_{1,5,10}gb.csv</text>
+      <text x="435" y="202" text-anchor="middle" fill="#9fb0d8" font-size="10">volume compartilhado</text>
+
+      <!-- workload A -->
+      <rect x="560" y="40" width="320" height="100" rx="10" fill="url(#gA)"/>
+      <text x="720" y="64" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">WORKLOAD A · benchmark.py</text>
+      <text x="575" y="88" fill="#eaf0fb" font-size="11.5">ProcessPoolExecutor (N processos Python)</text>
+      <text x="575" y="106" fill="#eaf0fb" font-size="11.5">lê CSV em chunks de 500k → IPC (pickle)</text>
+      <text x="575" y="124" fill="#eaf0fb" font-size="11.5">profile_chunk() ∥ → aggregate_chunks()</text>
+
+      <!-- workload B -->
+      <rect x="560" y="210" width="320" height="100" rx="10" fill="url(#gB)"/>
+      <text x="720" y="234" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">WORKLOAD B · spark_benchmark.py</text>
+      <text x="575" y="258" fill="#fff5ec" font-size="11.5">PySpark local[N] — threads JVM (sem GIL)</text>
+      <text x="575" y="276" fill="#fff5ec" font-size="11.5">Catalyst: scan único compilado</text>
+      <text x="575" y="294" fill="#fff5ec" font-size="11.5">approx_count_distinct (HyperLogLog ±5%)</text>
+
+      <!-- results -->
+      <rect x="910" y="120" width="135" height="110" rx="9" fill="#14263f"/>
+      <text x="977" y="148" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">results/</text>
+      <text x="977" y="170" text-anchor="middle" fill="#cdd6f4" font-size="10.5">metrics_*.csv</text>
+      <text x="977" y="186" text-anchor="middle" fill="#cdd6f4" font-size="10.5">metrics_spark_*.csv</text>
+      <text x="977" y="210" text-anchor="middle" fill="#9fb0d8" font-size="10">tempo · vazão · speedup</text>
+
+      <!-- report -->
+      <rect x="1070" y="135" width="95" height="80" rx="9" fill="url(#gB)"/>
+      <text x="1117" y="162" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">report</text>
+      <text x="1117" y="180" text-anchor="middle" fill="#fff5ec" font-size="10">gráficos +</text>
+      <text x="1117" y="195" text-anchor="middle" fill="#fff5ec" font-size="10">análise Amdahl</text>
+
+      <!-- arrows -->
+      <line x1="152" y1="179" x2="176" y2="179" stroke="#666" stroke-width="2.4" marker-end="url(#arr3)"/>
+      <line x1="332" y1="179" x2="356" y2="179" stroke="#666" stroke-width="2.4" marker-end="url(#arr3)"/>
+      <path d="M512,170 C540,120 540,100 556,90" fill="none" stroke="#666" stroke-width="2.4" marker-end="url(#arr3)"/>
+      <path d="M512,188 C540,250 540,260 556,260" fill="none" stroke="#666" stroke-width="2.4" marker-end="url(#arr3)"/>
+      <path d="M882,90 C900,110 900,150 906,160" fill="none" stroke="#666" stroke-width="2.4" marker-end="url(#arr3)"/>
+      <path d="M882,260 C900,240 900,200 906,190" fill="none" stroke="#666" stroke-width="2.4" marker-end="url(#arr3)"/>
+      <line x1="1047" y1="175" x2="1066" y2="175" stroke="#666" stroke-width="2.4" marker-end="url(#arr3)"/>
+    </svg>
+    <div class="cols3" style="margin-top:2px">
+      <div class="box"><strong>downloader</strong> <span class="badge badge-blue">setup</span><br><span style="font-size:.8em">Baixa Parquet, converte e concatena os CSVs-alvo</span></div>
+      <div class="box"><strong>benchmark / spark-benchmark</strong> <span class="badge badge-green">experimento</span><br><span style="font-size:.8em">Mede tempo e vazão · N ∈ {1,2,4,8,16} · 3 repetições</span></div>
+      <div class="box"><strong>report-all</strong> <span class="badge badge-orange">relatório</span><br><span style="font-size:.8em">Tudo orquestrado por <code>docker compose</code> → reprodutível <span class="cite">[Fonseca 2026a]</span></span></div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 9</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 9 — CHUNKS (FLOWCHART) ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Workload A · mecânica</span><h2>Processamento em Chunks &amp; Janela Deslizante</h2></div>
+    <span class="slide-num">10 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2-narrow">
+      <div>
+        <h3>A ideia central</h3>
+        <p>Substituir a leitura integral por <strong>leitura incremental</strong>: cada chunk tem 500.000 linhas (≈90 MB de RAM), <em>independente</em> do tamanho total do arquivo.</p>
+        <div class="arch" style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:10px 14px;font-family:Consolas,monospace;font-size:.74em;line-height:1.6;margin-top:8px">
+<span style="color:#cba6f7">reader</span> = pd.read_csv(path,<br>&nbsp;&nbsp;<span style="color:#f9e2af">chunksize</span>=500_000)<br><span style="color:#f38ba8">for</span> chunk <span style="color:#f38ba8">in</span> reader:<br>&nbsp;&nbsp;<span style="color:#89b4fa">profile_chunk</span>(chunk)
+        </div>
+        <div class="box box-orange" style="margin-top:10px; font-size:.83em">
+          <strong>Janela deslizante (Listing 2):</strong> mantém no máximo <code>2 × N</code> chunks pendentes. Ao atingir o limite, espera o <em>primeiro</em> worker terminar antes de submeter o próximo — RAM constante mesmo em 10 GB com N workers.
+        </div>
+        <div class="box box-red" style="margin-top:9px; font-size:.83em">
+          <strong>Limitação estrutural:</strong> <code>pd.read_csv</code> lê <em>serialmente</em> no processo principal. O I/O é o gargalo — não o compute (ver Slide 16).
+        </div>
+      </div>
+      <div>
+        <svg class="flow" viewBox="0 0 600 420" role="img" aria-label="Fluxo de chunks">
+          <defs>
+            <marker id="arr4" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3 L0,6 Z" fill="#4472C4"/></marker>
+          </defs>
+          <!-- main process -->
+          <rect x="190" y="20" width="220" height="56" rx="9" fill="#14263f"/>
+          <text x="300" y="44" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Processo principal</text>
+          <text x="300" y="64" text-anchor="middle" fill="#cdd6f4" font-size="11">lê CSV em chunks (serial)</text>
+          <!-- queue -->
+          <rect x="200" y="100" width="200" height="40" rx="8" fill="#eef3ff" stroke="#4472C4"/>
+          <text x="300" y="125" text-anchor="middle" fill="#1a3a5c" font-size="11.5">fila ≤ 2N chunks pendentes</text>
+          <!-- workers -->
+          <rect x="40" y="180" width="120" height="62" rx="9" fill="url(#gA)"/>
+          <text x="100" y="205" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">worker 1</text>
+          <text x="100" y="224" text-anchor="middle" fill="#dbe6fb" font-size="10">profile_chunk()</text>
+          <rect x="240" y="180" width="120" height="62" rx="9" fill="url(#gA)"/>
+          <text x="300" y="205" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">worker 2</text>
+          <text x="300" y="224" text-anchor="middle" fill="#dbe6fb" font-size="10">profile_chunk()</text>
+          <rect x="440" y="180" width="120" height="62" rx="9" fill="url(#gA)"/>
+          <text x="500" y="205" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">worker N</text>
+          <text x="500" y="224" text-anchor="middle" fill="#dbe6fb" font-size="10">profile_chunk()</text>
+          <text x="405" y="216" text-anchor="middle" fill="#999" font-size="18">···</text>
+          <!-- partials -->
+          <rect x="120" y="282" width="360" height="44" rx="8" fill="#f7faff" stroke="#ED7D31"/>
+          <text x="300" y="300" text-anchor="middle" fill="#333" font-size="11.5" font-weight="700">resultados parciais por chunk</text>
+          <text x="300" y="317" text-anchor="middle" fill="#666" font-size="10.5">(n, S, Q, mins, maxs, Counters, sets, nulos)</text>
+          <!-- aggregate -->
+          <rect x="170" y="358" width="260" height="48" rx="9" fill="url(#gGreen)"/>
+          <text x="300" y="380" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">aggregate_chunks()</text>
+          <text x="300" y="398" text-anchor="middle" fill="#eafaf0" font-size="10.5">sumário global exato (Slide 11)</text>
+          <!-- arrows -->
+          <line x1="300" y1="78" x2="300" y2="98" stroke="#4472C4" stroke-width="2.2" marker-end="url(#arr4)"/>
+          <line x1="250" y1="142" x2="120" y2="176" stroke="#4472C4" stroke-width="2.2" marker-end="url(#arr4)"/>
+          <line x1="300" y1="142" x2="300" y2="176" stroke="#4472C4" stroke-width="2.2" marker-end="url(#arr4)"/>
+          <line x1="350" y1="142" x2="480" y2="176" stroke="#4472C4" stroke-width="2.2" marker-end="url(#arr4)"/>
+          <line x1="100" y1="244" x2="200" y2="284" stroke="#ED7D31" stroke-width="2.2" marker-end="url(#arr4)"/>
+          <line x1="300" y1="244" x2="300" y2="280" stroke="#ED7D31" stroke-width="2.2" marker-end="url(#arr4)"/>
+          <line x1="500" y1="244" x2="400" y2="284" stroke="#ED7D31" stroke-width="2.2" marker-end="url(#arr4)"/>
+          <line x1="300" y1="328" x2="300" y2="356" stroke="#217346" stroke-width="2.2" marker-end="url(#arr4)"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 10</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 10 — AGREGAÇÃO EXATA ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Rigor estatístico · o coração do método</span><h2>Agregação Exata entre Chunks</h2></div>
+    <span class="slide-num">11 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2">
+      <div>
+        <h3>Por que "a média das médias" está errada</h3>
+        <p>Estatísticas como média e desvio-padrão <strong>não são lineares na concatenação</strong>.</p>
+        <div class="box box-red" style="margin-top:8px; font-size:.84em">
+          Chunk 1: <code>{10,10,10}</code> (μ=10) &nbsp;·&nbsp; Chunk 2: <code>{20}</code> (μ=20)<br>
+          <strong>Correto (ponderado):</strong> (3·10 + 1·20)/4 = <strong style="color:#217346">12,5</strong><br>
+          <strong>Média das médias:</strong> (10+20)/2 = <strong style="color:#C00000">15</strong> → erro de 20%
+        </div>
+        <h3 style="margin-top:12px">Estatísticas suficientes por chunk</h3>
+        <p style="font-size:.84em">Cada worker guarda apenas <strong>2 escalares por coluna</strong> — nenhum valor individual:</p>
+        <ul style="margin-top:4px">
+          <li style="font-size:.84em"><strong>S<sub>k</sub> = Σ x<sub>i</sub></strong> — soma dos valores do chunk</li>
+          <li style="font-size:.84em"><strong>Q<sub>k</sub> = Σ x<sub>i</sub>²</strong> — soma dos quadrados</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Fórmulas de combinação global</h3>
+        <div class="formula" style="margin-top:6px">
+          <span class="eqlabel">(1)</span>
+          x̄ = ( Σ<sub>k</sub> S<sub>k</sub> ) / ( Σ<sub>k</sub> n<sub>k</sub> )
+        </div>
+        <div class="formula" style="margin-top:8px">
+          <span class="eqlabel">(2)</span>
+          σ = √[ ( Σ<sub>k</sub> Q<sub>k</sub> / Σ<sub>k</sub> n<sub>k</sub> ) − x̄² ]
+        </div>
+        <p style="font-size:.82em; margin-top:6px">Desvio-padrão pela identidade de <strong>König–Huygens</strong>: Var(X) = E[X²] − (E[X])² — <em>sem segunda passagem</em> pelos dados. Combinação em O(K), K = nº de chunks.</p>
+        <div class="box box-green" style="margin-top:10px; font-size:.82em">
+          <strong>Demais métricas (todas exatas):</strong> min/max global (mín dos mins); <em>value_counts</em> = soma de <code>Counter</code>; valores únicos = união de <code>set</code>; nulos = soma; formato de data = 1º chunk não-nulo.
+        </div>
+        <div class="box box-purple" style="margin-top:9px; font-size:.83em">
+          <strong>Garantia:</strong> o sumário paralelo é <em>numericamente idêntico</em> ao do <code>DataSetSummary</code> original — compatibilidade total com o VisFlow-MM.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 11</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 11 — SPARK / CATALYST ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Workload B · mecânica</span><h2>Apache Spark — Catalyst &amp; Scan Único</h2></div>
+    <span class="slide-num">12 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2">
+      <div>
+        <h3>Como o Spark reexpressa o perfilamento</h3>
+        <ol style="padding-left:18px; margin-top:4px">
+          <li style="font-size:.84em; line-height:1.7"><code>SparkSession</code> em <code>local[N]</code> — N threads Java no mesmo processo, <strong>sem GIL</strong> <em style="color:#777">(GIL = trava do CPython que impede threads Python de rodarem em paralelo real; a JVM não tem essa restrição)</em></li>
+          <li style="font-size:.84em; line-height:1.7">Leitura CSV paralela com inferência de schema</li>
+          <li style="font-size:.84em; line-height:1.7"><strong>Catalyst</strong> <em style="color:#777">(otimizador de consultas do Spark: analisa todas as operações e as funde em um único plano físico)</em> <span class="cite">[Zaharia et al. 2016]</span> — funde min/max/mean/stddev + <code>approx_count_distinct</code> em <strong>um único job (scan único)</strong></li>
+          <li style="font-size:.84em; line-height:1.7"><strong>HyperLogLog</strong> (rsd=0,05) para cardinalidade aproximada — ~10× mais rápido que <code>nunique</code> exato</li>
+        </ol>
+        <div class="arch" style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:9px 13px;font-family:Consolas,monospace;font-size:.7em;line-height:1.55;margin-top:9px">
+num_exprs += [<br>&nbsp;&nbsp;F.<span style="color:#89b4fa">min</span>(c), F.<span style="color:#89b4fa">max</span>(c), F.<span style="color:#89b4fa">mean</span>(c),<br>&nbsp;&nbsp;F.<span style="color:#89b4fa">stddev</span>(c),<br>&nbsp;&nbsp;F.<span style="color:#a6e3a1">approx_count_distinct</span>(c, rsd=<span style="color:#f9e2af">0.05</span>)]<br>df.agg(*num_exprs).collect() <span style="color:#6c7086"># 1 job</span>
+        </div>
+      </div>
+      <div>
+        <h3>Diferenças técnicas (Tabela 2 do artigo)</h3>
+        <table style="margin-top:4px">
+          <thead><tr><th>Aspecto</th><th>Multiprocessing</th><th>Apache Spark</th></tr></thead>
+          <tbody>
+            <tr><td>Leitura CSV</td><td>1 thread serial (pandas)</td><td>Threads JVM ∥</td></tr>
+            <tr><td>Paralelismo</td><td>Processos Python</td><td>Threads Java (sem GIL)</td></tr>
+            <tr><td>Serialização</td><td>pickle (~90 MB/chunk)</td><td>memória off-heap</td></tr>
+            <tr><td>Agregações</td><td>passes múltiplos/chunk</td><td>1 job Catalyst</td></tr>
+            <tr><td>Cardinalidade</td><td><code>nunique()</code> exato</td><td>HyperLogLog ±5%</td></tr>
+            <tr><td>Overhead inicial</td><td>≈0,1 s</td><td>10–15 s (JVM)*</td></tr>
+          </tbody>
+        </table>
+        <div class="box box-green" style="margin-top:10px; font-size:.83em">
+          <strong>* Warmup:</strong> 1 execução por configuração aquece JVM + cache do Catalyst e <em>não é contabilizada</em> no tempo medido.
+        </div>
+        <div class="box" style="margin-top:9px; font-size:.83em">
+          <strong>Tungsten</strong> (gestão de memória off-heap) e <strong>AQE</strong> (Adaptive Query Execution) reotimizam o plano físico em tempo de execução.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 12</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 12 — AMBIENTE ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Configuração experimental</span><h2>Ambiente &amp; Protocolo de Benchmark</h2></div>
+    <span class="slide-num">13 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2">
+      <div>
+        <h3>Hardware</h3>
+        <table>
+          <thead><tr><th>Componente</th><th>Especificação</th></tr></thead>
+          <tbody>
+            <tr><td>CPU</td><td><strong>AMD Ryzen 7 8700G</strong> — 8 físicos / 16 lógicos (SMT)</td></tr>
+            <tr><td>RAM</td><td>64 GB DDR5</td></tr>
+            <tr><td>Disco</td><td>NVMe SSD (~3,5 GB/s seq.)</td></tr>
+            <tr><td>OS</td><td>Windows + Docker Desktop (WSL2)</td></tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:12px">Software</h3>
+        <table>
+          <thead><tr><th>Ferramenta</th><th>Versão</th></tr></thead>
+          <tbody>
+            <tr><td>Python · pandas</td><td>3.11 · 2.2.2</td></tr>
+            <tr><td>PySpark · Java</td><td>3.5.1 · OpenJDK 17</td></tr>
+            <tr><td>Docker Compose</td><td>v2 / Engine 26.x</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Protocolo</h3>
+        <div class="box" style="margin-bottom:10px">
+          <strong>Níveis de paralelismo:</strong> N ∈ {1, 2, 4, 8, 16}<br>
+          <strong>Repetições:</strong> 3 por configuração (mínimo obrigatório)<br>
+          <strong>Tamanhos:</strong> 1 GB · 5 GB · 10 GB<br>
+          <strong>Chunk (MP):</strong> 500.000 linhas · <strong>N=1</strong> = loop serial puro (baseline)<br>
+          <strong>Spark:</strong> 1 warmup/config (não contabilizado)
+        </div>
+        <div class="box box-green" style="margin-bottom:9px">
+          <strong>Métricas:</strong> tempo wall-clock (leitura + agregações + coleta), vazão (MB/s) e speedup relativo (t<sub>1</sub>/t<sub>N</sub>).
+        </div>
+        <div class="box box-orange" style="font-size:.83em">
+          <strong>Nota de ambiente:</strong> Docker Desktop sobre WSL2 introduz overhead de virtualização no I/O. Em Linux nativo os tempos de leitura seriam menores. Tudo reprodutível via <code>docker compose</code> <span class="cite">[Fonseca 2026a]</span>.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 13</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 13 — RESULTADOS MP ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Resultados · RQ1</span><h2>Multiprocessing Python (Workload A)</h2></div>
+    <span class="slide-num">14 / 19</span>
+  </div>
+  <div class="slide-body">
+    <table>
+      <caption>Tabela 3 — Tempo médio (s) e speedup por dataset · 3 repetições</caption>
+      <thead><tr><th>Workers</th><th>1 GB — tempo</th><th>speedup</th><th>5 GB — tempo</th><th>speedup</th><th>10 GB — tempo</th><th>speedup</th></tr></thead>
+      <tbody>
+        <tr><td>1 (serial)</td><td>23,48</td><td>1,00×</td><td>101,20</td><td>1,00×</td><td>192,27</td><td>1,00×</td></tr>
+        <tr><td>2</td><td>24,65</td><td class="td-warn">0,95×</td><td class="td-best">96,14</td><td>1,05×</td><td class="td-best">180,81</td><td>1,06×</td></tr>
+        <tr><td>4</td><td>25,17</td><td class="td-warn">0,93×</td><td>96,51</td><td>1,05×</td><td>182,25</td><td>1,06×</td></tr>
+        <tr><td>8</td><td>25,47</td><td class="td-warn">0,92×</td><td>96,81</td><td>1,04×</td><td>181,53</td><td>1,06×</td></tr>
+        <tr><td>16</td><td>25,40</td><td class="td-warn">0,92×</td><td>103,31</td><td class="td-warn">0,98×</td><td>181,65</td><td>1,06×</td></tr>
+      </tbody>
+    </table>
+    <div class="cols2" style="margin-top:4px">
+      <div>
+        <h3>Speedup — 10 GB (1 worker = baseline)</h3>
+        <div style="margin-top:4px">
+          <div class="spd-row"><div class="spd-label">1 worker</div><div class="spd-bar-bg"><div class="spd-bar-fill" style="width:100%;background:#14263f">baseline</div></div><div class="spd-val">1,00×</div></div>
+          <div class="spd-row"><div class="spd-label">2</div><div class="spd-bar-bg"><div class="spd-bar-fill" style="width:100%;background:#217346">+6%</div></div><div class="spd-val">1,06×</div></div>
+          <div class="spd-row"><div class="spd-label">4</div><div class="spd-bar-bg"><div class="spd-bar-fill" style="width:99%;background:#217346"></div></div><div class="spd-val">1,06×</div></div>
+          <div class="spd-row"><div class="spd-label">8</div><div class="spd-bar-bg"><div class="spd-bar-fill" style="width:99%;background:#217346"></div></div><div class="spd-val">1,06×</div></div>
+          <div class="spd-row"><div class="spd-label">16</div><div class="spd-bar-bg"><div class="spd-bar-fill" style="width:99%;background:#217346"></div></div><div class="spd-val">1,06×</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="box box-red" style="font-size:.84em">
+          <strong>RQ1 respondida — NÃO escala.</strong> Em 1 GB, adicionar workers <em>piora</em> (speedup &lt; 1): o overhead de criação de processos + pickle (~90 MB/chunk) supera qualquer ganho. Em 5/10 GB, platô em ~1,06×.
+        </div>
+        <div class="box box-orange" style="margin-top:8px; font-size:.83em">
+          A vazão permanece travada em <strong>~45–47 MB/s</strong> — o teto de leitura sequencial do SSD. O outlier em N=16 / 5 GB (113 s, σ=8,76) foi mantido por honestidade <span class="cite">[Slide 17]</span>.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 14</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 14 — RESULTADOS SPARK ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Resultados · RQ2</span><h2>Apache Spark (Workload B) — Dataset 1 GB</h2></div>
+    <span class="slide-num">15 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2">
+      <div>
+        <table>
+          <caption>Tabela 4 — Spark local[N], dataset 1 GB</caption>
+          <thead><tr><th>Núcleos</th><th>Tempo (s)</th><th>Speedup</th><th>Efic. %</th><th>MB/s</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td class="td-warn">124,55</td><td>1,00×</td><td>100,0</td><td>8,6</td></tr>
+            <tr><td>2</td><td>65,67</td><td>1,90×</td><td>94,9</td><td>16,3</td></tr>
+            <tr><td>4</td><td>39,76</td><td>3,13×</td><td>78,3</td><td>26,9</td></tr>
+            <tr><td>8</td><td>30,13</td><td>4,13×</td><td>51,7</td><td>35,5</td></tr>
+            <tr><td>16</td><td class="td-best">23,28</td><td class="td-best">5,35×</td><td>33,4</td><td>45,9</td></tr>
+          </tbody>
+        </table>
+        <h4 style="margin-top:10px">Curvas de speedup (Figura 3)</h4>
+        <svg class="flow" viewBox="0 0 460 230" role="img" aria-label="Curvas de speedup">
+          <!-- axes -->
+          <line x1="45" y1="15" x2="45" y2="195" stroke="#999" stroke-width="1.5"/>
+          <line x1="45" y1="195" x2="440" y2="195" stroke="#999" stroke-width="1.5"/>
+          <!-- y ticks 1..6 -->
+          <g font-size="9" fill="#888" text-anchor="end">
+            <text x="40" y="198">1</text><text x="40" y="162">2</text><text x="40" y="126">3</text><text x="40" y="90">4</text><text x="40" y="54">5</text><text x="40" y="22">6</text>
+          </g>
+          <!-- x ticks 1,2,4,8,16 at positions -->
+          <g font-size="9" fill="#888" text-anchor="middle">
+            <text x="45" y="210">1</text><text x="143" y="210">2</text><text x="241" y="210">4</text><text x="339" y="210">8</text><text x="437" y="210">16</text>
+          </g>
+          <text x="240" y="226" text-anchor="middle" font-size="10" fill="#666">Workers / Núcleos</text>
+          <!-- ideal dashed -->
+          <polyline points="45,195 143,159 241,87 339,-57 437,-345" fill="none" stroke="#bbb" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <text x="120" y="120" font-size="9" fill="#aaa" transform="rotate(-28 120 120)">ideal (linear)</text>
+          <!-- Spark: y = 195 - (s-1)*36 ; s=1,1.90,3.13,4.13,5.35 -->
+          <polyline points="45,195 143,162.6 241,118.3 339,82.3 437,38.4" fill="none" stroke="#C00000" stroke-width="2.6" stroke-dasharray="6 3"/>
+          <g fill="#C00000"><circle cx="45" cy="195" r="3.5"/><circle cx="143" cy="162.6" r="3.5"/><circle cx="241" cy="118.3" r="3.5"/><circle cx="339" cy="82.3" r="3.5"/><circle cx="437" cy="38.4" r="3.5"/></g>
+          <text x="395" y="34" font-size="9.5" fill="#C00000" font-weight="700">Spark 5,35×</text>
+          <!-- MP flat ~1.06: y=195-(0.06)*36≈193 -->
+          <polyline points="45,195 143,193 241,193 339,193 437,193" fill="none" stroke="#4472C4" stroke-width="2.6"/>
+          <g fill="#4472C4"><circle cx="45" cy="195" r="3.5"/><circle cx="143" cy="193" r="3.5"/><circle cx="241" cy="193" r="3.5"/><circle cx="339" cy="193" r="3.5"/><circle cx="437" cy="193" r="3.5"/></g>
+          <text x="300" y="186" font-size="9.5" fill="#4472C4" font-weight="700">MP Python ~1,06×</text>
+        </svg>
+      </div>
+      <div>
+        <h3>RQ2 respondida — ESCALA de verdade</h3>
+        <ul style="margin-top:4px">
+          <li style="font-size:.84em; line-height:1.7"><strong>Threads JVM sem GIL:</strong> I/O e compute em paralelo real <span class="cite">[Zaharia et al. 2016]</span></li>
+          <li style="font-size:.84em; line-height:1.7"><strong>Catalyst:</strong> todas as agregações em 1 scan físico</li>
+          <li style="font-size:.84em; line-height:1.7"><strong>Escalada quase linear</strong> de 1→4 cores (3,13×); desacelera depois (Amdahl)</li>
+        </ul>
+        <div class="box box-orange" style="margin-top:10px">
+          <strong>Custo de entrada:</strong> com 1 core, Spark (124,6 s) é <strong>5,3× mais lento</strong> que Python serial (23,5 s) — overhead de JVM, Tungsten e agendamento de tasks.
+        </div>
+        <div class="box box-green" style="margin-top:9px">
+          <strong>Ponto de cruzamento:</strong> com 16 cores, Spark (23,3 s) <em>iguala</em> o Python serial (23,5 s) — mesmo throughput (~46 MB/s), por caminhos opostos. A eficiência cai de 100% → 33% (fração serial irredutível).
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 15</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 15 — ANÁLISE AMDAHL ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Análise teórica</span><h2>Lei de Amdahl — Por que um escala e o outro não</h2></div>
+    <span class="slide-num">16 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="formula" style="font-size:1.15em">
+      <span class="eqlabel">(3)</span>
+      S(n) = 1 / [ F<sub>s</sub> + (1 − F<sub>s</sub>)/n ] &nbsp;&nbsp;<span style="font-size:.7em;color:#888">— speedup com n unidades e fração serial F<sub>s</sub></span> <span class="cite" style="font-size:.7em">[Amdahl 1967]</span>
+    </div>
+    <div class="cols2" style="margin-top:6px">
+      <div>
+        <h3 style="color:#C00000">Por que o Multiprocessing não escala</h3>
+        <p style="font-size:.85em">O processo principal lê o CSV a ~47 MB/s. O <code>profile_chunk()</code> termina em <em>décimos de segundo</em> — muito antes do disco entregar o próximo chunk. Os workers ficam <strong>ociosos esperando dados</strong>: workload <em>I/O-bound</em>. Soma-se o custo de pickle (~90 MB/chunk via IPC).</p>
+        <div class="box box-red" style="margin-top:8px">
+          <strong>F<sub>s</sub> ≈ 90%</strong> (leitura serial) → S(∞) = 1/0,90 ≈ <strong>1,11×</strong><br>
+          <span style="font-size:.85em">Compatível com o observado (≤ 1,06×).</span>
+        </div>
+      </div>
+      <div>
+        <h3 style="color:#217346">Por que o Spark escala</h3>
+        <p style="font-size:.85em"><strong>Threads Java sem GIL</strong> executam I/O + CPU em paralelo real (o CPython bloqueia threads via GIL; processos evitam o GIL mas mantêm a leitura serial). O <strong>Catalyst</strong> funde todas as agregações em um único scan.</p>
+        <div class="box box-green" style="margin-top:8px">
+          Ajustando aos dados (S(16)=5,35): <strong>F<sub>s</sub> ≈ 13,3%</strong> → teto teórico 1/0,133 ≈ <strong>7,5×</strong><br>
+          <span style="font-size:.85em">O Spark <em>paraleliza o I/O</em> e derruba a fração serial de 90% → 13%.</span>
+        </div>
+      </div>
+    </div>
+    <div class="box box-purple" style="margin-top:4px; text-align:center">
+      <strong>Lição central:</strong> paralelizar <em>computação</em> sem paralelizar <em>I/O</em> é insuficiente para workloads de leitura de arquivos locais. O ganho real exige atacar o gargalo dominante.
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 16</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 16 — VALIDADE + RECOMENDAÇÃO + CONCLUSÃO ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Discussão · RQ3 · ameaças à validade</span><h2>Recomendações, Validade e Conclusões</h2></div>
+    <span class="slide-num">17 / 19</span>
+  </div>
+  <div class="slide-body">
+    <div class="cols2">
+      <div>
+        <h3>RQ3 — Guia de escolha (Tabela 5)</h3>
+        <table>
+          <thead><tr><th>Cenário</th><th>Recomendação</th><th>Motivo</th></tr></thead>
+          <tbody>
+            <tr><td>&lt; 5 GB, máquina simples</td><td>Python chunks serial</td><td>Menor overhead</td></tr>
+            <tr><td>5–50 GB, 16+ cores</td><td>Spark <code>local[N]</code></td><td>Escala com núcleos</td></tr>
+            <tr><td>&gt; 50 GB ou cluster</td><td>Spark distribuído</td><td>I/O ∥ entre nós</td></tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:12px">Ameaças à validade</h3>
+        <ul style="margin-top:2px">
+          <li style="font-size:.82em"><strong>Interna:</strong> máquina única com processos em 2º plano; outlier de N=16/5 GB mantido por honestidade</li>
+          <li style="font-size:.82em"><strong>Externa:</strong> específico ao SSD NVMe (~47 MB/s, 16 cores); em HDD o gargalo de I/O seria ainda mais dominante</li>
+          <li style="font-size:.82em"><strong>Generalidade:</strong> workload de leitura sem shuffles pesados — joins/shuffles favoreceriam ainda mais o Spark</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Conclusões</h3>
+        <ol style="padding-left:18px; margin-top:2px">
+          <li style="font-size:.84em; line-height:1.55"><strong>Problema resolvido:</strong> ambas processam 10 GB sem <code>MemoryError</code>, RAM constante (~2 GB) via chunks + janela deslizante</li>
+          <li style="font-size:.84em; line-height:1.55"><strong>MP é I/O-bound:</strong> speedup ≤ 1,06× — a leitura serial limita tudo</li>
+          <li style="font-size:.84em; line-height:1.55"><strong>Spark escala:</strong> 5,35× com 16 cores; F<sub>s</sub> de 90% → 13%</li>
+          <li style="font-size:.84em; line-height:1.55"><strong>Para o VisFlow-MM em produção:</strong> Spark <code>local[N]</code> (16+ cores) ou cluster — com a ressalva do overhead de JVM em datasets pequenos</li>
+        </ol>
+        <h4 style="margin-top:10px">Trabalhos futuros</h4>
+        <ul style="margin-top:2px">
+          <li style="font-size:.82em">Executar benchmark Spark para 5 GB e 10 GB</li>
+          <li style="font-size:.82em">Avaliar impacto do <code>chunksize</code> no multiprocessing</li>
+          <li style="font-size:.82em">Integrar o pipeline ∥ como módulo opcional do VisFlow-MM, ativado por limiar de tamanho</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 17</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE 17 — REFERÊNCIAS ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-header">
+    <div><span class="kicker">Bibliografia</span><h2>Referências</h2></div>
+    <span class="slide-num">18 / 19</span>
+  </div>
+  <div class="slide-body" style="justify-content:flex-start; padding-top:24px">
+    <div class="refs">
+      <div class="ref"><b>Amdahl, G. M.</b> (1967). Validity of the single processor approach to achieving large scale computing capabilities. <em>Proc. AFIPS Spring Joint Computer Conf.</em>, p. 483–485.</div>
+      <div class="ref"><b>Chen, N., Zhang, Y., Xu, J., Ren, K., Yang, Y.</b> (2025). VisEval: A benchmark for data visualization in the era of large language models. <em>IEEE Trans. Vis. Comput. Graph.</em>, 31(1):1301–1311.</div>
+      <div class="ref"><b>Dibia, V.</b> (2023). LIDA: A tool for automatic generation of grammar-agnostic visualizations and infographics using LLMs. <em>Proc. 61st ACL (System Demos)</em>, p. 113–126.</div>
+      <div class="ref"><b>Fonseca, O.</b> (2026a). Perfilamento paralelo com multiprocessing e Apache Spark: código-fonte dos experimentos. github.com/ootaviofonseca/pdm. PCC557/PDM/UFLA.</div>
+      <div class="ref"><b>Fonseca, O.</b> (2026b). VisFlow-MM: Agentic multimodal chart generation with vision-language models. github.com/ootaviofonseca/VISFLOW-MM. PPGCC/UFLA.</div>
+      <div class="ref"><b>Maddigan, P., Susnjak, T.</b> (2023). Chat2VIS: Generating data visualizations via natural language using ChatGPT, Codex and GPT-3 LLMs. <em>IEEE Access</em>, 11:45181–45193.</div>
+      <div class="ref"><b>NYC Taxi &amp; Limousine Commission</b> (2024). TLC Trip Record Data. nyc.gov/site/tlc/about/tlc-trip-record-data.page. Acesso: jun. 2024.</div>
+      <div class="ref"><b>Ouyang, G., Chen, J., Nie, Z., Gui, Y., Wan, Y., Zhang, H., Chen, D.</b> (2025). NVAgent: Automated data visualization from natural language via collaborative agent workflow. <em>Proc. 63rd ACL</em>, p. 19534–19567.</div>
+      <div class="ref"><b>Shuai, Z., Li, B., Yan, S., Luo, Y., Yang, W.</b> (2026). DeepVIS: Bridging natural language and data visualization through step-wise reasoning. <em>IEEE Trans. Vis. Comput. Graph.</em>, 32(1):868–878.</div>
+      <div class="ref"><b>Wu, Y., Wan, Y., Zhang, H., Sui, Y., Wei, W., Zhao, W., Xu, G., Jin, H.</b> (2024). Automated data visualization from natural language via LLMs: An exploratory study. <em>Proc. ACM Manag. Data</em>, 2(3):115:1–115:28.</div>
+      <div class="ref"><b>Zacks, J., Tversky, B.</b> (1999). Bars and lines: A study of graphic communication. <em>Memory &amp; Cognition</em>, 27(6):1073–1079.</div>
+      <div class="ref"><b>Zaharia, M., Xin, R. S., Wendell, P., Das, T., Armbrust, M., et al.</b> (2016). Apache Spark: A unified engine for big data processing. <em>Communications of the ACM</em>, 59(11):56–65.</div>
+      <div class="ref"><b>Zhu, Y., Du, S., Li, B., Luo, Y., Tang, N.</b> (2024). Are large language models good statisticians? <em>Proc. 38th NeurIPS</em>.</div>
+    </div>
+    <div class="box box-purple" style="margin-top:18px; text-align:center">
+      <strong>Repositório público (código + Docker Compose + resultados + relatório HTML):</strong>&nbsp;
+      <code>github.com/ootaviofonseca/pdm</code> &nbsp;·&nbsp; <span style="font-size:.85em">Baseado no artigo <em>VisFlow-MM</em> <span class="cite">[Fonseca 2026b]</span></span>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Perfilamento Paralelo de Dados · PPGCC UFLA 2026</span><span>Slide 18</span></div>
+</div>
+
+<!-- ════════════════════════════════ SLIDE ENCERRAMENTO ════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-body title-slide">
+    <div class="title-body">
+      <div style="font-size:.8em; opacity:.75; letter-spacing:.18em; text-transform:uppercase">Mensagens para levar</div>
+      <div class="accent-line"></div>
+      <h1 style="font-size:1.7em">Obrigado!<br><span style="font-size:.62em;font-weight:600;opacity:.92">Perguntas?</span></h1>
+      <div style="display:flex;flex-direction:column;gap:9px;max-width:760px;margin-top:6px;text-align:left">
+        <div style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:9px 15px;font-size:.86em">
+          <strong style="color:#fff">1.</strong> O perfilamento (<code style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">DataSetSummary</code>) é o <strong style="color:#fff">teto de desempenho</strong> de todo o pipeline NL2Vis — não é mera infraestrutura.
+        </div>
+        <div style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:9px 15px;font-size:.86em">
+          <strong style="color:#fff">2.</strong> Chunks + agregação exata resolvem o <code style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">MemoryError</code> em 10 GB com RAM constante — sumário <strong style="color:#fff">numericamente idêntico</strong> ao original.
+        </div>
+        <div style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:9px 15px;font-size:.86em">
+          <strong style="color:#fff">3.</strong> Paralelizar <em style="color:#ffd9b3">computação</em> sem paralelizar <em style="color:#ffd9b3">I/O</em> não basta: o Multiprocessing satura (≤1,06×), o Spark escala <strong style="color:#fff">5,35×</strong> ao paralelizar o I/O.
+        </div>
+      </div>
+      <div class="meta" style="margin-top:16px">
+        <div class="meta-chip">github.com/ootaviofonseca/pdm</div>
+        <div class="meta-chip">VisFlow-MM [Fonseca 2026b]</div>
+      </div>
+    </div>
+    <div class="bottom-bar">
+      <span>Otávio Fonseca · otavio.fonseca1@estudante.ufla.br</span>
+      <span>PPGCC — UFLA · 2026/1</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Instruções (não impresso) ═══ -->
+<div style="text-align:center;color:#888;padding:20px;font-size:.85em" class="no-print">
+  <strong>Navegação:</strong> use <code>→ ↓ Espaço PageDown</code> para avançar · <code>← ↑ PageUp</code> para voltar · <code>Home/End</code> para ir ao início/fim.<br>
+  <strong>PDF:</strong> já gerado como <code>presentation.pdf</code> · Para regenerar: Ctrl+P → Salvar como PDF → Paisagem (A4) → Margens: Nenhuma
+</div>
+
+<!-- indicador de slide (não impresso) -->
+<div id="nav-indicator" class="no-print" style="position:fixed;bottom:14px;right:16px;background:rgba(17,22,42,.82);color:#fff;
+  padding:6px 12px;border-radius:18px;font:600 13px 'Segoe UI',Arial,sans-serif;z-index:999;pointer-events:none;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);transition:opacity .4s;opacity:.85"></div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var indicator = document.getElementById('nav-indicator');
+  var current = 0;
+
+  function update(i) { indicator.textContent = (i + 1) + ' / ' + slides.length; }
+
+  // Descobre qual slide está mais visível no viewport (para sincronizar com scroll manual).
+  function nearestSlide() {
+    var best = 0, bestDist = Infinity, mid = window.innerHeight / 2;
+    for (var i = 0; i < slides.length; i++) {
+      var r = slides[i].getBoundingClientRect();
+      var d = Math.abs((r.top + r.bottom) / 2 - mid);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    return best;
+  }
+
+  function goTo(i) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    slides[current].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    update(current);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // não interferir em Ctrl+P etc.
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Spacebar') {
+      e.preventDefault(); goTo(nearestSlide() + 1);
+    } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') {
+      e.preventDefault(); goTo(nearestSlide() - 1);
+    } else if (k === 'Home') {
+      e.preventDefault(); goTo(0);
+    } else if (k === 'End') {
+      e.preventDefault(); goTo(slides.length - 1);
+    }
+  });
+
+  // Mantém o indicador em sincronia ao rolar com mouse/touch.
+  var t;
+  window.addEventListener('scroll', function () {
+    clearTimeout(t);
+    t = setTimeout(function () { current = nearestSlide(); update(current); }, 80);
+  }, { passive: true });
+
+  update(0);
+})();
+</script>
+
+</body>
+</html>
