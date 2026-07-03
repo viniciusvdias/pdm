@@ -7,8 +7,8 @@ CS:GO (Counter-Strike: Global Offensive) is one of the most played competitive f
 The goal of this project is to process damage event logs from ESEA competitive matches to uncover patterns related to weapon lethality, player rank vs. actual performance, and the tactical impact of each side (Counter-Terrorist vs. Terrorist). These analyses require aggregating over millions of rows and correlating multiple dimensions simultaneously — making it a natural Big Data batch processing problem.
 
 **Why is this Big Data?**
-- The dataset (`part1` only) contains ~6 million rows and occupies 1.2 GB of raw CSV.
-- Full ESEA archives span multiple such files, easily reaching tens of GBs.
+- The experiments used two parts of the Kaggle CSV archive (`part1` and `part2`), totaling 10,538,182 rows.
+- Full ESEA archives span multiple such files, easily reaching 1.9GBs.
 - Aggregations like per-player damage across all rounds require shuffling data across partitions — expensive on a single machine without a distributed framework.
 
 ## 2. Data
@@ -165,7 +165,7 @@ groupBy(att_side, vic_side, is_bomb_planted)
 
 ### 6.1 Experimental environment
 
-Experiments run on Linux 6.17.0 (Ubuntu), Docker 24+, dataset: `esea_master_dmg_demos.part1.csv` (5,992,097 rows, 1.2 GB). Each worker configured with 4 cores and 4 GB RAM (`apache/spark:3.5.0`).
+Experiments run on Linux 6.17.0 (Ubuntu), Docker 24+, using two parts of the Kaggle dataset: `esea_master_dmg_demos.part1.csv` and `esea_master_dmg_demos.part2.csv`, totaling 10,538,182 rows. Each worker configured with 4 cores and 4 GB RAM (`apache/spark:3.5.0`).
 
 ### 6.2 How to perform benchmarking
 
@@ -203,26 +203,23 @@ cd misc && python3 plot_results.py
 
 | Workload | Workers | Avg Time (s) | Std Dev (s) | Runs |
 |---|---|---|---|---|
-| WORKLOAD-1 | 1 | 2.06 | 0.12 | 5 |
-| WORKLOAD-1 | 2 | 1.99 | 0.22 | 5 |
-| WORKLOAD-1 | 4 | 1.89 | 0.12 | 5 |
-| WORKLOAD-2 | 1 | 1.63 | 0.13 | 5 |
-| WORKLOAD-2 | 2 | 1.61 | 0.16 | 5 |
-| WORKLOAD-2 | 4 | 1.50 | 0.11 | 5 |
-| WORKLOAD-3 | 1 | 1.36 | 0.19 | 5 |
-| WORKLOAD-3 | 2 | 1.42 | 0.24 | 5 |
-| WORKLOAD-3 | 4 | 1.37 | 0.21 | 5 |
+| WORKLOAD-1 | 1 | 22.39 | 1.69 | 5 |
+| WORKLOAD-1 | 2 | 24.43 | 0.77 | 5 |
+| WORKLOAD-1 | 4 | 23.18 | 0.67 | 5 |
+| WORKLOAD-2 | 1 | 17.73 | 1.71 | 5 |
+| WORKLOAD-2 | 2 | 16.71 | 1.63 | 5 |
+| WORKLOAD-2 | 4 | 15.81 | 2.23 | 5 |
+| WORKLOAD-3 | 1 | 16.13 | 3.68 | 5 |
+| WORKLOAD-3 | 2 | 15.62 | 2.18 | 5 |
+| WORKLOAD-3 | 4 | 14.84 | 2.11 | 5 |
 
 ![Benchmark Results](misc/output/benchmark_results.png)
 
 ## 7. Limitations and conclusions
 
-> To be filled after analysis and experiments.
+The benchmark results show that all workloads completed successfully in the tested environment, with execution times ranging from about 14.84s to 24.43s depending on the workload and number of workers. Workload-2 and Workload-3 were generally faster than Workload-1, and the 4-worker configuration was the best overall option for most cases, although the performance differences were modest.
 
-Possible limitations to discuss:
-- Only `part1` of the ESEA dataset was used; full dataset would yield more statistically robust rank distributions.
-- Spatial analysis (heatmaps) of `att_pos_x/y` was excluded to keep scope focused.
-- Worker overhead in small-data runs (sample) may show longer times with more workers due to coordination cost.
+These results suggest that the proposed Spark pipeline is viable for processing large-scale damage-event data and that increasing the number of workers can improve runtime, especially for more complex aggregations. However, the analysis also indicates that the workload is sensitive to the available memory and cluster configuration. Since the experiments were run on a virtual machine with about 8 GB of RAM, the observed times should be interpreted as representative of a constrained environment rather than as the upper limit of what the system could achieve. In a machine with more memory or a larger Spark setup, the same workloads could potentially show better scalability, lower variance, and even faster execution times.
 
 ## 8. References and external resources
 

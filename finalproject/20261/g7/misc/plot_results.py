@@ -1,70 +1,110 @@
 import math
+import os
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+# Data com os tempos de processamento (Aplicação Manual)
 data = {
     "WORKLOAD-1\n(Weapon Effectiveness)": {
-        1: [2.024, 2.265, 1.969, 2.006, 2.030],
-        2: [2.323, 1.738, 1.904, 2.045, 1.951],
-        4: [1.917, 2.020, 1.903, 1.889, 1.700],
+        1: [23.529, 24.644, 22.050, 20.390, 21.330],
+        2: [25.805, 24.891, 23.426, 23.678, 24.326],
+        4: [24.252, 23.117, 22.486, 23.173, 22.877],
     },
     "WORKLOAD-2\n(Rank vs Performance)": {
-        1: [1.787, 1.703, 1.472, 1.637, 1.528],
-        2: [1.475, 1.440, 1.596, 1.830, 1.719],
-        4: [1.437, 1.352, 1.587, 1.619, 1.496],
+        1: [17.608, 17.228, 16.336, 16.772, 20.701],
+        2: [18.221, 14.298, 15.808, 17.505, 17.696],
+        4: [12.353, 17.042, 16.106, 15.414, 18.157],
     },
     "WORKLOAD-3\n(Side Advantage CT vs T)": {
-        1: [1.270, 1.671, 1.375, 1.309, 1.164],
-        2: [1.164, 1.416, 1.224, 1.751, 1.555],
-        4: [1.414, 1.085, 1.503, 1.605, 1.224],
+        1: [20.658, 19.487, 12.359, 14.156, 13.978],
+        2: [15.310, 17.653, 13.578, 13.471, 18.085],
+        4: [15.556, 14.062, 11.579, 15.861, 17.158],
     },
 }
 
 workers = [1, 2, 4]
 colors = ["#4C72B0", "#DD8452", "#55A868"]
 
-fig, axes = plt.subplots(1, 3, figsize=(14, 5), sharey=False)
-fig.suptitle("Spark Workload Execution Time (5,992,097 rows)", fontsize=13, fontweight="bold")
+fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=False)
+
+fig.suptitle(
+    "Spark Workload Execution Time (10,538,182 rows)",
+    fontsize=15,
+    fontweight="bold",
+)
 
 for ax, (title, wdata) in zip(axes, data.items()):
-    avgs, stds = [], []
+
+    avgs = []
+    stds = []
+
     for w in workers:
         times = wdata[w]
         n = len(times)
+
         avg = sum(times) / n
         std = math.sqrt(sum((t - avg) ** 2 for t in times) / (n - 1))
+
         avgs.append(avg)
         stds.append(std)
 
     bars = ax.bar(
         [str(w) for w in workers],
         avgs,
+        width=0.60,
         yerr=stds,
         capsize=6,
         color=colors,
         edgecolor="white",
-        linewidth=0.8,
-        error_kw={"elinewidth": 1.5, "ecolor": "#333333"},
+        linewidth=1,
+        error_kw={
+            "elinewidth": 2,
+            "ecolor": "#222222",
+        },
     )
 
-    for bar, avg, std in zip(bars, avgs, stds):
+    # Valor da média dentro da barra
+    for bar, avg in zip(bars, avgs):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
-            avg + std + 0.03,
+            avg - 0.25,
             f"{avg:.2f}s",
             ha="center",
-            va="bottom",
-            fontsize=9,
+            va="top",
+            color="white",
+            fontsize=10,
+            fontweight="bold",
         )
 
-    ax.set_title(title, fontsize=10)
-    ax.set_xlabel("Workers", fontsize=9)
-    ax.set_ylabel("Time (s)", fontsize=9)
-    ax.set_ylim(0, max(avgs) + max(stds) + 0.4)
-    ax.grid(axis="y", linestyle="--", alpha=0.5)
-    ax.spines[["top", "right"]].set_visible(False)
+    ax.set_title(title, fontsize=11, fontweight="bold")
+    ax.set_xlabel("Workers", fontsize=10)
+    ax.set_ylabel("Time (s)", fontsize=10)
 
-plt.tight_layout()
-plt.savefig("output/benchmark_results.png", dpi=150, bbox_inches="tight")
-print("Saved: output/benchmark_results.png")
+    # Escala dinâmica
+    menor = min(avg - std for avg, std in zip(avgs, stds))
+    maior = max(avg + std for avg, std in zip(avgs, stds))
+
+    margem = 0.8
+
+    ax.set_ylim(menor - margem, maior + margem)
+
+    ax.grid(axis="y", linestyle="--", linewidth=0.8, alpha=0.6)
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+
+# Diretório de saída
+script_dir = os.path.dirname(os.path.abspath(__file__))
+output_dir = os.path.join(script_dir, "output")
+
+os.makedirs(output_dir, exist_ok=True)
+
+output_file = os.path.join(output_dir, "benchmark_results.png")
+
+plt.savefig(output_file, dpi=300, bbox_inches="tight")
+
+print(f"Saved: {output_file}")
