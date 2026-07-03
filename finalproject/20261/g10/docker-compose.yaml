@@ -74,7 +74,7 @@ services:
       start_period: 30s
     command: >
       /opt/spark/bin/spark-submit
-      --master local[*]
+      --master local[1]
       main.py
 
   sqlite-init:

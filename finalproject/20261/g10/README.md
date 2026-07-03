@@ -209,7 +209,19 @@ A bateria local compara duas configurações de paralelismo e origem real dos da
 
 #### T1 - `local[1]`
 
-Foram gerados 2 Structured Streaming Queries (Valores apresentados são para média de ambas)
+| Métrica                  | Unidade         | Resultado        |
+| ------------------------ | --------------- | ---------------- |
+| Eventos emitidos         | eventos/segundo | 38,417424        |
+| Eventos recebidos        | eventos/segundo | 46,45            |
+| Eventos processados      | eventos/segundo | 42,985           |
+| Latência por micro-batch | ms              | 718,3            |
+| Uso de CPU               | %               | Entre 12 e 24    |
+| Uso de GPU               | %               | Picos de 0 a 100 |
+| Uso de memória           | GB              | 10,7             |
+| Uso de memória (GPU)     | GB              | 3,02             |
+| Linhas por janela        | contagem        | 32               |
+
+#### T2 - `local[*]`
 
 | Métrica                  | Unidade         | Resultado        |
 | ------------------------ | --------------- | ---------------- |
@@ -223,38 +235,34 @@ Foram gerados 2 Structured Streaming Queries (Valores apresentados são para mé
 | Uso de memória (GPU)     | GB              | 3,53             |
 | Linhas por janela        | contagem        | 20               |
 
-#### T2 - `local[*]`
+Adendos:
 
-Foram gerados 2 Structured Streaming Queries (Valores apresentados são para média de ambas)
-
-| Métrica                  | Unidade         | Resultado |
-| ------------------------ | --------------- | --------- |
-| Eventos emitidos         | eventos/segundo | X         |
-| Eventos recebidos        | eventos/segundo | X         |
-| Eventos processados      | eventos/segundo | X         |
-| Latência por micro-batch | ms              | X         |
-| Uso de CPU               | %               | X         |
-| Uso de GPU               | %               | X         |
-| Uso de memória           | GB              | X         |
-| Uso de memória (GPU)     | GB              | X         |
-| Linhas por janela        | contagem        | X         |
+- foi notado maior frequência de picos da GPU ao longo do tempo quando comparado ao T1
+- ao listar processos da GPU, apenas uma instância de python estava rodando
 
 ## 7. Limitações e conclusões
 
 ### O que funcionou
 
-O pipeline integra Kafka, Spark, SQLite e Streamlit em uma única execução local. O fluxo processa eventos em tempo real, classifica os textos e publica as métricas no dashboard.
+- O pipeline completo (Producer → Kafka → Spark Structured Streaming → SQLite → Streamlit) funcionou de ponta a ponta em ambiente Docker, sem necessidade de instalação de dependências no host.
+- O sistema conseguiu ingerir e classificar eventos em tempo real tanto a partir do stream ao vivo da Wikimedia quanto da amostra local, validando os dois modos de operação (`live` e `sample`).
+- O aumento de paralelismo teve efeito mensurável: `local[*]` reduziu a latência média por micro-batch em relação a `local[1]` (449,50 ms vs. 718,3 ms) e aumentou a vazão de eventos processados (55,56 vs. 42,985 eventos/segundo).
+- O uso de memória se manteve relativamente estável entre os dois testes (10,7 GB → 11,2 GB de RAM; 3,02 GB → 3,53 GB de VRAM), sem indícios de vazamento de memória ao longo das execuções de 10 minutos.
 
 ### Limitações
 
-- o modelo semântico depende de inferência em lote e pode ficar mais lento em CPU;
-- o stream ao vivo da Wikimedia depende de conexão com a internet;
-- a janela é fixa no modo principal e precisa de reinício para mudar parâmetros estruturais;
-- o SQLite é suficiente para o dashboard local, mas não é a melhor escolha para múltiplos leitores concorrentes em produção.
+- **Dependência de uma fonte de dados não controlada**: como o stream da Wikimedia reflete edições reais em tempo real, o volume de eventos disponíveis varia conforme o horário e o dia, e não apenas conforme a configuração de paralelismo testada. Isso é evidenciado pelo resultado contraintuitivo de "linhas por janela", que foi _menor_ em T2 (20) do que em T1 (32), apesar de T2 ter apresentado maior vazão de processamento — um sinal de que o tráfego real da Wikipedia no momento de cada teste pode ter influenciado mais o resultado do que o próprio paralelismo.
+- **Uso irregular da GPU**: os picos de 0% a 100% em ambos os testes sugerem que a GPU não é utilizada de forma constante, possivelmente por causa do tamanho pequeno dos lotes ou de gargalos em outras etapas do pipeline (rede, Kafka, limpeza de texto).
+- **Armazenamento em SQLite**: adequado para um protótipo local, mas não é indicado para cenários de maior escala ou com múltiplos escritores simultâneos.
+- **Execução single-node**: o projeto não foi testado em um cluster Spark real com múltiplos workers, portanto os resultados não permitem conclusões sobre escalabilidade horizontal.
 
 ### Conclusão
 
-O projeto demonstra um pipeline completo de transformação de dados com ingestão, classificação, agregação temporal e visualização. A bateria local foi estruturada para responder se o sistema realmente processa os eventos recebidos, mantém a janela agregada coerente e sustenta a execução com o hardware disponível.
+O projeto demonstrou, na prática, a viabilidade de um pipeline de streaming de Big Data rodando localmente, com ingestão contínua via Kafka, processamento incremental via Spark Structured Streaming e visualização em tempo real via Streamlit. O aumento de paralelismo (`local[*]` em relação a `local[1]`) trouxe ganhos claros de vazão e de latência por micro-batch, confirmando que o sistema é sensível aos recursos computacionais disponíveis, ainda que não escale de forma perfeitamente proporcional ao número de threads.
+
+Por outro lado, o uso de uma fonte de dados ao vivo introduziu uma variável não controlada — o volume real de edições da Wikipedia — que dificulta isolar o efeito exclusivo do paralelismo sobre os resultados. Para trabalhos futuros, recomenda-se repetir a bateria de testes usando a amostra local fixa (`PRODUCER_SOURCE=sample`) para garantir uma carga de entrada idêntica entre as configurações, além de testar níveis intermediários de paralelismo e investigar mais a fundo o padrão de picos de uso da GPU.
+
+De forma geral, o sistema atingiu o objetivo proposto: transformar um stream de dados em tempo real em métricas classificadas e agregadas, com vazão observável e comportamento estável ao longo das execuções.
 
 ## 8. Referências e recursos externos
 
