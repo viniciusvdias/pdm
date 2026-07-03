@@ -1,0 +1,10 @@
+{
+  "dataset_slug": "orkut",
+  "fraction_pct": 0.1,
+  "seed": 42,
+  "node_count": 1632,
+  "edge_count": 9774,
+  "source": "synthetic:barabasi_albert(n=1632,m=3)",
+  "load_time_s_build": 0.0,
+  "graph_directed": false
+}

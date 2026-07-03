@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "distributed-lpa"
+version = "0.2.0"
+description = "Distributed Label Propagation on soc-Orkut (Ray vs Dask)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "ray>=2.9.0",
+    "dask[distributed]>=2024.1.0",
+    "numpy>=1.26.0",
+    "pyyaml>=6.0",
+    "psutil>=5.9.0",
+    "networkx>=3.0",
+    "numba>=0.59.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.8.0",
+    "pylint>=3.0",
+    "bandit>=1.7",
+    "deptry>=0.20",
+    "pip-audit>=2.7",
+    "mutmut>=3.6",
+]
+
+[project.scripts]
+lpa = "cli.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["config"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+markers = [
+    "integration: full E2E LPA pipeline with Ray/Dask (slow)",
+    "load_graph: full-graph SNAP→CSR load integration (very slow)",
+]
+
+[tool.deptry]
+optional_dependencies_dev_groups = ["dev"]
+known_first_party = [
+    "benchmark",
+    "cli",
+    "config",
+    "dask_impl",
+    "graph",
+    "lpa_core",
+    "preprocessing",
+    "ray_impl",
+]
+
+[tool.deptry.package_module_name_map]
+pyyaml = "yaml"
+
+[tool.mutmut]
+source_paths = ["src/lpa_core", "src/graph"]
+only_mutate = ["src/lpa_core/*.py", "src/graph/*.py"]
+pytest_add_cli_args = [
+    "tests/unit/test_lpa.py",
+    "tests/unit/test_edge_cases.py",
+    "tests/unit/test_graph_edges.py",
+    "tests/unit/test_graph_core.py",
+]
