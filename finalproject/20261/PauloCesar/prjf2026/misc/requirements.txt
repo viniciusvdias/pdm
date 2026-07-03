@@ -1,0 +1,5 @@
+aiokafka
+matplotlib
+psycopg2-binary
+pyspark
+streamlit

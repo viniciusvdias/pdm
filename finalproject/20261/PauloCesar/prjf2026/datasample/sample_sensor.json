@@ -1,0 +1,10 @@
+{
+  "sensor_id": "ESP32_0001",
+  "timestamp": 1781571000,
+  "latitude": -21.223,
+  "longitude": -44.995,
+  "temperatura": 34.7,
+  "umidade": 31.2,
+  "co2": 520.4,
+  "status_ia_borda": "NORMAL"
+}
