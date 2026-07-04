@@ -1,0 +1,15 @@
+# Dados completos (NAO versionar — baixar da TLC; ver README §2.2)
+/data/
+/data_subset/
+
+# Saidas e estado gerados em runtime
+/output/
+/checkpoints/
+
+# Ambiente Python local (o projeto roda 100% em Docker)
+/venv/
+
+# Caches
+**/__pycache__/
+*.pyc
+.ivy/

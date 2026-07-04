@@ -1,0 +1,4 @@
+scenario,param,value,workers,n_runs,throughput_rps_mean,throughput_rps_std,latency_ms_mean,latency_ms_std
+A,cores,1,1,2,5846.9,457.6,17155.8,1342.4
+A,cores,2,1,1,8095.2,0.0,12353.0,0.0
+A,cores,4,1,1,10259.0,0.0,9747.5,0.0
