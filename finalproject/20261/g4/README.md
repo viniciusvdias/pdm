@@ -86,7 +86,7 @@ As 3 V's clássicas aparecem: **Volume** (acumulação contínua), **Velocidade*
 
 ---
 
-## Como rodar (Docker Compose)
+## 7. Como rodar
 
 A aplicação inteira está dockerizada. Pré-requisito: Docker e Docker Compose instalados na máquina.
 
@@ -103,7 +103,7 @@ docker compose up --build
 
 ---
 
-## Experimentos e análise de desempenho
+## 8. Experimentos e análise de desempenho
 
 Os experimentos avaliam a escalabilidade horizontal e o trade-off entre retenção e latência, variando a seguinte grade:
 - **Tamanho da janela:** 15, 30 e 60 segundos.
@@ -125,7 +125,7 @@ docker compose down
 
 O script salvará o estado de cada execução gerando os arquivos `metrics/performance_p<P>_w<W>_r<R>.csv` e os respectivos candles. O horário exato do teste é registrado nos CSVs para correlacionar a vazão (throughput) com a agitação do mercado financeiro naquele momento.
 
-### Analisando os Resultados (Jupyter)
+### Analisando os Resultados
 
 Toda a análise estatística (média ± desvio-padrão) e a plotagem dos gráficos com barras de erro também são feitas via container.
 
@@ -141,7 +141,7 @@ docker compose up jupyter
 
 No final do log, copie a URL gerada (ex: `http://127.0.0.1:8888/lab?token=...`) e abra no seu navegador. Navegue até o arquivo `analysis.ipynb` e execute as células. As tabelas resumo serão impressas e os gráficos `.png` aparecerão automaticamente na sua pasta `metrics/` local.
 
-## Estrutura do repositório
+## 9. Estrutura do repositório
 
 ```text
 /
@@ -159,9 +159,26 @@ No final do log, copie a URL gerada (ex: `http://127.0.0.1:8888/lab?token=...`) 
 └── requirements.txt            # Dependências Python
 ```
 
-## Resultados
+## 10. Experimentos e Resultados
 
-Os resultados estatísticos brutos (média ± desvio padrão) extraídos das 3 rodadas de cada configuração estão consolidados na tabela abaixo:
+### 10.1 Ambiente experimental
+Os experimentos foram executados localmente para estressar a capacidade de concorrência e paralelismo da arquitetura. As especificações da máquina utilizada foram:
+* **Processador:** 13th Gen Intel(R) Core(TM) i5-13450HX (2.40 GHz) - 10 Núcleos físicos
+* **Memória RAM:** 16 GB
+* **Sistema Operacional:** Linux/Ubuntu
+* **Containerização:** Docker com Docker Compose (Broker Kafka KRaft + Spark Structured Streaming)
+
+### 10.2 O que você testou?
+Para entender os limites do sistema, manipulamos duas variáveis independentes principais e avaliamos seu impacto no desempenho:
+* **Parâmetros variados:**
+  * Número de Partições do Kafka (`1`, `5` e `10` partições).
+  * Tamanho da Janela de Agregação (`15s`, `30s` e `60s`).
+* **Métricas coletadas:** Vazão/Throughput (trades processados por segundo) e Latência (p50 e p95 do tempo de resposta).
+* **Repetições:** Cada uma das 9 combinações de configuração foi executada em **3 rodadas (runs)** distintas de 16 minutos cada, permitindo o cálculo estatístico para contabilizar a variabilidade do mercado em tempo real.
+
+### 10.3 Resultados
+
+Abaixo está a tabela consolidada com as médias e desvios padrões (Std Dev) extraídos das múltiplas execuções:
 
 | Partições | Janela (s) | Rodadas | Vazão Média (trades/s) | Latência p50 Média (ms) | Latência p95 Média (ms) |
 | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -175,20 +192,36 @@ Os resultados estatísticos brutos (média ± desvio padrão) extraídos das 3 r
 | 10 | 30 | 3 | 128.1 ± 51.4 | 57418.0 ± 302.4 | 57418.0 ± 302.4 |
 | 10 | 60 | 3 | 288.6 ± 47.8 | 104679.7 ± 1853.4 | 104679.7 ± 1853.4 |
 
-> *(Os gráficos gerados pela análise estatística devem ser inseridos nesta seção para visualização das métricas consolidadas: `throughput_comparison.png`, `latency_distribution.png`, `latency_timeline.png` e `stats_error_bars.png`)*
 
-### Discussões
+##### Comparação de Throughput
+![Comparação de Throughput](misc/throughput_comparison.png)
 
-#### Escalabilidade e Vazão
-A análise dos dados revela uma forte correlação positiva entre o tamanho da janela de agregação e a vazão do sistema. Janelas de 60s amortizam significativamente o custo computacional, alcançando as maiores vazões médias (até 426.1 trades/s com 1 partição). 
 
-No entanto, escalar horizontalmente (aumentando o número de partições) não resultou em ganhos lineares de vazão. Observa-se que 1 e 5 partições apresentaram resultados próximos, enquanto 10 partições causaram uma **queda** na vazão em janelas maiores (de 382 trades/s em p=5 para 288 trades/s em p=10, na janela de 60s).
+##### Barras de Erro - Vazão e Latência
+![Barras de Erro - Vazão e Latência](misc/stats_error_bars.png)
 
-#### Trade-off de Latência e Gargalo Identificado
-O gargalo principal identificado na arquitetura local é o *overhead* de coordenação e concorrência pela CPU. Como o teste foi executado em um processador de 10 núcleos (i5-13450HX), forçar 10 partições concorrentes para leitura, processamento no Spark e gerenciamento do broker Kafka resultou em *context switching* excessivo, prejudicando a vazão. 
 
-A latência também se comportou de maneira previsível em relação às janelas: janelas maiores implicam retenção de estado por mais tempo, elevando a latência basal. O desvio padrão expressivo (barras de erro) na vazão, especialmente na configuração de 1 partição com janela de 60s, sugere uma alta sensibilidade à volatilidade natural do mercado de criptomoedas durante a execução das rodadas de teste.
+##### Distribuição de Latência
+![Distribuição de Latência](misc/latency_distribution.png)
 
-## Conclusão
 
-A arquitetura de *stream processing* estruturado demonstrou resiliência no processamento contínuo, sem vazamentos ou falhas sob o volume de dados crus da Binance. O estudo comprova que, para implantações locais ou em *single-nodes*, o "sweet spot" de configuração se encontra ao redor de 5 partições com janelas de 30 a 60 segundos. O excesso de paralelismo (10 partições em 10 núcleos) age como um antipadrão no ambiente de teste, aumentando o custo de sincronização e trocas de contexto sem trazer benefícios de vazão, limitando assim a escalabilidade vertical da máquina.
+##### Linha do Tempo da Latência
+![Linha do Tempo da Latência](misc/latency_timeline.png)
+
+
+#### Discussão das Tendências
+* **Impacto do Tamanho da Janela:** Observa-se que a vazão escala quase linearmente com o tamanho da janela de agregação. Janelas maiores (60s) amortizam o custo de I/O do Spark e melhoram a eficiência da CPU, atingindo o pico de ~426 trades/s na configuração de 1 partição. Como esperado, o custo dessa eficiência é o aumento proporcional da latência (retenção de estado).
+* **O Gargalo do Paralelismo (Análise Crítica):** O resultado mais contraintuitivo (e interessante) é que escalar horizontalmente piorou o desempenho bruto. Aumentar as partições de 5 para 10 causou uma **queda** de ~24% na vazão (de 382 para 288 trades/s) na janela de 60s. O alto desvio padrão na configuração de 1 partição (± 457.4) indica que, embora atinja picos altos, ela é muito sensível à volatilidade dos dados de entrada.
+
+## 11. Limitações e Conclusões
+
+**O que deu certo:**
+A arquitetura de *stream processing* provou ser resiliente, processando o fluxo ininterrupto sem gargalos progressivos (*backpressure*) ao longo dos testes de 16 minutos. O uso de 5 partições com janelas de 30 a 60 segundos se provou o "sweet spot" do sistema, garantindo alta vazão e estabilizando a variação da latência p95.
+
+**Limitações e Desafios:**
+A principal limitação encontrada foi a restrição física de hardware atuando como gargalo na orquestração. Como a máquina de testes possuía 10 núcleos físicos, forçar 10 partições concorrentes para leitura no Kafka + processamento no Spark resultou em *context switching* severo. A CPU gastou mais tempo gerenciando a sincronização entre as threads (*straggler problem*) do que processando os trades úteis. Conclui-se que o excesso de partições em um ambiente *single-node* é um antipadrão de arquitetura.
+
+## 12. Referências e recursos externos
+* [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
+* [Spark Structured Streaming Programming Guide](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html)
+* [Binance Spot API / WebSocket Streams](https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams)
