@@ -1,0 +1,7 @@
+# .dockerignore
+central_west.csv
+data/
+datasample/
+.git/
+__pycache__/
+*.parquet
