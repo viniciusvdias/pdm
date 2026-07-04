@@ -1,0 +1,19 @@
+# Copy to config.yaml and adjust paths if needed.
+
+graph_raw_path: data/raw/soc-orkut-relationships.txt
+dataset_slug: orkut
+reports_dir: reports
+seed: 42
+lpa_max_iter: 100
+
+# false = undirected SNAP (each line symmetrized to u→v and v→u at load)
+graph_directed: false
+
+# null = auto from CPU count (override with LPA_WORKERS or LPA_CHUNK_DIVISOR)
+lpa_chunk_divisor: null
+
+# Optional cluster mode (omit for single-VM local Ray/Dask)
+# ray_head_address: null
+# dask_scheduler_address: null
+# ray_num_cpus: null
+# dask_n_workers: null

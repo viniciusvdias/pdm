@@ -1,0 +1,15 @@
+services:
+  lpa:
+    build: .
+    image: distributed-lpa:latest
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./config.yaml.example:/app/config.yaml:ro
+    environment:
+      GRAPH_RAW_PATH: data/raw/soc-orkut-relationships.txt
+      LPA_MAX_ITER: "100"
+      BENCHMARK_FRACTIONS: "1,10,100"
+      BENCHMARK_RUNS: "3"
+      BENCHMARK_BACKEND: both
+      LPA_WORKERS: "6"

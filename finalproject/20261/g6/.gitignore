@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+mutants/
+.mutmut-cache/
+*.egg
+
+# Data & reports (large / local)
+data/raw/
+data/raw/*.sqlite
+data/preprocess.log
+data/artifacts/*.parquet
+data/artifacts/*.npz
+data/artifacts/*.meta.json
+reports/metrics_raw_*.csv
+reports/comparison_*.md
+reports/benchmark_run_*.log
+reports/qa_*.md
+reports/latest_run.txt
+reports/partitions_*/
+reports/partitions_*/*
+tests/integration/output/benchmark/metrics_raw_*.csv
+tests/integration/output/benchmark/comparison_*.md
+tests/integration/output/benchmark/benchmark_run_*.log
+tests/integration/output/benchmark/latest_run.txt
+
+# Ray
+ray_results/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Env
+.env
+.env.*
+
+# Spec Kit (local planning artifacts, not part of the deliverable)
+specs/
+.specify/
