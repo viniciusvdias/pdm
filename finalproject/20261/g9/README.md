@@ -152,20 +152,20 @@ The pipeline will process all files available in the MinIO bucket.
                                |
                                v
                     +----------------------+
-                    |  Spark Master Node   |
-                    | Job Coordination     |
+                    |   Apache Spark SQL   |
+                    |   ETL Application    |
                     +----------+-----------+
                                |
                                v
                     +----------------------+
-                    |  Spark Worker Node   |
-                    | Parallel Processing  |
+                    | Input Partitioning   |
+                    | Parallel Spark Tasks |
                     +----------+-----------+
                                |
                                v
                     +----------------------+
-                    | Spark SQL DataFrames |
-                    | ETL Transformations  |
+                    | DataFrame Processing |
+                    | Regex + Aggregation  |
                     +----------+-----------+
                                |
                                v
@@ -175,17 +175,20 @@ The pipeline will process all files available in the MinIO bucket.
                     +----------------------+
 ```
 
+---
+
 ### Components
 
 #### MinIO
 
-MinIO acts as an S3-compatible object storage service.
+MinIO is an S3-compatible object storage service used as the input data repository.
 
 Responsibilities:
 
-* Store compressed log files;
-* Serve data to Spark through the S3A connector;
-* Simulate a distributed storage environment.
+- Store compressed log files (`.txt.gz`);
+- Provide scalable object storage through the S3 API;
+- Serve data to Spark via the S3A connector;
+- Simulate a cloud storage environment without requiring external infrastructure.
 
 Container:
 
@@ -197,7 +200,7 @@ pdm-minio
 
 #### MinIO Setup
 
-Responsible for automatically uploading the sample dataset into MinIO during environment initialization.
+Responsible for automatically creating the bucket structure and uploading the sample dataset during the environment initialization.
 
 Container:
 
@@ -207,38 +210,23 @@ pdm-minio-setup
 
 ---
 
-#### Spark Master
+#### Apache Spark
 
-Coordinates job scheduling and resource allocation.
+Spark executes the complete ETL pipeline in parallel using the DataFrame API and Spark SQL.
 
 Responsibilities:
 
-* Receive Spark jobs;
-* Manage execution planning;
-* Distribute tasks to workers.
+- Read log files from MinIO;
+- Partition the input dataset;
+- Execute parallel parsing tasks;
+- Perform filtering, aggregations and joins;
+- Generate structured analytical datasets;
+- Export the final CSV files.
 
-Container:
+Containers:
 
 ```text
 pdm-spark-master
-```
-
----
-
-#### Spark Worker
-
-Executes the ETL tasks in parallel.
-
-Responsibilities:
-
-* Read compressed logs from MinIO;
-* Apply Regular Expression parsing;
-* Execute aggregations and transformations;
-* Generate structured datasets.
-
-Container:
-
-```text
 pdm-spark-worker
 ```
 
@@ -246,7 +234,7 @@ pdm-spark-worker
 
 #### Jupyter Environment
 
-Provides an interactive environment for development and experimentation.
+Provides an interactive environment for development, debugging and performance evaluation.
 
 Container:
 
@@ -258,95 +246,208 @@ pdm-jupyter
 
 ### Data flow
 
+The ETL pipeline follows the workflow below:
+
 1. Log files are uploaded to MinIO.
-2. Spark reads the compressed files through the S3A connector.
-3. The ETL pipeline parses the logs using Regular Expressions.
-4. Structured records are generated as Spark DataFrames.
-5. Transformations calculate execution metrics, including the Time to Best Solution.
-6. Results are exported as CSV files.
-7. Output files are stored in the local `results/` directory for later analysis.
+2. Spark accesses the objects through the S3A connector.
+3. The input files are automatically divided into partitions.
+4. Spark creates one processing task for each partition.
+5. Tasks are distributed among the available CPU cores and executed in parallel.
+6. Each task parses its assigned partition using regular expressions and generates intermediate DataFrames.
+7. Aggregations and joins combine the intermediate information into the final dataset.
+8. The resulting DataFrame is exported as CSV files.
+9. Output files are stored in the local `results/` directory.
+
+---
+
+### Spark execution workflow
+
+Although the ETL pipeline is implemented as a sequence of DataFrame transformations, Spark uses **lazy evaluation**. Instead of executing each transformation immediately, Spark builds a logical execution plan and postpones computation until an action (the CSV export) is requested. Before execution, Spark optimizes this plan to reduce unnecessary computations and improve resource utilization.
+
+The execution model adopted by the pipeline is illustrated below.
+
+```text
+               Input logs stored in MinIO
+                         │
+                         ▼
+              S3A connector reads the files
+                         │
+                         ▼
+      Files are divided into input partitions
+                         │
+                         ▼
+      One Spark task is created per partition
+                         │
+         ┌───────────────┴───────────────┐
+         │                               │
+         ▼                               ▼
+     CPU Core 1                     CPU Core 2
+  Process Partition A          Process Partition B
+         │                               │
+         ▼                               ▼
+  Read compressed logs           Read compressed logs
+  Regex extraction               Regex extraction
+  Filtering                      Filtering
+  Type conversion                Type conversion
+         │                               │
+         └───────────────┬───────────────┘
+                         ▼
+          Intermediate Spark DataFrames
+                         │
+          (recomputed when required)
+                         ▼
+        Aggregations and Broadcast Joins
+                         │
+                         ▼
+              Final Structured Dataset
+                         │
+                         ▼
+                CSV files written to disk
+```
+
+#### Input partitioning
+
+The input files stored in MinIO are divided into multiple input partitions. Each partition becomes an independent unit of work that can be processed separately. Only the partitions currently assigned to active tasks are loaded into memory, allowing datasets much larger than the available RAM to be processed efficiently.
+
+The exact number of partitions depends on the characteristics of the input dataset and Spark's partitioning strategy.
+
+#### Parallel task execution
+
+Each input partition is assigned to a Spark task.
+
+Spark schedules these tasks among the available CPU cores. Since each task occupies one core, several partitions can be processed simultaneously. Whenever a task finishes, Spark immediately assigns another pending partition to the available core until all partitions have been processed. Because the number of partitions is typically much larger than the number of CPU cores, tasks are executed in successive waves until the entire dataset has been processed.
+
+#### Processing performed by each task
+
+Each task executes the same sequence of operations over its assigned partition.
+
+The main processing steps include:
+
+- Reading compressed log records from MinIO through the S3A connector;
+- Decompressing the assigned `.txt.gz` files;
+- Filtering only the relevant log lines;
+- Extracting structured information using regular expressions;
+- Converting extracted values into typed Spark columns;
+- Producing intermediate DataFrames used by subsequent aggregation and join operations.
+
+Since these intermediate DataFrames are not cached, Spark repeats this parsing process whenever another branch of the execution plan requires data derived from the raw input.
+
+#### Aggregations and joins
+
+After the parsing phase, Spark combines information extracted from different partitions.
+
+Aggregation operations (`groupBy`) require records with the same key to be grouped before computing the final result. This redistribution of records is known as a **shuffle**.
+
+To minimize communication overhead, the pipeline broadcasts the small parameter DataFrames (`df_args`, `df_threads`, `df_best`, and `df_start_time`) before joining them with the much larger timeline DataFrame (`df_timeline`). As a result, only a very small amount of data is exchanged between tasks, keeping shuffle overhead negligible.
+
+#### Memory management
+
+The ETL pipeline processes data incrementally instead of loading the complete dataset into memory.
+
+Each task loads and processes only its assigned partition, allowing datasets much larger than the available memory to be analyzed. After a partition has been processed, its temporary objects become eligible for garbage collection.
+
+Because the workload performs extensive regular-expression parsing over billions of log lines, many temporary Java objects are created during execution. However, experimental observations show that garbage collection accounts for only a small fraction of the total execution time, indicating that the application is primarily **CPU-bound** rather than memory-bound.
+
+---
 
 ### Technologies used
 
-* Apache Spark 3.5.1
-* PySpark
-* Spark SQL
-* MinIO
-* Docker
-* Docker Compose
-* Python 3
-* Regular Expressions (Regex)
-* S3A Connector
+- Apache Spark 3.5.1
+- PySpark
+- Spark SQL
+- MinIO
+- Docker
+- Docker Compose
+- Python 3
+- Regular Expressions (Regex)
+- S3A Connector
 
+---
 
-## 5. Workloads evaluated
+# 5. Workloads evaluated
 
-The project evaluates the performance of a distributed ETL pipeline designed to process large collections of compressed logs. The pipeline reads files from object storage, extracts structured information using regular expressions, computes execution metrics, and generates analytical CSV datasets.
+The project evaluates the performance of a parallel ETL pipeline designed to process large collections of compressed optimization logs.
 
-Although the ETL process is executed as a single Spark application, two experimental workloads were defined to evaluate different scalability aspects.
+For every execution, the pipeline reads log files from MinIO, extracts structured information using regular expressions, computes execution metrics (including the **Time to Best Solution**), and exports the results as structured CSV datasets.
 
-### [WORKLOAD-1] ETL Pipeline under Core Scalability
+Two complementary workloads were designed to evaluate different scalability aspects of the system.
 
-This workload evaluates the impact of computational resources on execution time.
+---
+
+## [WORKLOAD-1] Core Scalability
+
+This workload evaluates how the ETL pipeline benefits from additional computational resources.
 
 The input dataset remains fixed throughout all executions, while the number of CPU cores allocated to Spark is varied.
 
-The complete ETL pipeline is executed, including:
+During each execution, the complete ETL workflow is performed:
 
-1. Reading compressed `.txt.gz` files from MinIO;
-2. Parsing unstructured log lines using regular expressions;
-3. Extracting execution parameters and optimization metrics;
-4. Computing the "Time to Best Solution" metric;
-5. Generating structured Spark DataFrames;
-6. Exporting the final results as CSV files.
-
-Configuration:
-
-* Fixed input size: approximately 5.17 GB.
-* Number of cores varied from 1 to 32.
-* Memory allocation fixed at 50 GB.
-
-Objective:
-
-Evaluate the scalability of the ETL application and determine how execution time changes as additional processing resources become available.
-
----
-
-### [WORKLOAD-2] ETL Pipeline under Data Volume Scaling
-
-This workload evaluates the impact of dataset size on execution time and throughput.
-
-The number of CPU cores remains fixed while the amount of input data is increased.
-
-The same ETL operations described in Workload 1 are executed.
+1. Reading compressed log files from MinIO;
+2. Partitioning the input dataset;
+3. Parallel parsing of log records;
+4. Extraction of execution parameters and optimization metrics;
+5. Construction of intermediate Spark DataFrames;
+6. Aggregation and broadcast joins;
+7. Computation of the Time to Best Solution metric;
+8. Export of the final structured CSV dataset.
 
 Configuration:
 
-* Number of cores fixed at 32.
-* Memory allocation fixed at 50 GB.
-* Input dataset size varied by changing the number of compressed log files processed.
+- Fixed input dataset: approximately **5.17 GiB**;
+- Number of CPU cores varied from **1 to 32**;
+- Driver memory fixed at **50 GB**.
 
 Objective:
 
-Evaluate the capability of the system to process increasingly larger datasets and measure how throughput behaves as data volume grows.
+Evaluate the strong scalability of the ETL application and measure how execution time changes as additional processing resources become available.
 
 ---
 
-### Performance Metrics
+## [WORKLOAD-2] Data Volume Scaling
 
-For both workloads, the following metrics were collected:
+This workload evaluates how the ETL pipeline behaves as the amount of input data increases.
 
-* Total execution time (seconds);
-* Input size (bytes);
-* Number of CPU cores allocated;
-* Throughput (MB/s).
+The computational resources remain fixed, while progressively larger datasets are processed.
 
-Throughput was calculated as:
-[
+Each execution performs exactly the same ETL operations described in Workload 1.
+
+Configuration:
+
+- Number of CPU cores fixed at **32**;
+- Driver memory fixed at **50 GB**;
+- Input size increased by processing progressively larger collections of compressed log files.
+
+Objective:
+
+Evaluate the throughput of the ETL application and determine how efficiently it scales when processing increasingly larger datasets.
+
+---
+
+## Performance metrics
+
+The following metrics were collected for every experiment:
+
+- Total execution time (seconds);
+- Number of allocated CPU cores;
+- Input dataset size (bytes);
+- Processing throughput (MB/s);
+- Speedup relative to the single-core execution.
+
+Throughput was computed as
+
+```text
 Throughput = Input_Size_MB / Execution_Time_s
-]
+```
 
-Higher throughput values indicate better utilization of computational resources.
+while speedup was calculated as
+
+```text
+Speedup = T₁ / Tₙ
+```
+
+where **T₁** is the execution time using one CPU core and **Tₙ** is the execution time obtained with **n** cores.
+
+Higher throughput and speedup values indicate better utilization of the available computational resources.
 
 ## 6. Experiments and results
 
@@ -388,37 +489,92 @@ The Spark cluster was deployed entirely using Docker Compose and consisted of:
 
 ---
 
-### 6.2 Benchmarking methodology
+## 6. Experiments and results
 
-Two benchmarking campaigns were conducted, one for each workload described in Section 5.
+### 6.1 Experimental environment
 
-For every experimental configuration, the complete ETL pipeline was executed **five independent times**. The total wall-clock execution time was measured externally by the benchmarking script, while the processed data size and resource allocation parameters were automatically recorded.
+All experiments were performed using the execution environment described in Section 4. The complete ETL pipeline was executed inside Docker containers, with Apache Spark processing log files stored in MinIO through the S3A connector.
 
-The following performance metrics were collected:
+Hardware specifications:
 
-* Execution time (seconds);
-* Input size (bytes);
-* Number of allocated CPU cores;
-* Throughput (MB/s), computed as the processed input size divided by the execution time.
+| Component | Specification |
+|------------|---------------|
+| Processor | Intel Core i9-14900KF |
+| CPU Frequency | Up to 6.0 GHz |
+| Physical Cores | 24 |
+| Logical Threads | 32 |
+| Memory | 64 GB RAM |
+| Storage | SSD |
+| Architecture | x86_64 |
 
-For each configuration, the following statistical measures were calculated:
+Software specifications:
 
-* Mean;
-* Standard deviation;
-* 95% confidence interval (CI);
-* Number of repetitions.
+| Component | Version |
+|------------|---------|
+| Operating System | Debian GNU/Linux 12 |
+| Linux Kernel | 6.1.0-28-amd64 |
+| Docker | Docker Engine |
+| Docker Compose | Docker Compose |
+| Apache Spark | 3.5.1 |
+| Python | Python 3 |
+| MinIO | Latest Docker image |
 
-For the core scalability workload, the speedup was also calculated as
+The execution environment consisted of the following services:
 
-[
-Speedup(N)=\frac{T_1}{T_N},
-]
+- Apache Spark;
+- MinIO object storage;
+- MinIO setup container for automatic dataset ingestion;
+- Jupyter Notebook environment for development and experimentation.
 
-where (T_1) is the average execution time using one CPU core and (T_N) is the average execution time using (N) CPU cores.
+During every experiment, Spark accessed the input data directly from MinIO through the S3A connector. The ETL pipeline automatically partitioned the input dataset into multiple independent tasks, which were dynamically distributed among the available CPU cores. Each task processed one partition by reading the corresponding log records, applying regular-expression parsing, extracting structured information, and generating intermediate DataFrames. After the parallel parsing stage, Spark executed aggregation and broadcast-join operations to build the final analytical dataset, which was exported as CSV files.
+
+The pipeline processes data incrementally rather than loading the entire dataset into memory. Consequently, only the partitions currently assigned to active tasks are kept in memory, enabling the system to process datasets substantially larger than the available RAM.
 
 ---
 
-## 6.4 Results
+### 6.2 Benchmarking methodology
+
+Two benchmarking campaigns were conducted to evaluate the workloads presented in Section 5.
+
+For every experimental configuration, the complete ETL pipeline was executed **five independent times**. Each execution performed the entire processing workflow, including reading compressed log files from MinIO, partitioning the input dataset, parallel parsing, DataFrame transformations, aggregations, joins, computation of the *Time to Best Solution* metric, and generation of the final CSV dataset.
+
+The total wall-clock execution time was measured externally by the benchmarking script, while the ETL pipeline automatically recorded the execution parameters and generated the structured output datasets.
+
+The following performance metrics were collected:
+
+- Total execution time (seconds);
+- Number of allocated CPU cores;
+- Input dataset size (bytes);
+- Processing throughput (MB/s);
+- Speedup (for the core scalability workload).
+
+For every experimental configuration, the following statistical measures were computed from the five executions:
+
+- Arithmetic mean;
+- Standard deviation;
+- 95% confidence interval (CI).
+
+For the **Core Scalability** workload, the speedup was computed as
+
+```text
+Speedup(N) = T₁ / Tₙ
+```
+
+where **T₁** is the average execution time obtained using one CPU core and **Tₙ** is the average execution time obtained using **N** CPU cores.
+
+For the **Data Volume Scaling** workload, throughput was computed as
+
+```text
+Throughput = Input_Size_MB / Execution_Time_s
+```
+
+where *Input_Size_MB* represents the amount of processed input data and *Execution_Time_s* is the total execution time.
+
+To ensure statistically meaningful comparisons, every reported value corresponds to the average of five independent executions, and all plots include **95% confidence intervals** to represent the variability observed during the experiments.
+
+---
+
+## 6.3 Results
 
 ### Workload 1 – Core Scalability
 
@@ -463,14 +619,17 @@ Each configuration was executed five times, varying the number of allocated CPU 
 
 #### Discussion
 
-The ETL pipeline exhibits almost perfect scalability during the first 8 cores count.
-The execution time decreases greatly up to approximately 12–16 CPU cores, indicating that the workload is highly parallelizable during the parsing and transformation stages.
+Although the ETL pipeline benefits from additional CPU cores, its scalability is far from linear. The best observed configuration achieved a speedup of approximately **14×** using **30 CPU cores**, significantly below the ideal **30×** speedup. Furthermore, performance slightly decreased when increasing the allocation to **32 threads**, indicating that the application reaches a scalability ceiling before fully utilizing all available computational resources.
 
-After approximately 18 cores, the performance improvement becomes progressively smaller, demonstrating diminishing returns. This behavior is expected due to the fact that the input data is not very large.
+Analysis of the Spark execution logs indicates that the workload is primarily **CPU-bound**, with the main bottleneck being the repeated processing of the input dataset. During a single execution, Spark reads the input data approximately **eight times**, resulting in a cumulative input volume roughly eight times larger than the original dataset. This behavior occurs because multiple intermediate DataFrames (`df_args`, `df_threads`, `df_best_raw`, and `df_timeline`) are independently derived from the same raw input without persistence. As a result, each action triggers a new traversal of the lineage, causing repeated file reading, GZIP decompression, text parsing, and regular-expression extraction over essentially the same data. Since regular-expression matching is the most computationally expensive operation in the pipeline, these repeated scans substantially increase CPU utilization and limit scalability.
 
-The highest performance was obtained using **31 CPU cores**, achieving a **14.3× speedup** compared to the single-core execution. Increasing the allocation to 32 logical threads resulted in a slight performance degradation (speedup of 12.2×), likely because the last thread corresponds to hyper-threading rather than an additional physical execution unit, increasing contention for shared CPU resources.
+The execution logs also show that scheduler delays, shuffle operations, and memory usage are negligible compared to task execution time, indicating that synchronization, data movement, and memory pressure are not the primary limiting factors. Additionally, the use of compressed `.txt.gz` files introduces a secondary limitation because GZIP is not a splittable compression format. Consequently, individual compressed files cannot be processed by multiple tasks simultaneously, contributing to workload imbalance whenever file sizes differ significantly.
 
-Overall, the relatively small standard deviations and confidence intervals indicate stable and reproducible execution times across all repetitions.
+This imbalance is reflected in the Spark monitoring data, where task durations range from only a few seconds to nearly fifty minutes. As shorter tasks complete, CPU cores remain idle while waiting for the longest-running tasks to finish, reducing processor utilization during the final portion of each stage and explaining the diminishing performance gains obtained with higher thread counts.
+
+Despite these limitations, the application demonstrates stable execution across repeated runs, with relatively small confidence intervals and low variability. The results indicate that the ETL pipeline is well suited for medium and large datasets, where the available parallelism compensates for the framework overhead. However, the current implementation is not recommended for small datasets (e.g., below approximately **1 GB**), for which Spark's execution overhead becomes significant relative to the amount of useful computation.
+
+Potential optimizations include reducing the number of full scans by combining multiple extraction steps into a single parsing pass or persisting reusable intermediate DataFrames, improving partition balance to reduce task skew, and replacing repeated regular-expression parsing with more efficient parsing strategies. These optimizations would reduce CPU utilization, minimize redundant I/O, and improve scalability without requiring changes to the overall architecture.
 
 ---
 
@@ -500,27 +659,31 @@ Each dataset size was processed five times.
 
 #### Discussion
 
-The throughput remains remarkably stable despite the twenty-fold increase in input size, varying only between approximately **9.25 MB/s** and **10.62 MB/s**.
+#### Discussion
 
-The largest datasets exhibit extremely small standard deviations, demonstrating that Spark maintains highly consistent performance even when processing more than 100 GB of compressed log data.
+The throughput remains remarkably stable despite the approximately twenty-fold increase in input size, varying only between **9.25 MB/s** and **10.62 MB/s**. This behavior indicates that the execution time grows almost proportionally to the amount of processed data, demonstrating good scalability with respect to data volume.
 
-The small reduction in throughput for larger datasets is expected due to increased disk I/O and object storage access. Nevertheless, the overall degradation is modest (approximately 13%), indicating that the ETL pipeline scales efficiently with data volume.
+The largest datasets also exhibit very small standard deviations and narrow confidence intervals, indicating that the ETL pipeline maintains consistent performance even when processing more than **100 GB** of compressed log data.
 
-These results demonstrate that the proposed distributed architecture is capable of processing substantially larger datasets without significant loss of performance, making it suitable for large-scale experimental analysis of optimization logs.
+Unlike the core scalability experiment, no significant performance degradation is observed as the dataset grows. The workload performed for each input partition remains essentially the same—reading compressed log files, applying regular-expression parsing, and computing the required metrics—so increasing the input size primarily results in a proportional increase in the number of processed partitions rather than introducing additional execution overhead.
 
+Although a slight throughput reduction (approximately **13%**) is observed for the largest datasets, this decrease is modest considering the substantial increase in processed data. The results indicate that the ETL pipeline maintains nearly constant processing efficiency across different dataset sizes, making it suitable for large-scale analysis of optimization logs.
+
+---
 
 ## 7. Limitations and conclusions
 
-- This project successfully demonstrates the implementation of a distributed ETL pipeline using Apache Spark running on a Dockerized cluster. The pipeline is capable of processing large collections of compressed execution logs stored in MinIO, extracting relevant execution metrics, and producing structured CSV outputs suitable for further analysis. Experimental results show that the application achieves significant performance improvements when additional CPU cores are available, obtaining a maximum speedup of approximately 14× compared to the sequential execution. Furthermore, throughput remains relatively stable as the input data volume increases from approximately 5 GB to over 100 GB, indicating good scalability with respect to data size.
+This project presented the design and evaluation of a distributed ETL pipeline for processing large collections of subgraph optimization execution logs using Apache Spark. The pipeline reads compressed log files stored in MinIO, extracts execution parameters and optimization metrics through regular-expression parsing, computes additional analytical metrics, and exports the processed data as structured CSV files for further analysis.
 
-- Despite these positive results, some limitations were observed. The scalability experiment shows diminishing returns beyond approximately 30 processing cores, with performance degradation at 32 cores. This behavior is expected due to the increasing overhead associated with task scheduling, synchronization, I/O contention, and Spark's execution model.
+Two complementary benchmarking campaigns were conducted to evaluate both computational scalability and data-volume scalability. The experimental results show that the application benefits from additional processing resources, although the achieved speedup is considerably below the ideal linear behavior. The best configuration reached approximately **14× speedup** when using **30 CPU cores**, indicating that the application successfully exploits parallelism but is ultimately limited by characteristics of the current ETL implementation.
 
-- Another important limitation is that Apache Spark introduces a non-negligible startup and scheduling overhead. As a result, this system is not recommended for processing small datasets (e.g., smaller than 1 GB), where the overhead of initializing the Spark environment may outweigh the benefits of distributed execution. For workloads of this size, a sequential implementation or a lightweight parallel solution would likely provide better overall performance.
+The Spark execution logs reveal that these scalability limitations are primarily caused by the application itself rather than by Spark's runtime overhead. The pipeline repeatedly scans the same input dataset to construct multiple intermediate DataFrames, causing the compressed logs to be read, decompressed and parsed several times during a single execution. Since the workload is dominated by computationally expensive regular-expression matching, these repeated scans substantially increase the CPU workload. Additionally, the use of GZIP-compressed files limits input parallelism because individual compressed files cannot be split among multiple tasks, contributing to task imbalance whenever file sizes differ significantly.
 
-- Additionally, the workload consists primarily of CPU-intensive regular expression parsing over text files. Consequently, the observed scalability characteristics may differ from Spark applications dominated by SQL operations, machine learning workloads, or iterative algorithms. The current implementation also exports the processed results as CSV files; adopting columnar formats such as Parquet would likely improve the efficiency of subsequent analytical workloads.
+Despite these limitations, the data-volume experiments demonstrate that the proposed architecture scales well with increasing input size. As the dataset grows from approximately **5 GB** to more than **100 GB**, throughput remains close to **10 MB/s**, with only a modest reduction and very low execution-time variability. This indicates that the pipeline maintains stable performance for large datasets and that the observed scalability bottlenecks are associated mainly with computational efficiency rather than with memory management, shuffle operations or storage bandwidth.
 
-- Overall, the project demonstrates that Apache Spark provides an effective platform for processing large collections of scientific execution logs, significantly reducing execution time while maintaining stable throughput across increasing data volumes. The obtained results validate the suitability of distributed data processing techniques for large-scale performance analysis in high-performance computing research.
+The experimental analysis also identifies several opportunities for future optimization. Reducing the number of complete scans over the input logs, combining multiple extraction stages into a single parsing pass, improving partition balance, and replacing part of the regular-expression processing with more efficient parsing techniques would significantly reduce CPU utilization and improve scalability. In addition, adopting columnar storage formats such as Parquet would improve the efficiency of downstream analytical workloads.
 
+Overall, the results demonstrate that Apache Spark provides an effective platform for large-scale processing of scientific execution logs. Although the current implementation does not fully exploit the available computational resources due to CPU-intensive parsing and repeated input traversal, it successfully processes datasets exceeding 100 GB while maintaining stable throughput. These findings validate the proposed architecture and provide a clear roadmap for improving the scalability of future versions of the ETL pipeline.
 
 ## 8. References and external resources
 
