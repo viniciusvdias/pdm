@@ -1,0 +1,76 @@
+services:
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # Dois listeners: INTERNAL (containers, via hostname `kafka`) e HOST (sua máquina, via localhost).
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+
+  collector:
+    build: .
+    container_name: collector
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      BINANCE_SYMBOLS: BTCUSDT
+    command: python -u src/binance.py
+    restart: on-failure
+
+  processor:
+    build: .
+    container_name: processor
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      WINDOW_SIZE_SECONDS: 10
+      WATERMARK_SECONDS: 10
+      TRIGGER_SECONDS: 5
+      EXPERIMENT_LABEL: default
+      PARTITIONS: 1
+    command: python -u src/processor.py
+    volumes:
+      - ./metrics:/app/metrics      # candles e métricas ficam visíveis no host
+      - ivy_cache:/root/.ivy2       # cache do jar spark-sql-kafka (evita rebaixar a cada start)
+    restart: on-failure
+
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    container_name: jupyter_analysis
+    ports:
+      - "8888:8888"
+    volumes:
+      # Mapeia a pasta raiz do projeto para dentro do container
+      - ./:/home/jovyan/work
+    working_dir: /home/jovyan/work
+    # Roda como root para evitar problemas de permissão ao salvar os gráficos PNG na pasta metrics
+    user: root
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
+
+volumes:
+  kafka_data:
+  ivy_cache:
