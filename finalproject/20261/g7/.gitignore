@@ -1,0 +1,14 @@
+# Full dataset — do not commit (too large)
+data/
+csgo-matchmaking-damage.zip
+
+# Spark job output (generated at runtime)
+misc/output/workload*/
+misc/output/.*.crc
+misc/output/**/_SUCCESS
+misc/output/**/._SUCCESS.crc
+
+# Keep the benchmark chart
+!misc/output/benchmark_results.png
+
+CLAUDE.md

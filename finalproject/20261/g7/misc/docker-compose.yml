@@ -1,0 +1,60 @@
+services:
+  spark-master:
+    image: apache/spark:3.5.0
+    container_name: spark-master
+    hostname: spark-master
+    user: root
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    networks:
+      - spark-net
+
+  spark-worker:
+    image: apache/spark:3.5.0
+    user: root
+    depends_on:
+      - spark-master
+    volumes:
+      - ../src:/app/src
+      - ${DATA_PATH:-../datasample}:/app/data
+      - ./output:/app/output
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077 --cores 4 --memory 4G
+    networks:
+      - spark-net
+
+  spark-job:
+    image: apache/spark:3.5.0
+    container_name: spark-job
+    user: root
+    environment:
+      N_WORKERS: ${N_WORKERS:-1}
+      RUNS: ${RUNS:-1}
+      WORKLOADS: ${WORKLOADS:-1,2,3}
+      REPEAT_COUNT: ${REPEAT_COUNT:-100}
+    volumes:
+      - ../src:/app/src
+      - ${DATA_PATH:-../datasample}:/app/data
+      - ./output:/app/output
+    depends_on:
+      - spark-worker
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /opt/spark/bin/spark-submit \
+        --master spark://spark-master:7077 \
+        /app/src/main.py \
+        /app/data \
+        /app/output \
+        --workers "${N_WORKERS:-1}" \
+        --runs "${RUNS:-1}" \
+        --workloads "${WORKLOADS:-1,2,3}" \
+        --repeat-count "${REPEAT_COUNT:-100}"
+    networks:
+      - spark-net
+
+networks:
+  spark-net:
+    driver: bridge
