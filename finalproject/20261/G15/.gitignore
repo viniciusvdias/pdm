@@ -1,0 +1,2 @@
+# Saidas geradas em runtime (CSVs, PNGs, parquet, dataset baixado). Nao versionar.
+output/

@@ -1,0 +1,27 @@
+# Paths relativos a ESTE arquivo (misc/). Os scripts em bin/ chamam sempre com
+#   docker compose -f misc/docker-compose.yml ...
+# entao os volumes ../src, ../datasample e ../output apontam para a raiz do grupo (gX/).
+services:
+  bigdata:
+    build:
+      context: .                 # misc/ (contem Dockerfile + requirements.txt)
+    image: g15-bigdata:latest
+    container_name: g15_bigdata
+    ports:
+      - "8888:8888"              # JupyterLab (modo interativo)
+      - "4040:4040"              # Spark UI (durante o ETL)
+    volumes:
+      - ../src:/tf/src           # codigo-fonte
+      - ../datasample:/tf/datasample:ro   # amostra p/ smoke test
+      - ../output:/tf/output     # saidas geradas (CSVs, PNGs, parquet) - visivel no host
+    working_dir: /tf/src
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'            # 2 vCPU: forca o gargalo de ingestao (o ponto do experimento)
+          memory: 16G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

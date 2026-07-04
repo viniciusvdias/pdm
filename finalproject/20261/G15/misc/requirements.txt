@@ -1,0 +1,7 @@
+pyspark==3.5.0
+pandas
+psutil
+nvidia-ml-py #antigo pynvml
+matplotlib
+# tensorflow-io removido para evitar conflito de sobrescrita 
+# com o TensorFlow otimizado (Blackwell/CUDA 12.8) da imagem NGC da NVIDIA.
