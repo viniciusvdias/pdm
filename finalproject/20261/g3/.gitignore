@@ -1,0 +1,13 @@
+# Artefatos de execução e dados grandes — NUNCA versionar o dataset completo.
+results/*
+!results/.gitkeep
+*.png
+.env
+__pycache__/
+*.pyc
+
+# Datasets completos/amplificados na raiz de g3 (apenas datasample/ é versionado).
+# Ancorado em /data/ para NÃO ignorar o pacote de código src/data/.
+/data/
+*.csv
+!datasample/*.csv.gz

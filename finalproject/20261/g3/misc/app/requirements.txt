@@ -1,0 +1,6 @@
+confluent-kafka==2.5.0
+psycopg2-binary==2.9.9
+boto3==1.34.131
+numpy==2.0.1
+matplotlib==3.9.1
+prometheus-client==0.20.0
