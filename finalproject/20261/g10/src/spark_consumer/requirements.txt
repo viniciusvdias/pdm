@@ -1,0 +1,4 @@
+sentence-transformers==3.0.1
+numpy==1.24.4
+pandas==2.0.3
+pyarrow==14.0.2

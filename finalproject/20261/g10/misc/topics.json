@@ -1,0 +1,64 @@
+{
+  "categories": [
+    {
+      "name": "Sports",
+      "description": "Articles about athletic activities, competitive sports, professional athletes, sports teams, leagues, tournaments, stadiums, and Olympic events.",
+      "examples": ["Cristiano Ronaldo", "NBA", "Olympics", "Formula 1", "FIFA World Cup", "Super Bowl"]
+    },
+    {
+      "name": "Science",
+      "description": "Articles regarding natural sciences, physics, chemistry, biology, astronomy, space exploration, scientific discoveries, evolution, and laboratory research.",
+      "examples": ["Albert Einstein", "NASA", "Quantum Mechanics", "DNA", "Black Hole", "Periodic Table"]
+    },
+    {
+      "name": "Technology",
+      "description": "Articles about computing, software engineering, hardware, artificial intelligence, internet, smartphones, programming languages, and digital innovation.",
+      "examples": ["Python programming", "Artificial Intelligence", "Apple iPhone", "Linux", "ChatGPT", "Silicon Valley"]
+    },
+    {
+      "name": "Politics",
+      "description": "Articles covering government systems, elections, political parties, international relations, legislation, politicians, public policy, and diplomacy.",
+      "examples": ["Barack Obama", "United Nations", "Elections", "Parliament", "White House", "European Union"]
+    },
+    {
+      "name": "History",
+      "description": "Articles about historical events, ancient civilizations, historical figures, wars, empires, archeology, and chronological historical eras.",
+      "examples": ["World War II", "Ancient Egypt", "Roman Empire", "French Revolution", "Julius Caesar"]
+    },
+    {
+      "name": "Arts",
+      "description": "Articles related to visual arts, literature, painting, sculpture, architecture, museums, famous artists, poetry, and art movements.",
+      "examples": ["Leonardo da Vinci", "Mona Lisa", "William Shakespeare", "Surrealism", "Louvre Museum", "Architecture"]
+    },
+    {
+      "name": "Entertainment",
+      "description": "Articles about cinema, movies, television shows, music, actors, pop culture, theater, video games, celebrities, and streaming platforms.",
+      "examples": ["Hollywood", "Netflix", "The Beatles", "Academy Awards", "Video Games", "Pop Culture"]
+    },
+    {
+      "name": "Geography",
+      "description": "Articles regarding countries, cities, continents, oceans, mountains, rivers, maps, demographics, and geographical landmarks.",
+      "examples": ["Amazon Rainforest", "Mount Everest", "Pacific Ocean", "Paris", "Continents", "Demographics"]
+    },
+    {
+      "name": "Business",
+      "description": "Articles about economics, finance, corporations, stock markets, global trade, entrepreneurship, currencies, and industries.",
+      "examples": ["Wall Street", "Inflation", "Microsoft", "Bitcoin", "Gross Domestic Product", "Stock Market"]
+    },
+    {
+      "name": "Health",
+      "description": "Articles covering medicine, human anatomy, diseases, healthcare systems, nutrition, mental health, pharmacology, and medical treatments.",
+      "examples": ["COVID-19", "Cancer", "Vaccine", "Mental Health", "Human Brain", "Antibiotics"]
+    },
+    {
+      "name": "Military",
+      "description": "Articles about armed forces, military weapons, defense strategies, battles, military history, army, navy, and air force.",
+      "examples": ["Pentagon", "Nuclear Weapons", "NATO", "Aviation", "Special Forces", "Submarines"]
+    },
+    {
+      "name": "Religion",
+      "description": "Articles regarding world religions, theology, mythology, spiritual practices, religious figures, sacred texts, and churches.",
+      "examples": ["Christianity", "Islam", "Buddhism", "Vatican", "Mythology", "Bible"]
+    }
+  ]
+}
