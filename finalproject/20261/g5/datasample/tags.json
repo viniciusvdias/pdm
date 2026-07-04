@@ -1,0 +1,150 @@
+[
+  {
+    "tagId": 1,
+    "tag": "classic"
+  },
+  {
+    "tagId": 2,
+    "tag": "must-watch"
+  },
+  {
+    "tagId": 3,
+    "tag": "overrated"
+  },
+  {
+    "tagId": 4,
+    "tag": "underrated"
+  },
+  {
+    "tagId": 5,
+    "tag": "slow-burn"
+  },
+  {
+    "tagId": 6,
+    "tag": "mind-bending"
+  },
+  {
+    "tagId": 7,
+    "tag": "emotional"
+  },
+  {
+    "tagId": 8,
+    "tag": "funny"
+  },
+  {
+    "tagId": 9,
+    "tag": "scary"
+  },
+  {
+    "tagId": 10,
+    "tag": "action-packed"
+  },
+  {
+    "tagId": 11,
+    "tag": "visually stunning"
+  },
+  {
+    "tagId": 12,
+    "tag": "great soundtrack"
+  },
+  {
+    "tagId": 13,
+    "tag": "based on true story"
+  },
+  {
+    "tagId": 14,
+    "tag": "plot twist"
+  },
+  {
+    "tagId": 15,
+    "tag": "cult classic"
+  },
+  {
+    "tagId": 16,
+    "tag": "oscar winner"
+  },
+  {
+    "tagId": 17,
+    "tag": "dark humor"
+  },
+  {
+    "tagId": 18,
+    "tag": "thought-provoking"
+  },
+  {
+    "tagId": 19,
+    "tag": "dystopia"
+  },
+  {
+    "tagId": 20,
+    "tag": "superhero"
+  },
+  {
+    "tagId": 21,
+    "tag": "time travel"
+  },
+  {
+    "tagId": 22,
+    "tag": "psychological"
+  },
+  {
+    "tagId": 23,
+    "tag": "surreal"
+  },
+  {
+    "tagId": 24,
+    "tag": "violent"
+  },
+  {
+    "tagId": 25,
+    "tag": "inspiring"
+  },
+  {
+    "tagId": 26,
+    "tag": "coming of age"
+  },
+  {
+    "tagId": 27,
+    "tag": "space"
+  },
+  {
+    "tagId": 28,
+    "tag": "artificial intelligence"
+  },
+  {
+    "tagId": 29,
+    "tag": "heist"
+  },
+  {
+    "tagId": 30,
+    "tag": "based on novel"
+  },
+  {
+    "tagId": 31,
+    "tag": "true crime"
+  },
+  {
+    "tagId": 32,
+    "tag": "war film"
+  },
+  {
+    "tagId": 33,
+    "tag": "animation"
+  },
+  {
+    "tagId": 34,
+    "tag": "anthology"
+  },
+  {
+    "tagId": 35,
+    "tag": "mockumentary"
+  },
+  {
+    "tagId": 36,
+    "tag": "silent film"
+  },
+  {
+    "tagId": 37,
+    "tag": "foreign language"
+  }
+]
