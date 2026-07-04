@@ -1,0 +1,8 @@
+# Ignore output results and metrics
+results/
+
+# Ignore Python and Jupyter cache
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+.minio.sys/

@@ -1,0 +1,73 @@
+services:
+  # Distributed Storage (MinIO object store simulating S3)
+  minio:
+    image: minio/minio:latest
+    container_name: pdm-minio
+    ports:
+      - "9000:9000" # S3 API endpoint
+      - "9001:9001" # Web Browser Administration Console
+    environment:
+      - MINIO_ROOT_USER=pdm_minio
+      - MINIO_ROOT_PASSWORD=pdm_minio
+    command: server /data --console-address ":9001"
+    # Notice we removed the buggy volume mount here. MinIO now owns its own space.
+
+  # Automatically pushes local datasample to MinIO via API
+  minio-setup:
+    image: minio/mc:latest
+    container_name: pdm-minio-setup
+    depends_on:
+      - minio
+    volumes:
+      - ./datasample:/local_sample_data # Maps the local folder just for reading
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO to boot...';
+      sleep 10;
+      mc alias set myminio http://minio:9000 pdm_minio pdm_minio;
+      mc mb myminio/datasample --ignore-existing;
+      mc cp -r /local_sample_data/ myminio/datasample/;
+      echo 'Setup Complete! Files uploaded automatically.';
+      exit 0;
+      "
+
+  # Spark Cluster Coordinator Node (Master)
+  spark-master:
+    image: apache/spark:3.5.1-python3
+    container_name: pdm-spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "8080:8080" # Spark Master Status Web UI
+      - "7077:7077" # Spark Execution Context Internal Engine Port
+    volumes:
+      - ./src:/opt/spark/work-dir/src
+      - ./results:/opt/spark/work-dir/results
+
+  # Spark Cluster Compute Node (Worker)
+  spark-worker:
+    image: apache/spark:3.5.1-python3
+    container_name: pdm-spark-worker
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+    depends_on:
+      - spark-master
+    volumes:
+      - ./results:/opt/spark/work-dir/results
+
+  # Interactive Jupyter Environment (Development Engine)
+  jupyter:
+    image: jupyter/pyspark-notebook:latest
+    container_name: pdm-jupyter
+    ports:
+      - "8888:8888" # Jupyter Notebook Web Browser interface
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=pdm2026 # Permanent login password
+    volumes:
+      - ./src:/home/jovyan/work # Maps the required src/ directory as our coding workspace
+    depends_on:
+      - spark-master
+      - minio
+      - minio-setup
